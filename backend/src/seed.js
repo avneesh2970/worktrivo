@@ -94,11 +94,11 @@ const seedDatabase = async () => {
 
     // 4. Create Sample Group
     const group = await Group.findOneAndUpdate(
-      { name: 'TaskSphere Launch Team' },
+      { name: 'WorkTrivo Launch Team' },
       {
         $setOnInsert: {
-          name: 'TaskSphere Launch Team',
-          description: 'Core team responsible for TaskSphere MVP launch',
+          name: 'WorkTrivo Launch Team',
+          description: 'Core team responsible for WorkTrivo MVP launch',
           members: seededUsers.map((u) => u._id),
           createdBy: adminUser._id,
           approvalStatus: 'Approved',

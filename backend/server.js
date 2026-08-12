@@ -51,7 +51,7 @@ app.get("/", (req, res) => {
   res.status(200).json({
     success: true,
     message: "🚀 API Working",
-    application: "TaskSphere Backend",
+    application: "WorkTrivo Backend",
     version: "1.0.0",
     status: "Running",
     database:
@@ -120,7 +120,7 @@ const startServer = async () => {
     // Listen on all network interfaces
     server.listen(PORT, "0.0.0.0", () => {
       console.log("====================================");
-      console.log("🚀 TaskSphere Backend Started");
+      console.log("🚀 WorkTrivo Backend Started");
       console.log(`🌐 Server : http://localhost:${PORT}`);
       console.log(`❤️ Health : http://localhost:${PORT}/health`);
       console.log(`📦 API    : http://localhost:${PORT}/`);

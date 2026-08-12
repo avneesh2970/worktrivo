@@ -53,7 +53,7 @@ router.post(
                     <p>You have been assigned to a new project.</p>
                     <h3>${group.name}</h3>
                     <p>${description}</p><br>
-                    <p>Please login to TaskSphere.</p>`
+                    <p>Please login to WorkTrivo.</p>`
                 );
             }
             

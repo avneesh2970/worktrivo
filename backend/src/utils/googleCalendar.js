@@ -95,7 +95,7 @@ const upsertTaskEvent = async (user, task, existingEventId) => {
   const calendar = google.calendar({ version: 'v3', auth: authClient });
 
   const eventBody = {
-    summary: `[TaskSphere] ${task.title}`,
+    summary: `[WorkTrivo] ${task.title}`,
     description: task.description || '',
     start: { dateTime: new Date(task.dueDate).toISOString() },
     // Calendar requires start < end; give due-date tasks a 30-minute block.

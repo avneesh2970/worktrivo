@@ -458,7 +458,7 @@ const Tasks = () => {
   const getStatusBadge = (status) => {
     const statusMap = {
       'To Do': 'bg-blue-500/20 text-blue-300 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700',
-      'In Progress': 'bg-[#dc9750] text-yellow-300 border-blue-200 dark:bg-blue-950/50 dark:text-blue-400 dark:border-blue-800',
+      'In Progress': 'bg-[#10b981] text-yellow-300 border-blue-200 dark:bg-blue-950/50 dark:text-blue-400 dark:border-blue-800',
       'In Review': 'bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/50 dark:text-violet-400 dark:border-violet-800',
       'Blocked': 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/50 dark:text-orange-400 dark:border-orange-800',
       'Completed (Pending Approval)': 'bg-green-500/20 text-green-300 border-amber-200 dark:bg-amber-950/50 dark:text-amber-400 dark:border-amber-800',
@@ -499,8 +499,8 @@ const Tasks = () => {
 
       {/* Inline toast */}
       {toastMsg && (
-        <div className="fixed bottom-6 right-6 z-[200] flex items-center gap-2 px-4 py-3 rounded-lg bg-[#1e2640] backdrop-blur-xl text-slate-100 shadow-xl border border-[#dc9750]/30 text-sm font-medium transition-all animate-in fade-in slide-in-from-bottom-4">
-          <CheckCircle2 size={16} className="text-[#dc9750]" />
+        <div className="fixed bottom-6 right-6 z-[200] flex items-center gap-2 px-4 py-3 rounded-lg bg-[#1e2640] backdrop-blur-xl text-slate-100 shadow-xl border border-[#10b981]/30 text-sm font-medium transition-all animate-in fade-in slide-in-from-bottom-4">
+          <CheckCircle2 size={16} className="text-[#10b981]" />
           {toastMsg}
         </div>
       )}
@@ -509,7 +509,7 @@ const Tasks = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
           <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-100">
-            Workflow <span className="text-[#dc9750]">Tasks</span>
+            Workflow <span className="text-[#10b981]">Tasks</span>
           </h2>
           <p className="text-sm text-slate-400">
             Search, filter, and track tasks across team members.
@@ -519,21 +519,21 @@ const Tasks = () => {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setIsVoiceModalOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#1e2640] border border-slate-700/60 hover:bg-slate-800 text-slate-200 text-sm font-medium rounded-xl shadow-xs transition-all focus:outline-none focus:ring-2 focus:ring-[#dc9750]/50"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#1e2640] border border-slate-700/60 hover:bg-slate-800 text-slate-200 text-sm font-medium rounded-xl shadow-xs transition-all focus:outline-none focus:ring-2 focus:ring-[#10b981]/50"
             >
-              <Mic size={18} className="text-[#dc9750]" />
+              <Mic size={18} className="text-[#10b981]" />
               <span>Voice Task</span>
             </button>
             <button
               onClick={() => { resetBulkCreate(); setIsBulkCreateOpen(true); }}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#1e2640] border border-slate-700/60 hover:bg-slate-800 text-slate-200 text-sm font-medium rounded-xl shadow-xs transition-all focus:outline-none focus:ring-2 focus:ring-[#dc9750]/50"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#1e2640] border border-slate-700/60 hover:bg-slate-800 text-slate-200 text-sm font-medium rounded-xl shadow-xs transition-all focus:outline-none focus:ring-2 focus:ring-[#10b981]/50"
             >
-              <UserPlus size={18} className="text-[#dc9750]" />
+              <UserPlus size={18} className="text-[#10b981]" />
               <span>Bulk Create</span>
             </button>
             <button
               onClick={openCreateModal}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#dc9750] hover:bg-[#dc9750]/80 text-[#1e2640] text-sm font-bold rounded-xl shadow-lg transition-all focus:outline-none focus:ring-2 focus:ring-[#dc9750]/50 active:scale-95"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#10b981] hover:bg-[#10b981]/80 text-[#1e2640] text-sm font-bold rounded-xl shadow-lg transition-all focus:outline-none focus:ring-2 focus:ring-[#10b981]/50 active:scale-95"
             >
               <Plus size={18} />
               <span>Create Task</span>
@@ -553,7 +553,7 @@ const Tasks = () => {
               placeholder="Search by task title or description..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 text-slate-100 placeholder:text-slate-500 text-sm bg-slate-900/60 border border-slate-700/60 rounded-lg outline-none focus:border-[#dc9750] focus:ring-1 focus:ring-[#dc9750]/50 transition-colors"
+              className="w-full pl-10 pr-4 py-2 text-slate-100 placeholder:text-slate-500 text-sm bg-slate-900/60 border border-slate-700/60 rounded-lg outline-none focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981]/50 transition-colors"
             />
           </div>
 
@@ -565,7 +565,7 @@ const Tasks = () => {
                 placeholder="Filter by team member name or Employee ID..."
                 value={assigneeFilter}
                 onChange={(e) => setAssigneeFilter(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 text-slate-100 placeholder:text-slate-500 text-sm bg-slate-900/60 border border-slate-700/60 rounded-lg outline-none focus:border-[#dc9750] focus:ring-1 focus:ring-[#dc9750]/50 transition-colors"
+                className="w-full pl-10 pr-4 py-2 text-slate-100 placeholder:text-slate-500 text-sm bg-slate-900/60 border border-slate-700/60 rounded-lg outline-none focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981]/50 transition-colors"
               />
             </div>
           )}
@@ -577,7 +577,7 @@ const Tasks = () => {
             <button
               onClick={() => setViewMode('grid')}
               className={`p-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 ${viewMode === 'grid'
-                ? 'bg-[#dc9750] text-[#1e2640] font-bold shadow-xs'
+                ? 'bg-[#10b981] text-[#1e2640] font-bold shadow-xs'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
                 }`}
               title="Grid View"
@@ -588,7 +588,7 @@ const Tasks = () => {
             <button
               onClick={() => setViewMode('list')}
               className={`p-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 ${viewMode === 'list'
-                ? 'bg-[#dc9750] text-[#1e2640] font-bold shadow-xs'
+                ? 'bg-[#10b981] text-[#1e2640] font-bold shadow-xs'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
                 }`}
               title="List View"
@@ -599,7 +599,7 @@ const Tasks = () => {
             <button
               onClick={() => setViewMode('kanban')}
               className={`p-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 ${viewMode === 'kanban'
-                ? 'bg-[#dc9750] text-[#1e2640] font-bold shadow-xs'
+                ? 'bg-[#10b981] text-[#1e2640] font-bold shadow-xs'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
                 }`}
               title="Kanban Board"
@@ -610,7 +610,7 @@ const Tasks = () => {
             <button
               onClick={() => setViewMode('calendar')}
               className={`p-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 ${viewMode === 'calendar'
-                ? 'bg-[#dc9750] text-[#1e2640] font-bold shadow-xs'
+                ? 'bg-[#10b981] text-[#1e2640] font-bold shadow-xs'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
                 }`}
               title="Calendar View"
@@ -621,7 +621,7 @@ const Tasks = () => {
             <button
               onClick={() => setViewMode('gantt')}
               className={`p-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 ${viewMode === 'gantt'
-                ? 'bg-[#dc9750] text-[#1e2640] font-bold shadow-xs'
+                ? 'bg-[#10b981] text-[#1e2640] font-bold shadow-xs'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
                 }`}
               title="Gantt / Timeline View"
@@ -713,14 +713,14 @@ const Tasks = () => {
 
       {/* Bulk Assign Action Bar */}
       {canManage && selectedTaskIds.length > 0 && (
-        <div className="flex items-center justify-between gap-3 bg-[#1e2640] border border-[#dc9750]/30 rounded-xl px-4 py-2.5 mb-4 shadow-lg">
+        <div className="flex items-center justify-between gap-3 bg-[#1e2640] border border-[#10b981]/30 rounded-xl px-4 py-2.5 mb-4 shadow-lg">
           <span className="text-sm font-medium text-slate-200">
-            <span className="text-[#dc9750] font-bold">{selectedTaskIds.length}</span> task{selectedTaskIds.length > 1 ? 's' : ''} selected
+            <span className="text-[#10b981] font-bold">{selectedTaskIds.length}</span> task{selectedTaskIds.length > 1 ? 's' : ''} selected
           </span>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setIsBulkAssignOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#dc9750] hover:bg-[#dc9750]/80 text-[#1e2640] text-xs font-bold rounded-lg shadow-sm transition-all active:scale-95"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#10b981] hover:bg-[#10b981]/80 text-[#1e2640] text-xs font-bold rounded-lg shadow-sm transition-all active:scale-95"
             >
               <UserPlus size={14} /> Assign to Member
             </button>
@@ -737,7 +737,7 @@ const Tasks = () => {
       {/* Task Content */}
       {loading ? (
         <div className="flex justify-center items-center py-24">
-          <div className="w-8 h-8 border-4 border-[#dc9750] border-t-transparent rounded-full animate-spin"></div>
+          <div className="w-8 h-8 border-4 border-[#10b981] border-t-transparent rounded-full animate-spin"></div>
         </div>
       ) : tasks.length === 0 ? (
         <div className="flex flex-col items-center justify-center p-12 bg-[#1e2640] border border-slate-700/60 rounded-xl text-center shadow-sm">
@@ -771,7 +771,7 @@ const Tasks = () => {
               <div
                 key={task._id}
                 onClick={() => navigate(`/tasks/${task._id}`)}
-                className={`group relative bg-[#1e2640] border border-slate-700/60 hover:border-[#dc9750] rounded-2xl p-5 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-200 cursor-pointer flex flex-col justify-between overflow-hidden ${isOverdue ? 'border-l-4 border-l-rose-500' : 'border-l-4 border-l-[#dc9750]'
+                className={`group relative bg-[#1e2640] border border-slate-700/60 hover:border-[#10b981] rounded-2xl p-5 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-200 cursor-pointer flex flex-col justify-between overflow-hidden ${isOverdue ? 'border-l-4 border-l-rose-500' : 'border-l-4 border-l-[#10b981]'
                   }`}
               >
                 <div>
@@ -779,17 +779,17 @@ const Tasks = () => {
                     {canManage && (
                       <button
                         onClick={(e) => toggleTaskSelected(task._id, e)}
-                        className="shrink-0 text-slate-400 hover:text-[#dc9750] transition-colors"
+                        className="shrink-0 text-slate-400 hover:text-[#10b981] transition-colors"
                         title={selectedTaskIds.includes(task._id) ? 'Deselect task' : 'Select task'}
                       >
                         {selectedTaskIds.includes(task._id) ? (
-                          <CheckSquare size={16} className="text-[#dc9750]" />
+                          <CheckSquare size={16} className="text-[#10b981]" />
                         ) : (
                           <Square size={16} />
                         )}
                       </button>
                     )}
-                    <span className="text-[11px] font-semibold text-[#dc9750] truncate uppercase tracking-wide">
+                    <span className="text-[11px] font-semibold text-[#10b981] truncate uppercase tracking-wide">
                       {task.assignedTo?.length > 0
                         ? task.assignedTo.map((u) => u.name).join(', ')
                         : 'Unassigned'}
@@ -797,7 +797,7 @@ const Tasks = () => {
                   </div>
 
                   <div className="flex items-start justify-between gap-3 mb-3">
-                    <h3 className="font-semibold text-base text-slate-100 group-hover:text-[#dc9750] transition-colors line-clamp-1">
+                    <h3 className="font-semibold text-base text-slate-100 group-hover:text-[#10b981] transition-colors line-clamp-1">
                       {task.title}
                     </h3>
                     {canManage && (
@@ -807,7 +807,7 @@ const Tasks = () => {
                       >
                         <button
                           onClick={(e) => openEditModal(task, e)}
-                          className="p-1.5 text-slate-400 hover:text-[#dc9750] rounded-md hover:bg-slate-800 transition-colors shadow-xs"
+                          className="p-1.5 text-slate-400 hover:text-[#10b981] rounded-md hover:bg-slate-800 transition-colors shadow-xs"
                           title="Edit Task"
                         >
                           <Edit2 size={13} />
@@ -862,7 +862,7 @@ const Tasks = () => {
                       {task.assignedTo.slice(0, 3).map((u) => (
                         <div
                           key={u._id}
-                          className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-[#dc9750] text-[#1e2640] text-[11px] font-bold border-2 border-[#1e2640] shadow-md"
+                          className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-[#10b981] text-[#1e2640] text-[11px] font-bold border-2 border-[#1e2640] shadow-md"
                           title={`${u.name} (${u.email})`}
                         >
                           {u.name.charAt(0).toUpperCase()}
@@ -907,19 +907,19 @@ const Tasks = () => {
                     {canManage && (
                       <td className="py-3.5 px-4" onClick={(e) => toggleTaskSelected(task._id, e)}>
                         {selectedTaskIds.includes(task._id) ? (
-                          <CheckSquare size={16} className="text-[#dc9750]" />
+                          <CheckSquare size={16} className="text-[#10b981]" />
                         ) : (
                           <Square size={16} className="text-slate-500" />
                         )}
                       </td>
                     )}
                     <td className="py-3.5 px-4 max-w-xs">
-                      <p className="font-semibold text-slate-100 group-hover:text-[#dc9750] transition-colors truncate">
+                      <p className="font-semibold text-slate-100 group-hover:text-[#10b981] transition-colors truncate">
                         {task.title}
                       </p>
                       <p className="text-xs text-slate-400 truncate mt-0.5">{task.description}</p>
                     </td>
-                    <td className="py-3.5 px-4 whitespace-nowrap text-xs font-semibold text-[#dc9750]">
+                    <td className="py-3.5 px-4 whitespace-nowrap text-xs font-semibold text-[#10b981]">
                       {task.assignedTo?.length > 0
                         ? task.assignedTo.map((u) => u.name).join(', ')
                         : 'Unassigned'}
@@ -934,7 +934,7 @@ const Tasks = () => {
                         {task.assignedTo.map((u) => (
                           <div
                             key={u._id}
-                            className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#dc9750] text-[#1e2640] text-[10px] font-bold border-2 border-[#1e2640]"
+                            className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#10b981] text-[#1e2640] text-[10px] font-bold border-2 border-[#1e2640]"
                             title={u.name}
                           >
                             {u.name.charAt(0).toUpperCase()}
@@ -947,7 +947,7 @@ const Tasks = () => {
                         <div className="inline-flex items-center gap-1">
                           <button
                             onClick={(e) => openEditModal(task, e)}
-                            className="p-1.5 text-slate-400 hover:text-[#dc9750] rounded-md hover:bg-slate-800 transition-colors"
+                            className="p-1.5 text-slate-400 hover:text-[#10b981] rounded-md hover:bg-slate-800 transition-colors"
                           >
                             <Edit2 size={14} />
                           </button>
@@ -1008,7 +1008,7 @@ const Tasks = () => {
                       </label>
                       <input
                         type="text"
-                        className="w-full px-3 py-2 text-sm bg-slate-800/50 border border-slate-700 text-slate-100 placeholder:text-slate-500 rounded-lg outline-none focus:border-[#dc9750]/60 focus:ring-2 focus:ring-[#dc9750]/20 transition-all"
+                        className="w-full px-3 py-2 text-sm bg-slate-800/50 border border-slate-700 text-slate-100 placeholder:text-slate-500 rounded-lg outline-none focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20 transition-all"
                         value={formTitle}
                         onChange={(e) => setFormTitle(e.target.value)}
                         placeholder="e.g., Update Landing Page Header"
@@ -1022,7 +1022,7 @@ const Tasks = () => {
                       </label>
                       <textarea
                         rows={4}
-                        className="w-full px-3 py-2 text-sm bg-slate-800/50 border border-slate-700 text-slate-100 placeholder:text-slate-500 rounded-lg outline-none focus:border-[#dc9750]/60 focus:ring-2 focus:ring-[#dc9750]/20 transition-all resize-none"
+                        className="w-full px-3 py-2 text-sm bg-slate-800/50 border border-slate-700 text-slate-100 placeholder:text-slate-500 rounded-lg outline-none focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20 transition-all resize-none"
                         value={formDesc}
                         onChange={(e) => setFormDesc(e.target.value)}
                         placeholder="Provide scope, targets, and notes..."
@@ -1035,7 +1035,7 @@ const Tasks = () => {
                           Priority
                         </label>
                         <select
-                          className="w-full px-3 py-2 text-sm bg-slate-800/50 border border-slate-700 text-slate-100 rounded-lg outline-none focus:border-[#dc9750]/60 focus:ring-2 focus:ring-[#dc9750]/20"
+                          className="w-full px-3 py-2 text-sm bg-slate-800/50 border border-slate-700 text-slate-100 rounded-lg outline-none focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20"
                           value={formPriority}
                           onChange={(e) => setFormPriority(e.target.value)}
                         >
@@ -1051,7 +1051,7 @@ const Tasks = () => {
                           Status
                         </label>
                         <select
-                          className="w-full px-3 py-2 text-sm bg-slate-800/50 border border-slate-700 text-slate-100 rounded-lg outline-none focus:border-[#dc9750]/60 focus:ring-2 focus:ring-[#dc9750]/20"
+                          className="w-full px-3 py-2 text-sm bg-slate-800/50 border border-slate-700 text-slate-100 rounded-lg outline-none focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20"
                           value={formStatus}
                           onChange={(e) => setFormStatus(e.target.value)}
                         >
@@ -1070,7 +1070,7 @@ const Tasks = () => {
                         </label>
                         <input
                           type="datetime-local"
-                          className="w-full px-3 py-2 text-sm bg-slate-800/50 border border-slate-700 text-slate-100 rounded-lg outline-none focus:border-[#dc9750]/60 focus:ring-2 focus:ring-[#dc9750]/20 color-scheme-dark"
+                          className="w-full px-3 py-2 text-sm bg-slate-800/50 border border-slate-700 text-slate-100 rounded-lg outline-none focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20 color-scheme-dark"
                           value={formStartDate}
                           onChange={(e) => setFormStartDate(e.target.value)}
                         />
@@ -1082,7 +1082,7 @@ const Tasks = () => {
                         </label>
                         <input
                           type="datetime-local"
-                          className="w-full px-3 py-2 text-sm bg-slate-800/50 border border-slate-700 text-slate-100 rounded-lg outline-none focus:border-[#dc9750]/60 focus:ring-2 focus:ring-[#dc9750]/20 color-scheme-dark"
+                          className="w-full px-3 py-2 text-sm bg-slate-800/50 border border-slate-700 text-slate-100 rounded-lg outline-none focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20 color-scheme-dark"
                           value={formDueDate}
                           onChange={(e) => setFormDueDate(e.target.value)}
                           required
@@ -1098,7 +1098,7 @@ const Tasks = () => {
                         type="number"
                         min="0"
                         step="0.5"
-                        className="w-full px-3 py-2 text-sm bg-slate-800/50 border border-slate-700 text-slate-100 rounded-lg outline-none focus:border-[#dc9750]/60 focus:ring-2 focus:ring-[#dc9750]/20"
+                        className="w-full px-3 py-2 text-sm bg-slate-800/50 border border-slate-700 text-slate-100 rounded-lg outline-none focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20"
                         value={formEstimatedHours}
                         onChange={(e) => setFormEstimatedHours(e.target.value)}
                       />
@@ -1119,13 +1119,13 @@ const Tasks = () => {
                               key={member._id}
                               onClick={() => toggleAssignee(member._id)}
                               className={`flex items-center gap-2 p-2 rounded-md border cursor-pointer transition-all ${isSelected
-                                ? 'bg-[#dc9750]/20 border-[#dc9750]'
+                                ? 'bg-[#10b981]/20 border-[#10b981]'
                                 : 'border-slate-700 hover:bg-slate-800'
                                 }`}
                             >
                               <div
                                 className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${isSelected
-                                  ? 'bg-[#dc9750] text-white'
+                                  ? 'bg-[#10b981] text-white'
                                   : 'bg-slate-700 text-slate-300'
                                   }`}
                               >
@@ -1150,7 +1150,7 @@ const Tasks = () => {
                       <div className="flex gap-2">
                         <input
                           type="url"
-                          className="flex-1 px-3 py-2 text-sm bg-slate-800/50 border border-slate-700 text-slate-100 placeholder:text-slate-500 rounded-lg outline-none focus:border-[#dc9750]/60 focus:ring-2 focus:ring-[#dc9750]/20"
+                          className="flex-1 px-3 py-2 text-sm bg-slate-800/50 border border-slate-700 text-slate-100 placeholder:text-slate-500 rounded-lg outline-none focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20"
                           placeholder="https://..."
                           value={formAttachment}
                           onChange={(e) => setFormAttachment(e.target.value)}
@@ -1196,7 +1196,7 @@ const Tasks = () => {
                           value={formTagInput}
                           placeholder="e.g., frontend"
                           onChange={(e) => setFormTagInput(e.target.value)}
-                          className="flex-1 px-3 py-2 text-sm bg-slate-800/50 border border-slate-700 text-slate-100 placeholder:text-slate-500 rounded-lg outline-none focus:border-[#dc9750]/60 focus:ring-2 focus:ring-[#dc9750]/20"
+                          className="flex-1 px-3 py-2 text-sm bg-slate-800/50 border border-slate-700 text-slate-100 placeholder:text-slate-500 rounded-lg outline-none focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20"
                         />
                         <button
                           type="button"
@@ -1242,7 +1242,7 @@ const Tasks = () => {
                         value={formChecklistInput}
                         onChange={(e) => setFormChecklistInput(e.target.value)}
                         placeholder="e.g., Write unit tests"
-                        className="flex-1 px-3 py-2 text-sm bg-slate-800/50 border border-slate-700 text-slate-100 placeholder:text-slate-500 rounded-lg outline-none focus:border-[#dc9750]/60 focus:ring-2 focus:ring-[#dc9750]/20"
+                        className="flex-1 px-3 py-2 text-sm bg-slate-800/50 border border-slate-700 text-slate-100 placeholder:text-slate-500 rounded-lg outline-none focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20"
                       />
                       <button
                         type="button"
@@ -1265,7 +1265,7 @@ const Tasks = () => {
                                 type="checkbox"
                                 checked={item.completed}
                                 onChange={() => toggleChecklistItem(index)}
-                                className="rounded border-slate-600 bg-slate-800 text-[#dc9750] focus:ring-[#dc9750]"
+                                className="rounded border-slate-600 bg-slate-800 text-[#10b981] focus:ring-[#10b981]"
                               />
                               <span className={item.completed ? 'line-through text-slate-500' : 'text-slate-300'}>
                                 {item.title}
@@ -1295,7 +1295,7 @@ const Tasks = () => {
                         const values = [...e.target.selectedOptions].map((option) => option.value);
                         setFormDependencies(values);
                       }}
-                      className="w-full rounded-lg border border-slate-700 p-2 text-sm bg-slate-800/50 text-slate-100 outline-none focus:border-[#dc9750]/60 focus:ring-2 focus:ring-[#dc9750]/20 max-h-32"
+                      className="w-full rounded-lg border border-slate-700 p-2 text-sm bg-slate-800/50 text-slate-100 outline-none focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20 max-h-32"
                     >
                       {allTasks
                         .filter((task) => task._id !== currentTaskId)
@@ -1323,7 +1323,7 @@ const Tasks = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 text-xs font-semibold bg-[#dc9750] hover:bg-[#b97737] text-white rounded-lg transition-colors shadow-sm"
+                  className="px-4 py-2 text-xs font-semibold bg-[#10b981] hover:bg-[#b97737] text-white rounded-lg transition-colors shadow-sm"
                 >
                   {modalMode === 'create' ? 'Create Task' : 'Save Changes'}
                 </button>
@@ -1391,7 +1391,7 @@ const Tasks = () => {
             <select
               value={bulkAssignUserId}
               onChange={(e) => setBulkAssignUserId(e.target.value)}
-              className="w-full mt-4 px-3 py-2 text-sm bg-slate-800/50 border border-slate-700 text-slate-100 rounded-lg outline-none focus:border-[#dc9750]/60 focus:ring-2 focus:ring-[#dc9750]/20"
+              className="w-full mt-4 px-3 py-2 text-sm bg-slate-800/50 border border-slate-700 text-slate-100 rounded-lg outline-none focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20"
             >
               <option value="" className="bg-slate-900 text-slate-400">
                 Select a team member...
@@ -1418,7 +1418,7 @@ const Tasks = () => {
                 type="button"
                 onClick={handleBulkAssign}
                 disabled={!bulkAssignUserId || bulkAssignLoading}
-                className="px-4 py-2 text-xs font-semibold bg-[#dc9750] hover:bg-[#b97737] disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-colors shadow-sm"
+                className="px-4 py-2 text-xs font-semibold bg-[#10b981] hover:bg-[#b97737] disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-colors shadow-sm"
               >
                 {bulkAssignLoading ? 'Assigning...' : 'Confirm Assignment'}
               </button>
@@ -1460,7 +1460,7 @@ const Tasks = () => {
                 <select
                   value={bulkCreateEmployeeId}
                   onChange={(e) => setBulkCreateEmployeeId(e.target.value)}
-                  className="w-full px-3 py-2 text-sm bg-slate-800/50 border border-slate-700 text-slate-100 rounded-lg outline-none focus:border-[#dc9750]/60 focus:ring-2 focus:ring-[#dc9750]/20"
+                  className="w-full px-3 py-2 text-sm bg-slate-800/50 border border-slate-700 text-slate-100 rounded-lg outline-none focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20"
                 >
                   <option value="" className="bg-slate-900 text-slate-400">
                     Select a team member...
@@ -1488,7 +1488,7 @@ const Tasks = () => {
                           onChange={(e) =>
                             updateBulkTaskRow(index, "title", e.target.value)
                           }
-                          className="w-full min-w-0 px-3 py-2 text-sm bg-slate-800/80 border border-slate-700 text-slate-100 placeholder:text-slate-500 rounded-lg outline-none focus:border-[#dc9750]/60 focus:ring-2 focus:ring-[#dc9750]/20"
+                          className="w-full min-w-0 px-3 py-2 text-sm bg-slate-800/80 border border-slate-700 text-slate-100 placeholder:text-slate-500 rounded-lg outline-none focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20"
                         />
 
                         <select
@@ -1496,7 +1496,7 @@ const Tasks = () => {
                           onChange={(e) =>
                             updateBulkTaskRow(index, "priority", e.target.value)
                           }
-                          className="w-full min-w-0 px-3 py-2 text-sm bg-slate-800/80 border border-slate-700 text-slate-100 rounded-lg outline-none focus:border-[#dc9750]/60 focus:ring-2 focus:ring-[#dc9750]/20"
+                          className="w-full min-w-0 px-3 py-2 text-sm bg-slate-800/80 border border-slate-700 text-slate-100 rounded-lg outline-none focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20"
                         >
                           <option value="Low">Low</option>
                           <option value="Medium">Medium</option>
@@ -1510,7 +1510,7 @@ const Tasks = () => {
                           onChange={(e) =>
                             updateBulkTaskRow(index, "status", e.target.value)
                           }
-                          className="w-full min-w-0 px-3 py-2 text-sm bg-slate-800/80 border border-slate-700 text-slate-100 rounded-lg outline-none focus:border-[#dc9750]/60 focus:ring-2 focus:ring-[#dc9750]/20"
+                          className="w-full min-w-0 px-3 py-2 text-sm bg-slate-800/80 border border-slate-700 text-slate-100 rounded-lg outline-none focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20"
                         >
                           <option value="To Do">To Do</option>
                           <option value="In Progress">In Progress</option>
@@ -1528,7 +1528,7 @@ const Tasks = () => {
                           onChange={(e) =>
                             updateBulkTaskRow(index, "dueDate", e.target.value)
                           }
-                          className="w-full min-w-0 px-3 py-2 text-sm bg-slate-800/80 border border-slate-700 text-slate-100 rounded-lg outline-none focus:border-[#dc9750]/60 focus:ring-2 focus:ring-[#dc9750]/20 color-scheme-dark"
+                          className="w-full min-w-0 px-3 py-2 text-sm bg-slate-800/80 border border-slate-700 text-slate-100 rounded-lg outline-none focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20 color-scheme-dark"
                         />
 
                         {bulkCreateTasks.length > 1 && (
@@ -1548,7 +1548,7 @@ const Tasks = () => {
                         onChange={(e) => updateBulkTaskRow(index, 'description', e.target.value)}
                         placeholder="Task description..."
                         rows={2}
-                        className="w-full px-3 py-2 text-slate-100 placeholder:text-slate-500 text-sm bg-slate-800/50 border border-slate-700 rounded-lg outline-none focus:border-[#dc9750]/60 focus:ring-2 focus:ring-[#dc9750]/20 resize-none"
+                        className="w-full px-3 py-2 text-slate-100 placeholder:text-slate-500 text-sm bg-slate-800/50 border border-slate-700 rounded-lg outline-none focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20 resize-none"
                       />
                     </div>
                   ))}
@@ -1576,7 +1576,7 @@ const Tasks = () => {
                 type="button"
                 onClick={handleBulkCreateSubmit}
                 disabled={bulkCreateLoading}
-                className="px-4 py-2 text-xs font-semibold bg-[#dc9750] hover:bg-[#b97737] disabled:opacity-50 text-white rounded-lg transition-colors shadow-sm"
+                className="px-4 py-2 text-xs font-semibold bg-[#10b981] hover:bg-[#b97737] disabled:opacity-50 text-white rounded-lg transition-colors shadow-sm"
               >
                 {bulkCreateLoading
                   ? 'Creating...'

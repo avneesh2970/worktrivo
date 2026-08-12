@@ -301,8 +301,8 @@ const GroupDetails = () => {
 
         <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-3">
-            <div className="inline-flex items-center gap-2 rounded-full border border-[#dc9750]/30 bg-[#dc9750]/10 px-3.5 py-1 text-xs font-semibold text-[#f0be8d] shadow-sm backdrop-blur-md">
-              <Briefcase className="h-3.5 w-3.5 text-[#dc9750]" />
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#10b981]/30 bg-[#10b981]/10 px-3.5 py-1 text-xs font-semibold text-[#f0be8d] shadow-sm backdrop-blur-md">
+              <Briefcase className="h-3.5 w-3.5 text-[#10b981]" />
               <span>Workspace Project</span>
             </div>
             <h1 className="text-3xl font-black tracking-tight text-white sm:text-4xl lg:text-5xl">
@@ -313,7 +313,7 @@ const GroupDetails = () => {
             </p>
           </div>
 
-          <div className="flex items-center gap-4 rounded-2xl border border-white/10 bg-[#0B101E]/60 p-4 backdrop-blur-xl shadow-inner hover:border-[#dc9750]/60 transition-all duration-300">
+          <div className="flex items-center gap-4 rounded-2xl border border-white/10 bg-[#0B101E]/60 p-4 backdrop-blur-xl shadow-inner hover:border-[#10b981]/60 transition-all duration-300">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 text-indigo-400 ring-1 ring-indigo-500/30 shadow-md">
               <Users className="h-6 w-6" />
             </div>
@@ -365,7 +365,7 @@ const GroupDetails = () => {
           return (
             <div
               key={idx}
-              className="group relative overflow-hidden rounded-2xl border border-white/10 bg-[#121826]/80 p-5 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-[#dc9750]/60 hover:shadow-xl hover:shadow-black/40"
+              className="group relative overflow-hidden rounded-2xl border border-white/10 bg-[#121826]/80 p-5 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-[#10b981]/60 hover:shadow-xl hover:shadow-black/40"
             >
               <div className="flex items-center justify-between text-slate-400">
                 <span className="text-xs font-semibold uppercase tracking-wider">{stat.label}</span>
@@ -390,7 +390,7 @@ const GroupDetails = () => {
           </div>
           <button
             onClick={() => setShowMemberModal(true)}
-            className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-950 bg-[#dc9750] hover:bg-[#e3a35f] hover:shadow-[#dc9750]/40 shadow-lg transition-all duration-200 hover:bg-[#4E39DF] active:scale-95"
+            className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-950 bg-[#10b981] hover:bg-[#e3a35f] hover:shadow-[#10b981]/40 shadow-lg transition-all duration-200 hover:bg-[#4E39DF] active:scale-95"
           >
             <UserPlus className="h-4 w-4" /> Add Member
           </button>
@@ -401,7 +401,7 @@ const GroupDetails = () => {
             group.members.map((member) => (
               <div
                 key={member._id}
-                className="group flex items-center gap-3.5 rounded-2xl border border-slate-800/80 bg-[#0B101E]/60 p-3.5 transition-all duration-300 hover:border-[#dc9750]/60 hover:bg-[#0B101E]/80 hover:shadow-lg"
+                className="group flex items-center gap-3.5 rounded-2xl border border-slate-800/80 bg-[#0B101E]/60 p-3.5 transition-all duration-300 hover:border-[#10b981]/60 hover:bg-[#0B101E]/80 hover:shadow-lg"
               >
                 {member.profilePhoto ? (
                   <img
@@ -437,7 +437,7 @@ const GroupDetails = () => {
             <button
               onClick={() => setView("list")}
               className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all duration-200 ${view === "list"
-                ? "text-slate-950 bg-[#dc9750] hover:bg-[#e3a35f] hover:shadow-[#dc9750]/40 shadow-md"
+                ? "text-slate-950 bg-[#10b981] hover:bg-[#e3a35f] hover:shadow-[#10b981]/40 shadow-md"
                 : "text-slate-400 hover:text-white hover:bg-slate-900"
                 }`}
             >
@@ -447,7 +447,7 @@ const GroupDetails = () => {
             <button
               onClick={() => setView("kanban")}
               className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all duration-200 ${view === "kanban"
-                ? "text-slate-950 bg-[#dc9750] hover:bg-[#e3a35f] hover:shadow-[#dc9750]/40 shadow-md"
+                ? "text-slate-950 bg-[#10b981] hover:bg-[#e3a35f] hover:shadow-[#10b981]/40 shadow-md"
                 : "text-slate-400 hover:text-white hover:bg-slate-900"
                 }`}
             >
@@ -457,7 +457,7 @@ const GroupDetails = () => {
 
           <button
             onClick={() => setShowTaskModal(true)}
-            className="inline-flex items-center justify-center gap-2 rounded-xl  px-4 py-2.5 text-sm font-bold text-slate-950 bg-[#dc9750] hover:bg-[#e3a35f] hover:shadow-[#dc9750]/40 shadow-lg transition-all duration-200 hover:bg-[#00C853] active:scale-95 w-fit"
+            className="inline-flex items-center justify-center gap-2 rounded-xl  px-4 py-2.5 text-sm font-bold text-slate-950 bg-[#10b981] hover:bg-[#e3a35f] hover:shadow-[#10b981]/40 shadow-lg transition-all duration-200 hover:bg-[#00C853] active:scale-95 w-fit"
           >
             <Plus className="h-4 w-4 font-bold" /> New Task
           </button>
@@ -474,7 +474,7 @@ const GroupDetails = () => {
                 <div
                   key={task._id}
                   onClick={() => setViewingTask(task)}
-                  className="group relative cursor-pointer rounded-2xl border border-slate-800/80 bg-[#0B101E]/60 p-5 transition-all duration-300 hover:border-[#dc9750]/60 hover:bg-[#121826]/80 hover:shadow-xl hover:shadow-[#dc9750]/10"
+                  className="group relative cursor-pointer rounded-2xl border border-slate-800/80 bg-[#0B101E]/60 p-5 transition-all duration-300 hover:border-[#10b981]/60 hover:bg-[#121826]/80 hover:shadow-xl hover:shadow-[#10b981]/10"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="space-y-1.5 flex-1">
@@ -539,7 +539,7 @@ const GroupDetails = () => {
                   onClick={() => {
                     openEditModal(viewingTask);
                   }}
-                  className="flex items-center gap-2 rounded-lg border border-[#dc9750]/20 bg-[#1e2640] px-4 py-1.5 text-sm font-semibold text-slate-300 hover:bg-[#dc9750]/10 hover:text-white transition-colors"
+                  className="flex items-center gap-2 rounded-lg border border-[#10b981]/20 bg-[#1e2640] px-4 py-1.5 text-sm font-semibold text-slate-300 hover:bg-[#10b981]/10 hover:text-white transition-colors"
                 >
                   <Edit3 className="h-4 w-4" /> Edit
                 </button>
@@ -547,7 +547,7 @@ const GroupDetails = () => {
                 {viewingTask.status !== 'Completed (Pending Approval)' && viewingTask.status !== 'Approved' && (
                   <button
                     onClick={() => handleSubmitTask(viewingTask._id)}
-                    className="flex items-center gap-2 rounded-lg border border-[#dc9750]/30 bg-[#dc9750]/10 px-4 py-1.5 text-sm font-bold text-[#dc9750] hover:bg-[#dc9750] hover:text-white transition-colors"
+                    className="flex items-center gap-2 rounded-lg border border-[#10b981]/30 bg-[#10b981]/10 px-4 py-1.5 text-sm font-bold text-[#10b981] hover:bg-[#10b981] hover:text-white transition-colors"
                   >
                     <Send className="h-4 w-4" /> Submit for Approval
                   </button>
@@ -642,8 +642,8 @@ const GroupDetails = () => {
                       <div className="flex flex-wrap gap-2">
                         {viewingTask.assignedTo?.length > 0 ? (
                           viewingTask.assignedTo.map((u) => (
-                            <div key={u._id} className="flex items-center gap-2 rounded-lg border border-[#dc9750]/30 bg-[#dc9750]/10 px-3 py-1.5 text-sm font-semibold text-white">
-                              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[#dc9750] text-[10px] font-bold">
+                            <div key={u._id} className="flex items-center gap-2 rounded-lg border border-[#10b981]/30 bg-[#10b981]/10 px-3 py-1.5 text-sm font-semibold text-white">
+                              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[#10b981] text-[10px] font-bold">
                                 {u.name?.charAt(0)}
                               </div>
                               {u.name}
@@ -659,7 +659,7 @@ const GroupDetails = () => {
                   {/* Card 2: Discussion Box */}
                   <div className="rounded-xl border border-slate-800/80 bg-[#121826] p-6 shadow-sm">
                     <div className="flex items-center gap-2 mb-6">
-                      <MessageSquare className="h-5 w-5 text-[#dc9750]" />
+                      <MessageSquare className="h-5 w-5 text-[#10b981]" />
                       <h3 className="text-lg font-bold text-white">Discussion ({(viewingTask.comments || []).length})</h3>
                     </div>
 
@@ -671,12 +671,12 @@ const GroupDetails = () => {
                       <input
                         type="text"
                         placeholder="Type your message here..."
-                        className="w-full rounded-xl border border-slate-700 bg-[#0B101E] px-4 py-3 text-sm text-white placeholder-slate-500 focus:border-[#dc9750] focus:outline-none focus:ring-1 focus:ring-[#dc9750]"
+                        className="w-full rounded-xl border border-slate-700 bg-[#0B101E] px-4 py-3 text-sm text-white placeholder-slate-500 focus:border-[#10b981] focus:outline-none focus:ring-1 focus:ring-[#10b981]"
                         value={commentInput}
                         onChange={(e) => setCommentInput(e.target.value)}
                       />
 
-                      <button className="absolute right-1.5 top-1.5 bottom-1.5 flex items-center gap-1.5 rounded-lg bg-[#dc9750] px-4 font-bold text-white hover:bg-[#c4803d] transition-colors text-sm shadow-md">
+                      <button className="absolute right-1.5 top-1.5 bottom-1.5 flex items-center gap-1.5 rounded-lg bg-[#10b981] px-4 font-bold text-white hover:bg-[#c4803d] transition-colors text-sm shadow-md">
                         Post <Send className="h-3.5 w-3.5 ml-1" />
                       </button>
 
@@ -687,7 +687,7 @@ const GroupDetails = () => {
                 {/* RIGHT COLUMN: Audit Trail */}
                 <div className="w-full lg:w-[400px] shrink-0 rounded-xl border border-slate-800/80 bg-[#121826] p-6 shadow-sm flex flex-col">
                   <div className="flex items-center gap-2 mb-6">
-                    <History className="h-5 w-5 text-[#dc9750]" />
+                    <History className="h-5 w-5 text-[#10b981]" />
                     <h3 className="text-lg font-bold text-white">Audit Trail / History</h3>
                   </div>
 
@@ -701,7 +701,7 @@ const GroupDetails = () => {
                       to: viewingTask.status || 'Approved'
                     }]).map((log, idx) => (
                       <div key={idx} className="relative pl-6">
-                        <div className="absolute left-[-2px] top-1.5 h-2 w-2 rounded-full bg-[#dc9750] ring-4 ring-[#1e2640]"></div>
+                        <div className="absolute left-[-2px] top-1.5 h-2 w-2 rounded-full bg-[#10b981] ring-4 ring-[#1e2640]"></div>
 
                         <div className="mb-1 flex flex-wrap items-center gap-2 text-[10px] font-bold text-slate-400">
                           <span className="text-white">{log.user}</span>
@@ -757,7 +757,7 @@ const GroupDetails = () => {
               <select
                 value={selectedUser}
                 onChange={(e) => setSelectedUser(e.target.value)}
-                className="w-full rounded-xl border border-slate-700 bg-[#0B101E] p-3 text-sm text-white focus:border-[#dc9750]/60 focus:ring-2 focus:ring-[#dc9750]/20  focus:outline-none focus:ring-2 focus:ring-[#dc9750]/20 transition-all"
+                className="w-full rounded-xl border border-slate-700 bg-[#0B101E] p-3 text-sm text-white focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20  focus:outline-none focus:ring-2 focus:ring-[#10b981]/20 transition-all"
               >
                 <option value="">Choose team member...</option>
                 {users
@@ -786,7 +786,7 @@ const GroupDetails = () => {
 
               <button
                 onClick={addMember}
-                className="rounded-xl  px-5 py-2.5 text-sm font-semibold text-slate-950 bg-[#dc9750] hover:bg-[#e3a35f] hover:shadow-[#dc9750]/40 shadow-lg transition-all"
+                className="rounded-xl  px-5 py-2.5 text-sm font-semibold text-slate-950 bg-[#10b981] hover:bg-[#e3a35f] hover:shadow-[#10b981]/40 shadow-lg transition-all"
               >
                 Add Member
               </button>
@@ -819,7 +819,7 @@ const GroupDetails = () => {
                   placeholder="e.g., Design System Updates"
                   value={taskForm.title}
                   onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })}
-                  className="w-full rounded-xl border border-slate-700 bg-[#0B101E] p-3 text-sm text-white placeholder-slate-500 focus:border-[#dc9750]/60 focus:ring-2 focus:ring-[#dc9750]/20  focus:outline-none transition-all"
+                  className="w-full rounded-xl border border-slate-700 bg-[#0B101E] p-3 text-sm text-white placeholder-slate-500 focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20  focus:outline-none transition-all"
                 />
               </div>
 
@@ -834,7 +834,7 @@ const GroupDetails = () => {
                   onChange={(e) =>
                     setTaskForm({ ...taskForm, description: e.target.value })
                   }
-                  className="w-full rounded-xl border border-slate-700 bg-[#0B101E] p-3 text-sm text-white placeholder-slate-500 focus:border-[#dc9750]/60 focus:ring-2 focus:ring-[#dc9750]/20  focus:outline-none transition-all"
+                  className="w-full rounded-xl border border-slate-700 bg-[#0B101E] p-3 text-sm text-white placeholder-slate-500 focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20  focus:outline-none transition-all"
                 />
               </div>
 
@@ -848,7 +848,7 @@ const GroupDetails = () => {
                     onChange={(e) =>
                       setTaskForm({ ...taskForm, assignedTo: e.target.value })
                     }
-                    className="w-full rounded-xl border border-slate-700 bg-[#0B101E] p-3 text-sm text-white focus:border-[#dc9750]/60 focus:ring-2 focus:ring-[#dc9750]/20  focus:outline-none transition-all"
+                    className="w-full rounded-xl border border-slate-700 bg-[#0B101E] p-3 text-sm text-white focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20  focus:outline-none transition-all"
                   >
                     <option value="">Select Assignee</option>
                     {group.members?.map((member) => (
@@ -868,7 +868,7 @@ const GroupDetails = () => {
                     onChange={(e) =>
                       setTaskForm({ ...taskForm, priority: e.target.value })
                     }
-                    className="w-full rounded-xl border border-slate-700 bg-[#0B101E] p-3 text-sm text-white focus:border-[#dc9750]/60 focus:ring-2 focus:ring-[#dc9750]/20  focus:outline-none transition-all"
+                    className="w-full rounded-xl border border-slate-700 bg-[#0B101E] p-3 text-sm text-white focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20  focus:outline-none transition-all"
                   >
                     <option>Low</option>
                     <option>Medium</option>
@@ -886,7 +886,7 @@ const GroupDetails = () => {
                   type="date"
                   value={taskForm.dueDate}
                   onChange={(e) => setTaskForm({ ...taskForm, dueDate: e.target.value })}
-                  className="w-full rounded-xl border border-slate-700 bg-[#0B101E] p-3 text-sm text-white focus:border-[#dc9750]/60 focus:ring-2 focus:ring-[#dc9750]/20  focus:outline-none transition-all"
+                  className="w-full rounded-xl border border-slate-700 bg-[#0B101E] p-3 text-sm text-white focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20  focus:outline-none transition-all"
                 />
               </div>
             </div>
@@ -931,7 +931,7 @@ const GroupDetails = () => {
                 </label>
                 <input
                   type="text"
-                  className="w-full rounded-xl border border-slate-700 bg-[#0B101E] p-3 text-sm text-white focus:border-[#dc9750]/60 focus:ring-2 focus:ring-[#dc9750]/20  focus:outline-none transition-all"
+                  className="w-full rounded-xl border border-slate-700 bg-[#0B101E] p-3 text-sm text-white focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20  focus:outline-none transition-all"
                   value={editForm.title}
                   onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
                 />
@@ -943,7 +943,7 @@ const GroupDetails = () => {
                 </label>
                 <textarea
                   rows="3"
-                  className="w-full rounded-xl border border-slate-700 bg-[#0B101E] p-3 text-sm text-white focus:border-[#dc9750]/60 focus:ring-2 focus:ring-[#dc9750]/20  focus:outline-none transition-all"
+                  className="w-full rounded-xl border border-slate-700 bg-[#0B101E] p-3 text-sm text-white focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20  focus:outline-none transition-all"
                   value={editForm.description}
                   onChange={(e) =>
                     setEditForm({ ...editForm, description: e.target.value })
@@ -961,7 +961,7 @@ const GroupDetails = () => {
                     onChange={(e) =>
                       setEditForm({ ...editForm, assignedTo: e.target.value })
                     }
-                    className="w-full rounded-xl border border-slate-700 bg-[#0B101E] p-3 text-sm text-white focus:border-[#dc9750]/60 focus:ring-2 focus:ring-[#dc9750]/20  focus:outline-none transition-all"
+                    className="w-full rounded-xl border border-slate-700 bg-[#0B101E] p-3 text-sm text-white focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20  focus:outline-none transition-all"
                   >
                     {group.members?.map((member) => (
                       <option key={member._id} value={member._id}>
@@ -980,7 +980,7 @@ const GroupDetails = () => {
                     onChange={(e) =>
                       setEditForm({ ...editForm, priority: e.target.value })
                     }
-                    className="w-full rounded-xl border border-slate-700 bg-[#0B101E] p-3 text-sm text-white focus:border-[#dc9750]/60 focus:ring-2 focus:ring-[#dc9750]/20  focus:outline-none transition-all"
+                    className="w-full rounded-xl border border-slate-700 bg-[#0B101E] p-3 text-sm text-white focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20  focus:outline-none transition-all"
                   >
                     <option>Low</option>
                     <option>Medium</option>
@@ -998,7 +998,7 @@ const GroupDetails = () => {
                   type="date"
                   value={editForm.dueDate}
                   onChange={(e) => setEditForm({ ...editForm, dueDate: e.target.value })}
-                  className="w-full rounded-xl border border-slate-700 bg-[#0B101E] p-3 text-sm text-white focus:border-[#dc9750]/60 focus:ring-2 focus:ring-[#dc9750]/20  focus:outline-none transition-all"
+                  className="w-full rounded-xl border border-slate-700 bg-[#0B101E] p-3 text-sm text-white focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20  focus:outline-none transition-all"
                 />
               </div>
             </div>

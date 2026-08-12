@@ -22,7 +22,7 @@ const AnimatedHub = () => {
     window.addEventListener('resize', handleResize);
 
     const ballRadius = 35;
-    const ballColor = '#dc9750';
+    const ballColor = '#10b981';
     const ballSpeed = 3.5;
 
     // Ball Class

@@ -140,7 +140,7 @@ const ProfileView = ({ onEditClick }) => {
       {/* User Info & Avatar */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
         <div className="relative shrink-0">
-          <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl overflow-hidden bg-slate-950 border-2 border-[#dc9750]/40 flex items-center justify-center shadow-lg">
+          <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl overflow-hidden bg-slate-950 border-2 border-[#10b981]/40 flex items-center justify-center shadow-lg">
             {profile?.profilePhoto ? (
               <img
                 src={profile.profilePhoto}
@@ -148,7 +148,7 @@ const ProfileView = ({ onEditClick }) => {
                 className="w-full h-full object-cover"
               />
             ) : (
-              <span className="text-3xl font-bold text-[#dc9750]">
+              <span className="text-3xl font-bold text-[#10b981]">
                 {profile?.name?.charAt(0).toUpperCase()}
               </span>
             )}
@@ -160,7 +160,7 @@ const ProfileView = ({ onEditClick }) => {
             <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-100">
               {profile?.name}
             </h1>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-[#dc9750]/10 text-[#dc9750] border border-[#dc9750]/20">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-[#10b981]/10 text-[#10b981] border border-[#10b981]/20">
               <ShieldCheck size={14} />
               {profile?.role || 'Member'}
             </span>
@@ -176,7 +176,7 @@ const ProfileView = ({ onEditClick }) => {
       {/* Action Button */}
       <button
         onClick={() => onEditClick ? onEditClick() : navigate('/profile/edit')}
-        className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#dc9750] hover:bg-[#c08446] text-white font-medium text-sm shadow-lg shadow-[#dc9750]/20 transition-all duration-200 active:scale-[0.98]"
+        className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#10b981] hover:bg-[#c08446] text-white font-medium text-sm shadow-lg shadow-[#10b981]/20 transition-all duration-200 active:scale-[0.98]"
       >
         <Edit3 size={16} />
         <span>Edit Profile</span>
@@ -190,7 +190,7 @@ const ProfileView = ({ onEditClick }) => {
     {/* Personal Info Card */}
     <div className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-6 backdrop-blur-sm">
       <div className="flex items-center gap-3 pb-4 mb-5 border-b border-slate-800">
-        <div className="p-2 rounded-lg bg-[#dc9750]/10 text-[#dc9750]">
+        <div className="p-2 rounded-lg bg-[#10b981]/10 text-[#10b981]">
           <UserIcon size={18} />
         </div>
         <h2 className="text-base font-semibold text-slate-100 tracking-tight">
@@ -220,7 +220,7 @@ const ProfileView = ({ onEditClick }) => {
     {/* Professional Info Card */}
     <div className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-6 backdrop-blur-sm">
       <div className="flex items-center gap-3 pb-4 mb-5 border-b border-slate-800">
-        <div className="p-2 rounded-lg bg-[#dc9750]/10 text-[#dc9750]">
+        <div className="p-2 rounded-lg bg-[#10b981]/10 text-[#10b981]">
           <Briefcase size={18} />
         </div>
         <h2 className="text-base font-semibold text-slate-100 tracking-tight">
@@ -260,7 +260,7 @@ const ProfileView = ({ onEditClick }) => {
       <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Integrations</h3>
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl border border-slate-800 bg-slate-900/40">
         <div className="flex items-center gap-3.5">
-          <div className="p-2.5 bg-slate-800/80 text-[#dc9750] rounded-xl border border-slate-700/50">
+          <div className="p-2.5 bg-slate-800/80 text-[#10b981] rounded-xl border border-slate-700/50">
             <Calendar size={20} />
           </div>
           <div>
@@ -286,7 +286,7 @@ const ProfileView = ({ onEditClick }) => {
           <button
             onClick={handleConnectCalendar}
             disabled={calendarActionLoading}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 text-xs font-semibold bg-[#dc9750] hover:bg-[#c08446] disabled:opacity-50 text-white rounded-xl transition-colors shadow-sm"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 text-xs font-semibold bg-[#10b981] hover:bg-[#c08446] disabled:opacity-50 text-white rounded-xl transition-colors shadow-sm"
           >
             {calendarActionLoading ? <Loader2 size={14} className="animate-spin" /> : <Link2 size={14} />}
             Connect

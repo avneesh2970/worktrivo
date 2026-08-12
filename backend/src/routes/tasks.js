@@ -219,7 +219,7 @@ router.post('/', requireRole(['admin', 'manager']), async (req, res) => {
 
       const user = await User.findById(userId);
       if (user?.email) {
-        await sendEmail(user.email, "New Task Assigned - TaskSphere", `<h2>Hello ${user.name},</h2><p>You have been assigned a new task: ${task.title}</p>`);
+        await sendEmail(user.email, "New Task Assigned - WorkTrivo", `<h2>Hello ${user.name},</h2><p>You have been assigned a new task: ${task.title}</p>`);
       }
 
       try {

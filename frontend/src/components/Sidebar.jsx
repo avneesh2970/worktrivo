@@ -19,6 +19,7 @@ import {
   X,
 } from "lucide-react";
 import { API_BASE, useAuth } from "../context/AuthContext";
+import LogoImg from "../assets/logo.png";
 
 const Sidebar = ({ isOpen, toggleSidebar }) => {
   const { user, logout, token } = useAuth();
@@ -150,11 +151,11 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
         <div className="rounded-xl border border-slate-800/80 bg-slate-900/60 p-3.5 shadow-sm">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#dc9750]/10 text-[#dc9750] border border-[#dc9750]/20">
-                <Layers size={20} />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#10b981]/10 border border-[#10b981]/20 p-1">
+                <img src={LogoImg} alt="WorkTrivo Logo" className="h-full w-full object-contain rounded-md" />
               </div>
               <div className="min-w-0 flex-1">
-                <h2 className="text-sm font-semibold tracking-wide text-slate-100 truncate">TaskSphere</h2>
+                <h2 className="text-sm font-semibold tracking-wide text-slate-100 truncate">WorkTrivo</h2>
                 <p className="text-[11px] text-slate-400 truncate">Team Workspace</p>
               </div>
             </div>
@@ -187,7 +188,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
           <input
             type="text"
             placeholder="Quick search..."
-            className="py-2.5 pl-10 pr-14 w-full rounded-xl border border-slate-800/80 bg-slate-900/40 text-xs text-slate-200 placeholder:text-slate-500 focus:border-[#dc9750]/50 focus:bg-slate-900/80 transition-all outline-none"
+            className="py-2.5 pl-10 pr-14 w-full rounded-xl border border-slate-800/80 bg-slate-900/40 text-xs text-slate-200 placeholder:text-slate-500 focus:border-[#10b981]/50 focus:bg-slate-900/80 transition-all outline-none"
           />
           <span className="hidden sm:inline-block absolute right-3 top-1/2 -translate-y-1/2 rounded bg-slate-800/60 px-1.5 py-0.5 font-mono text-[10px] text-slate-400 border border-slate-700/50">
             ⌘K
@@ -202,7 +203,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
 
           <nav className="flex flex-col gap-1">
             {[
-              { to: "/", icon: LayoutDashboard, label: "Dashboard", badge: stats.dashboard, badgeBg: "bg-[#dc9750]/15 text-[#dc9750] border border-[#dc9750]/30" },
+              { to: "/", icon: LayoutDashboard, label: "Dashboard", badge: stats.dashboard, badgeBg: "bg-[#10b981]/15 text-[#10b981] border border-[#10b981]/30" },
               { to: "/chat", icon: MessageSquare, label: "Discussion" },
               { to: "/announcements", icon: Megaphone, label: "Announcements" },
               { to: "/profile", icon: UserCircle, label: "My Profile" },
@@ -218,7 +219,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                   className={({ isActive }) =>
                     `flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium transition-all duration-200 active:scale-[0.98] ${
                       isActive
-                        ? `bg-[#dc9750]/15 text-[#dc9750] border border-[#dc9750]/30 shadow-sm`
+                        ? `bg-[#10b981]/15 text-[#10b981] border border-[#10b981]/30 shadow-sm`
                         : `text-slate-400 hover:bg-slate-900/60 hover:text-slate-200`
                     }`
                   }
@@ -250,7 +251,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                   className={({ isActive }) =>
                     `flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium transition-all duration-200 active:scale-[0.98] ${
                       isActive
-                        ? `bg-[#dc9750]/15 text-[#dc9750] border border-[#dc9750]/30 shadow-sm`
+                        ? `bg-[#10b981]/15 text-[#10b981] border border-[#10b981]/30 shadow-sm`
                         : `text-slate-400 hover:bg-slate-900/60 hover:text-slate-200`
                     }`
                   }
@@ -259,7 +260,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                   <div className="flex w-full items-center justify-between">
                     <span>Approvals</span>
                     {pendingApprovals > 0 && (
-                      <span className="rounded-md bg-[#dc9750]/15 border border-[#dc9750]/30 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-[#dc9750]">
+                      <span className="rounded-md bg-[#10b981]/15 border border-[#10b981]/30 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-[#10b981]">
                         {pendingApprovals}
                       </span>
                     )}
@@ -272,7 +273,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                   className={({ isActive }) =>
                     `flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium transition-all duration-200 active:scale-[0.98] ${
                       isActive
-                        ? `bg-[#dc9750]/15 text-[#dc9750] border border-[#dc9750]/30 shadow-sm`
+                        ? `bg-[#10b981]/15 text-[#10b981] border border-[#10b981]/30 shadow-sm`
                         : `text-slate-400 hover:bg-slate-900/60 hover:text-slate-200`
                     }`
                   }
@@ -287,7 +288,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                   className={({ isActive }) =>
                     `flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium transition-all duration-200 active:scale-[0.98] ${
                       isActive
-                        ? `bg-[#dc9750]/15 text-[#dc9750] border border-[#dc9750]/30 shadow-sm`
+                        ? `bg-[#10b981]/15 text-[#10b981] border border-[#10b981]/30 shadow-sm`
                         : `text-slate-400 hover:bg-slate-900/60 hover:text-slate-200`
                     }`
                   }
@@ -369,13 +370,13 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
         >
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-medium text-slate-300">Productivity</span>
-            <span className="text-xs font-mono font-semibold text-[#dc9750]">
+            <span className="text-xs font-mono font-semibold text-[#10b981]">
               {stats.productivity}%
             </span>
           </div>
           <div className="h-2 rounded-full bg-slate-950 overflow-hidden border border-slate-800/60">
             <div
-              className="h-full rounded-full bg-[#dc9750] transition-all duration-500"
+              className="h-full rounded-full bg-[#10b981] transition-all duration-500"
               style={{ width: `${stats.productivity}%` }}
             ></div>
           </div>
@@ -405,7 +406,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
             ) : null}
 
             <div
-              className={`h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#dc9750]/10 border border-[#dc9750]/20 text-xs font-semibold text-[#dc9750] ${
+              className={`h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#10b981]/10 border border-[#10b981]/20 text-xs font-semibold text-[#10b981] ${
                 profilePhotoUrl ? "hidden" : "flex"
               }`}
             >
@@ -416,7 +417,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
               <h3 className="truncate text-xs font-semibold text-slate-200">
                 {user?.name}
               </h3>
-              <p className="truncate text-[11px] text-[#dc9750] mt-0.5">
+              <p className="truncate text-[11px] text-[#10b981] mt-0.5">
                 {user?.designationRole ||
                   (user?.role === "admin" ? "Administrator" : "Team Member")}
               </p>

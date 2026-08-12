@@ -280,10 +280,10 @@ const Users = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 text-slate-200 min-h-screen">
   {/* Header Row */}
-  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-6 border-b border-[#dc9750]/20">
+  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-6 border-b border-[#10b981]/20">
     <div>
       <h1 className="text-3xl font-bold text-slate-100 tracking-tight">
-        Team <span className="text-[#dc9750]">Management</span>
+        Team <span className="text-[#10b981]">Management</span>
       </h1>
       <p className="text-sm text-slate-400 mt-1">
         Manage user permissions, update profiles, and control platform access.
@@ -302,15 +302,15 @@ const Users = () => {
       <button
         onClick={() => fileInputRef.current.click()}
         disabled={importing}
-        className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-[#dc9750]/20 bg-[#1e2640]/70 hover:bg-[#283354] text-slate-200 font-medium text-sm transition-all duration-200 disabled:opacity-50 shadow-sm"
+        className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-[#10b981]/20 bg-[#1e2640]/70 hover:bg-[#283354] text-slate-200 font-medium text-sm transition-all duration-200 disabled:opacity-50 shadow-sm"
       >
-        {importing ? <Loader2 size={18} className="animate-spin text-[#dc9750]" /> : <Upload size={18} className="text-[#dc9750]" />}
+        {importing ? <Loader2 size={18} className="animate-spin text-[#10b981]" /> : <Upload size={18} className="text-[#10b981]" />}
         <span>{importing ? 'Importing...' : 'Import CSV'}</span>
       </button>
 
       <button
         onClick={openCreateModal}
-        className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#dc9750] hover:bg-[#c08446] text-[#161c30] font-semibold text-sm transition-all duration-200 shadow-md shadow-[#dc9750]/15 active:scale-[0.98]"
+        className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#10b981] hover:bg-[#c08446] text-[#161c30] font-semibold text-sm transition-all duration-200 shadow-md shadow-[#10b981]/15 active:scale-[0.98]"
       >
         <UserPlus size={18} />
         <span>Add Member</span>
@@ -320,17 +320,17 @@ const Users = () => {
 
   {/* Quick Stats Overview */}
   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-    <div className="bg-[#1e2640]/60 border border-[#dc9750]/20 rounded-2xl p-5 flex items-center justify-between backdrop-blur-md shadow-sm">
+    <div className="bg-[#1e2640]/60 border border-[#10b981]/20 rounded-2xl p-5 flex items-center justify-between backdrop-blur-md shadow-sm">
       <div>
         <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Total Accounts</p>
         <p className="text-2xl font-bold text-slate-100 mt-1">{totalCount}</p>
       </div>
-      <div className="p-3 bg-[#dc9750]/15 text-[#dc9750] rounded-xl border border-[#dc9750]/20">
+      <div className="p-3 bg-[#10b981]/15 text-[#10b981] rounded-xl border border-[#10b981]/20">
         <UsersIcon size={20} />
       </div>
     </div>
 
-    <div className="bg-[#1e2640]/60 border border-[#dc9750]/20 rounded-2xl p-5 flex items-center justify-between backdrop-blur-md shadow-sm">
+    <div className="bg-[#1e2640]/60 border border-[#10b981]/20 rounded-2xl p-5 flex items-center justify-between backdrop-blur-md shadow-sm">
       <div>
         <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Active Members</p>
         <p className="text-2xl font-bold text-emerald-400 mt-1">{activeCount}</p>
@@ -340,7 +340,7 @@ const Users = () => {
       </div>
     </div>
 
-    <div className="bg-[#1e2640]/60 border border-[#dc9750]/20 rounded-2xl p-5 flex items-center justify-between backdrop-blur-md shadow-sm">
+    <div className="bg-[#1e2640]/60 border border-[#10b981]/20 rounded-2xl p-5 flex items-center justify-between backdrop-blur-md shadow-sm">
       <div>
         <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Administrators</p>
         <p className="text-2xl font-bold text-amber-400 mt-1">{adminCount}</p>
@@ -360,7 +360,7 @@ const Users = () => {
         placeholder="Search by name, email, or ID..."
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
-        className="w-full pl-10 pr-4 py-2.5 bg-[#1e2640]/80 border border-[#dc9750]/20 rounded-xl text-slate-100 text-sm placeholder:text-slate-500 focus:outline-none focus:border-[#dc9750] focus:ring-1 focus:ring-[#dc9750] transition-all"
+        className="w-full pl-10 pr-4 py-2.5 bg-[#1e2640]/80 border border-[#10b981]/20 rounded-xl text-slate-100 text-sm placeholder:text-slate-500 focus:outline-none focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] transition-all"
       />
     </div>
 
@@ -369,7 +369,7 @@ const Users = () => {
       <select
         value={roleFilter}
         onChange={(e) => setRoleFilter(e.target.value)}
-        className="bg-[#1e2640]/80 border border-[#dc9750]/20 text-slate-200 text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:border-[#dc9750] transition-colors cursor-pointer"
+        className="bg-[#1e2640]/80 border border-[#10b981]/20 text-slate-200 text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:border-[#10b981] transition-colors cursor-pointer"
       >
         <option value="all" className="bg-[#1e2640] text-slate-100">All Roles</option>
         <option value="admin" className="bg-[#1e2640] text-slate-100">Admin</option>
@@ -381,12 +381,12 @@ const Users = () => {
 
   {/* Main Content Table Area */}
   {loading ? (
-    <div className="flex flex-col items-center justify-center py-24 gap-3 bg-[#1e2640]/30 border border-[#dc9750]/20 rounded-2xl">
-      <Loader2 className="w-8 h-8 text-[#dc9750] animate-spin" />
+    <div className="flex flex-col items-center justify-center py-24 gap-3 bg-[#1e2640]/30 border border-[#10b981]/20 rounded-2xl">
+      <Loader2 className="w-8 h-8 text-[#10b981] animate-spin" />
       <p className="text-xs text-slate-400">Fetching team members...</p>
     </div>
   ) : filteredUsers.length === 0 ? (
-    <div className="flex flex-col items-center justify-center py-16 text-center bg-[#1e2640]/30 border border-[#dc9750]/20 rounded-2xl">
+    <div className="flex flex-col items-center justify-center py-16 text-center bg-[#1e2640]/30 border border-[#10b981]/20 rounded-2xl">
       <User className="w-12 h-12 text-slate-500 mb-3" />
       <h3 className="text-slate-200 font-semibold text-base">No Users Found</h3>
       <p className="text-slate-400 text-xs mt-1 max-w-sm">
@@ -394,7 +394,7 @@ const Users = () => {
       </p>
     </div>
   ) : (
-    <div className="bg-[#1e2640]/50 border border-[#dc9750]/20 backdrop-blur-xl rounded-2xl shadow-xl overflow-hidden">
+    <div className="bg-[#1e2640]/50 border border-[#10b981]/20 backdrop-blur-xl rounded-2xl shadow-xl overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm text-slate-300 border-collapse">
           <thead>
@@ -421,7 +421,7 @@ const Users = () => {
                       <div className="font-semibold text-slate-100 flex items-center gap-2">
                         <span>{u.name}</span>
                         {u._id === user._id && (
-                          <span className="text-[10px] font-bold text-[#dc9750] bg-[#dc9750]/10 border border-[#dc9750]/30 px-2 py-0.5 rounded-full">
+                          <span className="text-[10px] font-bold text-[#10b981] bg-[#10b981]/10 border border-[#10b981]/30 px-2 py-0.5 rounded-full">
                             You
                           </span>
                         )}
@@ -446,7 +446,7 @@ const Users = () => {
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="inline-flex items-center gap-1.5 text-xs font-medium">
                     {u.role === 'admin' ? (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#dc9750]/15 text-[#dc9750] border border-[#dc9750]/30 font-semibold">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#10b981]/15 text-[#10b981] border border-[#10b981]/30 font-semibold">
                         <ShieldAlert size={14} />
                         <span>Admin</span>
                       </span>
@@ -548,7 +548,7 @@ const Users = () => {
             <label className="text-xs font-medium text-slate-300">Full Name *</label>
             <input
               type="text"
-              className="w-full px-3.5 py-2 bg-[#161c30] border border-[#283354] rounded-xl text-slate-100 text-sm focus:outline-none focus:border-[#dc9750] focus:ring-1 focus:ring-[#dc9750] transition-all placeholder:text-slate-600"
+              className="w-full px-3.5 py-2 bg-[#161c30] border border-[#283354] rounded-xl text-slate-100 text-sm focus:outline-none focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] transition-all placeholder:text-slate-600"
               value={formName}
               onChange={(e) => setFormName(e.target.value)}
               placeholder="Ex. Sarah Connor"
@@ -560,7 +560,7 @@ const Users = () => {
             <label className="text-xs font-medium text-slate-300">Work Email *</label>
             <input
               type="email"
-              className="w-full px-3.5 py-2 bg-[#161c30] border border-[#283354] rounded-xl text-slate-100 text-sm focus:outline-none focus:border-[#dc9750] focus:ring-1 focus:ring-[#dc9750] transition-all placeholder:text-slate-600"
+              className="w-full px-3.5 py-2 bg-[#161c30] border border-[#283354] rounded-xl text-slate-100 text-sm focus:outline-none focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] transition-all placeholder:text-slate-600"
               value={formEmail}
               onChange={(e) => setFormEmail(e.target.value)}
               placeholder="name@company.com"
@@ -577,7 +577,7 @@ const Users = () => {
             <div className="relative">
               <input
                 type="text"
-                className="w-full pl-9 pr-3.5 py-2 bg-[#161c30] border border-[#283354] rounded-xl text-slate-100 text-sm focus:outline-none focus:border-[#dc9750] focus:ring-1 focus:ring-[#dc9750] transition-all placeholder:text-slate-600"
+                className="w-full pl-9 pr-3.5 py-2 bg-[#161c30] border border-[#283354] rounded-xl text-slate-100 text-sm focus:outline-none focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] transition-all placeholder:text-slate-600"
                 value={formEmployeeId}
                 onChange={(e) => setFormEmployeeId(e.target.value)}
                 placeholder="Ex. EMP-001"
@@ -595,7 +595,7 @@ const Users = () => {
             <div className="relative">
               <input
                 type="text"
-                className="w-full pl-9 pr-3.5 py-2 bg-[#161c30] border border-[#283354] rounded-xl text-slate-100 text-sm focus:outline-none focus:border-[#dc9750] focus:ring-1 focus:ring-[#dc9750] transition-all placeholder:text-slate-600"
+                className="w-full pl-9 pr-3.5 py-2 bg-[#161c30] border border-[#283354] rounded-xl text-slate-100 text-sm focus:outline-none focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] transition-all placeholder:text-slate-600"
                 value={formPhoto}
                 onChange={(e) => setFormPhoto(e.target.value)}
                 placeholder="https://example.com/photo.jpg"
@@ -610,7 +610,7 @@ const Users = () => {
             </label>
             <input
               type="password"
-              className="w-full px-3.5 py-2 bg-[#161c30] border border-[#283354] rounded-xl text-slate-100 text-sm focus:outline-none focus:border-[#dc9750] focus:ring-1 focus:ring-[#dc9750] transition-all placeholder:text-slate-600"
+              className="w-full px-3.5 py-2 bg-[#161c30] border border-[#283354] rounded-xl text-slate-100 text-sm focus:outline-none focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] transition-all placeholder:text-slate-600"
               value={formPassword}
               onChange={(e) => setFormPassword(e.target.value)}
               placeholder={modalMode === 'create' ? '••••••••' : 'Optional password reset'}
@@ -621,7 +621,7 @@ const Users = () => {
           <div className="space-y-1">
             <label className="text-xs font-medium text-slate-300">System Role</label>
             <select
-              className="w-full px-3.5 py-2 bg-[#161c30] border border-[#283354] rounded-xl text-slate-100 text-sm focus:outline-none focus:border-[#dc9750] focus:ring-1 focus:ring-[#dc9750] transition-all"
+              className="w-full px-3.5 py-2 bg-[#161c30] border border-[#283354] rounded-xl text-slate-100 text-sm focus:outline-none focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] transition-all"
               value={formRole}
               onChange={(e) => setFormRole(e.target.value)}
             >
@@ -643,7 +643,7 @@ const Users = () => {
             <button
               type="submit"
               disabled={submitting}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-[#dc9750] hover:bg-[#c08446] text-[#161c30] font-semibold text-sm transition-colors shadow-md shadow-[#dc9750]/20 disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-[#10b981] hover:bg-[#c08446] text-[#161c30] font-semibold text-sm transition-colors shadow-md shadow-[#10b981]/20 disabled:opacity-50"
             >
               {submitting && <Loader2 size={14} className="animate-spin" />}
               <span>{modalMode === 'create' ? 'Create Account' : 'Save Changes'}</span>

@@ -34,8 +34,8 @@ const AdminSettings = () => {
     <div className="min-h-screen text-slate-100 p-4 sm:p-6 lg:p-8">
       {/* Toast Message */}
       {toastMsg && (
-        <div className="fixed bottom-6 right-6 z-[200] flex items-center gap-2 px-4 py-3 rounded-lg bg-[#1e2640] text-slate-100 shadow-xl text-sm border border-[#dc9750]/30">
-          <CheckCircle2 size={16} className="text-[#dc9750]" />
+        <div className="fixed bottom-6 right-6 z-[200] flex items-center gap-2 px-4 py-3 rounded-lg bg-[#1e2640] text-slate-100 shadow-xl text-sm border border-[#10b981]/30">
+          <CheckCircle2 size={16} className="text-[#10b981]" />
           {toastMsg}
         </div>
       )}
@@ -43,8 +43,8 @@ const AdminSettings = () => {
       {/* Page Header */}
       <div className="mb-6">
         <h2 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2 text-slate-100">
-          <Settings size={26} className="text-[#dc9750]" />
-          Admin<span className="text-[#dc9750]">Settings</span>
+          <Settings size={26} className="text-[#10b981]" />
+          Admin<span className="text-[#10b981]">Settings</span>
         </h2>
         <p className="text-sm text-slate-400 mt-1">
           Manage departments, roles, notification rules, integrations, and system-wide preferences.
@@ -54,7 +54,7 @@ const AdminSettings = () => {
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Tab Navigation */}
         <div className="lg:w-56 flex-shrink-0">
-          <div className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible bg-[#1e2640] border border-[#dc9750]/20 rounded-xl p-2 shadow-sm">
+          <div className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible bg-[#1e2640] border border-[#10b981]/20 rounded-xl p-2 shadow-sm">
             {TABS.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.key;
@@ -63,8 +63,8 @@ const AdminSettings = () => {
                   key={tab.key}
                   onClick={() => setActiveTab(tab.key)}
                   className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-all active:scale-[0.98] ${isActive
-                    ? "bg-[#dc9750] text-[#1e2640] shadow-sm"
-                    : "text-slate-300 hover:bg-[#1e2640]/80 hover:text-[#dc9750]"
+                    ? "bg-[#10b981] text-[#1e2640] shadow-sm"
+                    : "text-slate-300 hover:bg-[#1e2640]/80 hover:text-[#10b981]"
                     }`}
                 >
                   <Icon size={16} className={isActive ? "text-[#1e2640]" : "text-slate-400"} />
@@ -183,12 +183,12 @@ const DepartmentsTab = ({ token, showToast }) => {
   };
 
   return (
-    <div className="bg-[#1e2640] border border-[#dc9750]/20 rounded-xl p-5 shadow-sm">
+    <div className="bg-[#1e2640] border border-[#10b981]/20 rounded-xl p-5 shadow-sm">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold text-slate-100">Departments / Teams</h3>
         <button
           onClick={openCreate}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#dc9750] hover:bg-[#dc9750]/80 text-[#1e2640] text-xs font-bold rounded-lg transition-all active:scale-95 shadow-sm"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#10b981] hover:bg-[#10b981]/80 text-[#1e2640] text-xs font-bold rounded-lg transition-all active:scale-95 shadow-sm"
         >
           <Plus size={14} /> Add Department
         </button>
@@ -196,7 +196,7 @@ const DepartmentsTab = ({ token, showToast }) => {
 
       {loading ? (
         <div className="flex justify-center py-8">
-          <Loader2 size={20} className="animate-spin text-[#dc9750]" />
+          <Loader2 size={20} className="animate-spin text-[#10b981]" />
         </div>
       ) : departments.length === 0 ? (
         <p className="text-sm text-slate-400 text-center py-6">No departments yet.</p>
@@ -205,7 +205,7 @@ const DepartmentsTab = ({ token, showToast }) => {
           {departments.map((dept) => (
             <div
               key={dept._id}
-              className="flex items-center justify-between p-3 rounded-lg border border-[#dc9750]/10 bg-[#1e2640]/50"
+              className="flex items-center justify-between p-3 rounded-lg border border-[#10b981]/10 bg-[#1e2640]/50"
             >
               <div>
                 <p className="text-sm font-semibold text-slate-100">{dept.name}</p>
@@ -216,7 +216,7 @@ const DepartmentsTab = ({ token, showToast }) => {
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => openEdit(dept)}
-                  className="p-1.5 text-slate-400 hover:text-[#dc9750] rounded-md hover:bg-slate-800/60 transition-colors"
+                  className="p-1.5 text-slate-400 hover:text-[#10b981] rounded-md hover:bg-slate-800/60 transition-colors"
                 >
                   <Edit2 size={14} />
                 </button>
@@ -235,7 +235,7 @@ const DepartmentsTab = ({ token, showToast }) => {
       {/* Modal Dialog */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-[#1e2640] border border-[#dc9750]/30 rounded-xl max-w-sm w-full p-6 shadow-2xl">
+          <div className="bg-[#1e2640] border border-[#10b981]/30 rounded-xl max-w-sm w-full p-6 shadow-2xl">
             <div className="flex items-center justify-between pb-4 border-b border-slate-700/50">
               <h3 className="text-base font-bold text-slate-100">
                 {modalMode === 'create' ? 'Add Department' : 'Edit Department'}
@@ -262,7 +262,7 @@ const DepartmentsTab = ({ token, showToast }) => {
                   type="text"
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
-                  className="w-full px-3 py-2 text-sm bg-slate-900/60 border border-slate-700/60 rounded-lg outline-none focus:border-[#dc9750] focus:ring-1 focus:ring-[#dc9750]/50 transition-colors text-slate-100 placeholder:text-slate-500"
+                  className="w-full px-3 py-2 text-sm bg-slate-900/60 border border-slate-700/60 rounded-lg outline-none focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981]/50 transition-colors text-slate-100 placeholder:text-slate-500"
                   placeholder="e.g., Engineering"
                 />
               </div>
@@ -272,7 +272,7 @@ const DepartmentsTab = ({ token, showToast }) => {
                   rows={3}
                   value={formDescription}
                   onChange={(e) => setFormDescription(e.target.value)}
-                  className="w-full px-3 py-2 text-sm bg-slate-900/60 border border-slate-700/60 rounded-lg outline-none focus:border-[#dc9750] focus:ring-1 focus:ring-[#dc9750]/50 transition-colors text-slate-100 placeholder:text-slate-500 resize-none"
+                  className="w-full px-3 py-2 text-sm bg-slate-900/60 border border-slate-700/60 rounded-lg outline-none focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981]/50 transition-colors text-slate-100 placeholder:text-slate-500 resize-none"
                   placeholder="Optional"
                 />
               </div>
@@ -287,7 +287,7 @@ const DepartmentsTab = ({ token, showToast }) => {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold bg-[#dc9750] hover:bg-[#dc9750]/80 disabled:opacity-50 text-[#1e2640] rounded-lg transition-all active:scale-95 shadow-sm"
+                  className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold bg-[#10b981] hover:bg-[#10b981]/80 disabled:opacity-50 text-[#1e2640] rounded-lg transition-all active:scale-95 shadow-sm"
                 >
                   {submitting && <Loader2 size={14} className="animate-spin" />}
                   {modalMode === 'create' ? 'Create' : 'Save'}
@@ -353,12 +353,12 @@ const RolesTab = ({ token, showToast }) => {
   return (
     <div className="space-y-6">
       {/* Role Permission Reference Card */}
-      <div className="bg-[#1e2640] border border-[#dc9750]/20 rounded-xl p-5 shadow-sm">
+      <div className="bg-[#1e2640] border border-[#10b981]/20 rounded-xl p-5 shadow-sm">
         <h3 className="font-semibold text-slate-100 mb-4">Role Permission Reference</h3>
         <div className="space-y-3">
           {ROLE_PERMISSIONS.map((r) => (
-            <div key={r.role} className="p-3 rounded-lg border border-[#dc9750]/10 bg-[#1e2640]/50">
-              <p className="text-xs font-bold text-[#dc9750] uppercase tracking-wider">{r.role}</p>
+            <div key={r.role} className="p-3 rounded-lg border border-[#10b981]/10 bg-[#1e2640]/50">
+              <p className="text-xs font-bold text-[#10b981] uppercase tracking-wider">{r.role}</p>
               <p className="text-sm text-slate-300 mt-1">{r.permissions}</p>
             </div>
           ))}
@@ -366,16 +366,16 @@ const RolesTab = ({ token, showToast }) => {
       </div>
 
       {/* Assign Roles Card */}
-      <div className="bg-[#1e2640] border border-[#dc9750]/20 rounded-xl p-5 shadow-sm">
+      <div className="bg-[#1e2640] border border-[#10b981]/20 rounded-xl p-5 shadow-sm">
         <h3 className="font-semibold text-slate-100 mb-4">Assign Roles</h3>
         {loading ? (
           <div className="flex justify-center py-8">
-            <Loader2 size={20} className="animate-spin text-[#dc9750]" />
+            <Loader2 size={20} className="animate-spin text-[#10b981]" />
           </div>
         ) : (
           <div className="space-y-2">
             {users.map((u) => (
-              <div key={u._id} className="flex items-center justify-between p-3 rounded-lg border border-[#dc9750]/10 bg-[#1e2640]/50">
+              <div key={u._id} className="flex items-center justify-between p-3 rounded-lg border border-[#10b981]/10 bg-[#1e2640]/50">
                 <div>
                   <p className="text-sm font-semibold text-slate-100">{u.name}</p>
                   <p className="text-xs text-slate-400">{u.email}</p>
@@ -384,7 +384,7 @@ const RolesTab = ({ token, showToast }) => {
                   value={u.role}
                   disabled={updatingId === u._id}
                   onChange={(e) => changeRole(u._id, e.target.value)}
-                  className="text-xs font-medium px-3 py-1.5 bg-slate-900/60 border border-slate-700/60 rounded-lg outline-none focus:border-[#dc9750] focus:ring-1 focus:ring-[#dc9750]/50 transition-colors text-slate-200 disabled:opacity-50 cursor-pointer"
+                  className="text-xs font-medium px-3 py-1.5 bg-slate-900/60 border border-slate-700/60 rounded-lg outline-none focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981]/50 transition-colors text-slate-200 disabled:opacity-50 cursor-pointer"
                 >
                   <option value="admin" className="bg-[#1e2640] text-slate-100">Admin</option>
                   <option value="manager" className="bg-[#1e2640] text-slate-100">Manager</option>
@@ -472,13 +472,13 @@ const NotificationRulesTab = ({ token, showToast }) => {
   if (loading) {
     return (
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm flex justify-center py-8">
-        <Loader2 size={20} className="animate-spin text-[#dc9750]" />
+        <Loader2 size={20} className="animate-spin text-[#10b981]" />
       </div>
     );
   }
 
   return (
-    <div className="bg-[#1e2640] border border-[#dc9750]/20 rounded-xl p-5 shadow-sm space-y-5">
+    <div className="bg-[#1e2640] border border-[#10b981]/20 rounded-xl p-5 shadow-sm space-y-5">
       <h3 className="font-semibold text-slate-100">Notification Rules</h3>
 
       <div>
@@ -490,7 +490,7 @@ const NotificationRulesTab = ({ token, showToast }) => {
           min={1}
           value={reminderHours}
           onChange={(e) => setReminderHours(e.target.value)}
-          className="w-32 px-3 py-2 text-sm bg-slate-900/60 border border-slate-700/60 rounded-lg outline-none focus:border-[#dc9750] focus:ring-1 focus:ring-[#dc9750]/50 transition-colors text-slate-100"
+          className="w-32 px-3 py-2 text-sm bg-slate-900/60 border border-slate-700/60 rounded-lg outline-none focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981]/50 transition-colors text-slate-100"
         />
       </div>
 
@@ -500,7 +500,7 @@ const NotificationRulesTab = ({ token, showToast }) => {
           id="dailyOverdue"
           checked={dailyOverdue}
           onChange={(e) => setDailyOverdue(e.target.checked)}
-          className="accent-[#dc9750] w-4 h-4 rounded border-slate-700 bg-slate-900/60 focus:ring-[#dc9750]"
+          className="accent-[#10b981] w-4 h-4 rounded border-slate-700 bg-slate-900/60 focus:ring-[#10b981]"
         />
         <label htmlFor="dailyOverdue" className="text-sm text-slate-300 cursor-pointer">
           Send a daily reminder for tasks that remain overdue
@@ -510,7 +510,7 @@ const NotificationRulesTab = ({ token, showToast }) => {
       <button
         onClick={handleSave}
         disabled={saving}
-        className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-bold bg-[#dc9750] hover:bg-[#dc9750]/80 disabled:opacity-50 text-[#1e2640] rounded-lg transition-all active:scale-95 shadow-sm"
+        className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-bold bg-[#10b981] hover:bg-[#10b981]/80 disabled:opacity-50 text-[#1e2640] rounded-lg transition-all active:scale-95 shadow-sm"
       >
         {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
         Save Changes
@@ -570,15 +570,15 @@ const IntegrationsTab = ({ token, showToast }) => {
   if (loading) {
     return (
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm flex justify-center py-8">
-        <Loader2 size={20} className="animate-spin text-[#dc9750]" />
+        <Loader2 size={20} className="animate-spin text-[#10b981]" />
       </div>
     );
   }
 
   return (
-    <div className="bg-[#1e2640] border border-[#dc9750]/20 rounded-xl p-5 shadow-sm space-y-6">
+    <div className="bg-[#1e2640] border border-[#10b981]/20 rounded-xl p-5 shadow-sm space-y-6">
       {/* Information/Warning Callout */}
-      <div className="flex items-start gap-2 p-3 rounded-lg bg-[#dc9750]/10 border border-[#dc9750]/30 text-[#dc9750] text-xs">
+      <div className="flex items-start gap-2 p-3 rounded-lg bg-[#10b981]/10 border border-[#10b981]/30 text-[#10b981] text-xs">
         <AlertCircle size={14} className="shrink-0 mt-0.5" />
         <span className="leading-relaxed">
           These integrations save configuration only — live syncing (posting to Slack, pulling from
@@ -595,7 +595,7 @@ const IntegrationsTab = ({ token, showToast }) => {
             id="slackEnabled"
             checked={slackEnabled}
             onChange={(e) => setSlackEnabled(e.target.checked)}
-            className="accent-[#dc9750] w-4 h-4 rounded border-slate-700 bg-slate-900/60 focus:ring-[#dc9750]"
+            className="accent-[#10b981] w-4 h-4 rounded border-slate-700 bg-slate-900/60 focus:ring-[#10b981]"
           />
           <label htmlFor="slackEnabled" className="text-sm font-semibold text-slate-200 cursor-pointer">
             Slack / Teams Integration
@@ -606,7 +606,7 @@ const IntegrationsTab = ({ token, showToast }) => {
           value={slackWebhook}
           onChange={(e) => setSlackWebhook(e.target.value)}
           placeholder="Webhook URL"
-          className="w-full px-3 py-2 text-sm bg-slate-900/60 border border-slate-700/60 rounded-lg outline-none focus:border-[#dc9750] focus:ring-1 focus:ring-[#dc9750]/50 transition-colors text-slate-100 placeholder:text-slate-500"
+          className="w-full px-3 py-2 text-sm bg-slate-900/60 border border-slate-700/60 rounded-lg outline-none focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981]/50 transition-colors text-slate-100 placeholder:text-slate-500"
         />
       </div>
 
@@ -617,7 +617,7 @@ const IntegrationsTab = ({ token, showToast }) => {
           id="calendarEnabled"
           checked={calendarEnabled}
           onChange={(e) => setCalendarEnabled(e.target.checked)}
-          className="accent-[#dc9750] w-4 h-4 rounded border-slate-700 bg-slate-900/60 focus:ring-[#dc9750]"
+          className="accent-[#10b981] w-4 h-4 rounded border-slate-700 bg-slate-900/60 focus:ring-[#10b981]"
         />
         <label htmlFor="calendarEnabled" className="text-sm font-semibold text-slate-200 cursor-pointer">
           Google Calendar / Outlook Sync
@@ -632,7 +632,7 @@ const IntegrationsTab = ({ token, showToast }) => {
             id="emailEnabled"
             checked={emailEnabled}
             onChange={(e) => setEmailEnabled(e.target.checked)}
-            className="accent-[#dc9750] w-4 h-4 rounded border-slate-700 bg-slate-900/60 focus:ring-[#dc9750]"
+            className="accent-[#10b981] w-4 h-4 rounded border-slate-700 bg-slate-900/60 focus:ring-[#10b981]"
           />
           <label htmlFor="emailEnabled" className="text-sm font-semibold text-slate-200 cursor-pointer">
             Email-to-Task
@@ -643,7 +643,7 @@ const IntegrationsTab = ({ token, showToast }) => {
           value={emailAddress}
           onChange={(e) => setEmailAddress(e.target.value)}
           placeholder="Inbound address (e.g., tasks@yourcompany.com)"
-          className="w-full px-3 py-2 text-sm bg-slate-900/60 border border-slate-700/60 rounded-lg outline-none focus:border-[#dc9750] focus:ring-1 focus:ring-[#dc9750]/50 transition-colors text-slate-100 placeholder:text-slate-500"
+          className="w-full px-3 py-2 text-sm bg-slate-900/60 border border-slate-700/60 rounded-lg outline-none focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981]/50 transition-colors text-slate-100 placeholder:text-slate-500"
         />
       </div>
 
@@ -651,7 +651,7 @@ const IntegrationsTab = ({ token, showToast }) => {
       <button
         onClick={handleSave}
         disabled={saving}
-        className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-bold bg-[#dc9750] hover:bg-[#dc9750]/80 disabled:opacity-50 text-[#1e2640] rounded-lg transition-all active:scale-95 shadow-sm"
+        className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-bold bg-[#10b981] hover:bg-[#10b981]/80 disabled:opacity-50 text-[#1e2640] rounded-lg transition-all active:scale-95 shadow-sm"
       >
         {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
         Save Changes
@@ -727,7 +727,7 @@ const SystemSettingsTab = ({ token, showToast }) => {
   if (loading) {
     return (
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm flex justify-center py-8">
-        <Loader2 size={20} className="animate-spin text-[#dc9750]" />
+        <Loader2 size={20} className="animate-spin text-[#10b981]" />
       </div>
     );
   }
@@ -735,7 +735,7 @@ const SystemSettingsTab = ({ token, showToast }) => {
   return (
     <div className="space-y-6">
       {/* Working Hours Panel */}
-      <div className="bg-[#1e2640] border border-[#dc9750]/20 rounded-xl p-5 shadow-sm space-y-4">
+      <div className="bg-[#1e2640] border border-[#10b981]/20 rounded-xl p-5 shadow-sm space-y-4">
         <h3 className="font-semibold text-slate-100">Working Hours</h3>
         <div className="flex items-center gap-4">
           <div>
@@ -744,7 +744,7 @@ const SystemSettingsTab = ({ token, showToast }) => {
               type="time"
               value={startTime}
               onChange={(e) => setStartTime(e.target.value)}
-              className="px-3 py-2 text-sm bg-slate-900/60 border border-slate-700/60 rounded-lg outline-none focus:border-[#dc9750] focus:ring-1 focus:ring-[#dc9750]/50 transition-colors text-slate-100"
+              className="px-3 py-2 text-sm bg-slate-900/60 border border-slate-700/60 rounded-lg outline-none focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981]/50 transition-colors text-slate-100"
             />
           </div>
           <div>
@@ -753,14 +753,14 @@ const SystemSettingsTab = ({ token, showToast }) => {
               type="time"
               value={endTime}
               onChange={(e) => setEndTime(e.target.value)}
-              className="px-3 py-2 text-sm bg-slate-900/60 border border-slate-700/60 rounded-lg outline-none focus:border-[#dc9750] focus:ring-1 focus:ring-[#dc9750]/50 transition-colors text-slate-100"
+              className="px-3 py-2 text-sm bg-slate-900/60 border border-slate-700/60 rounded-lg outline-none focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981]/50 transition-colors text-slate-100"
             />
           </div>
         </div>
       </div>
 
       {/* Task Escalation Panel */}
-      <div className="bg-[#1e2640] border border-[#dc9750]/20 rounded-xl p-5 shadow-sm space-y-4">
+      <div className="bg-[#1e2640] border border-[#10b981]/20 rounded-xl p-5 shadow-sm space-y-4">
         <h3 className="font-semibold text-slate-100">Task Escalation Rules</h3>
         <div className="flex items-center gap-2">
           <input
@@ -768,7 +768,7 @@ const SystemSettingsTab = ({ token, showToast }) => {
             id="escalationEnabled"
             checked={escalationEnabled}
             onChange={(e) => setEscalationEnabled(e.target.checked)}
-            className="accent-[#dc9750] w-4 h-4 rounded border-slate-700 bg-slate-900/60 focus:ring-[#dc9750]"
+            className="accent-[#10b981] w-4 h-4 rounded border-slate-700 bg-slate-900/60 focus:ring-[#10b981]"
           />
           <label htmlFor="escalationEnabled" className="text-sm text-slate-300 cursor-pointer">
             Automatically escalate priority on overdue tasks
@@ -784,32 +784,32 @@ const SystemSettingsTab = ({ token, showToast }) => {
             value={escalationDays}
             onChange={(e) => setEscalationDays(e.target.value)}
             disabled={!escalationEnabled}
-            className="w-32 px-3 py-2 text-sm bg-slate-900/60 border border-slate-700/60 rounded-lg outline-none focus:border-[#dc9750] focus:ring-1 focus:ring-[#dc9750]/50 disabled:opacity-50 transition-colors text-slate-100"
+            className="w-32 px-3 py-2 text-sm bg-slate-900/60 border border-slate-700/60 rounded-lg outline-none focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981]/50 disabled:opacity-50 transition-colors text-slate-100"
           />
         </div>
       </div>
 
       {/* Holiday Calendar Panel */}
-      <div className="bg-[#1e2640] border border-[#dc9750]/20 rounded-xl p-5 shadow-sm space-y-4">
+      <div className="bg-[#1e2640] border border-[#10b981]/20 rounded-xl p-5 shadow-sm space-y-4">
         <h3 className="font-semibold text-slate-100">Holiday Calendar</h3>
         <div className="flex flex-col sm:flex-row gap-2">
           <input
             type="date"
             value={newHolidayDate}
             onChange={(e) => setNewHolidayDate(e.target.value)}
-            className="px-3 py-2 text-sm bg-slate-900/60 border border-slate-700/60 rounded-lg outline-none focus:border-[#dc9750] focus:ring-1 focus:ring-[#dc9750]/50 transition-colors text-slate-100"
+            className="px-3 py-2 text-sm bg-slate-900/60 border border-slate-700/60 rounded-lg outline-none focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981]/50 transition-colors text-slate-100"
           />
           <input
             type="text"
             value={newHolidayLabel}
             onChange={(e) => setNewHolidayLabel(e.target.value)}
             placeholder="e.g., Diwali"
-            className="flex-1 px-3 py-2 text-sm bg-slate-900/60 border border-slate-700/60 rounded-lg outline-none focus:border-[#dc9750] focus:ring-1 focus:ring-[#dc9750]/50 transition-colors text-slate-100 placeholder:text-slate-500"
+            className="flex-1 px-3 py-2 text-sm bg-slate-900/60 border border-slate-700/60 rounded-lg outline-none focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981]/50 transition-colors text-slate-100 placeholder:text-slate-500"
           />
           <button
             type="button"
             onClick={addHoliday}
-            className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-[#dc9750]/10 hover:bg-[#dc9750]/20 text-[#dc9750] border border-[#dc9750]/30 text-xs font-semibold rounded-lg transition-colors"
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-[#10b981]/10 hover:bg-[#10b981]/20 text-[#10b981] border border-[#10b981]/30 text-xs font-semibold rounded-lg transition-colors"
           >
             <Plus size={14} /> Add
           </button>
@@ -818,7 +818,7 @@ const SystemSettingsTab = ({ token, showToast }) => {
         {holidays.length > 0 && (
           <div className="space-y-1.5">
             {holidays.map((h, i) => (
-              <div key={i} className="flex items-center justify-between p-2.5 rounded-lg border border-[#dc9750]/10 bg-[#1e2640]/50 text-sm">
+              <div key={i} className="flex items-center justify-between p-2.5 rounded-lg border border-[#10b981]/10 bg-[#1e2640]/50 text-sm">
                 <span className="text-slate-200 font-medium">{h.label} <span className="text-slate-500 mx-2">—</span> {h.date}</span>
                 <button onClick={() => removeHoliday(i)} className="text-rose-500 hover:text-rose-400 p-1 rounded-md hover:bg-rose-500/10 transition-colors">
                   <Trash2 size={14} />
@@ -833,7 +833,7 @@ const SystemSettingsTab = ({ token, showToast }) => {
       <button
         onClick={handleSave}
         disabled={saving}
-        className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-bold bg-[#dc9750] hover:bg-[#dc9750]/80 disabled:opacity-50 text-[#1e2640] rounded-lg transition-all active:scale-95 shadow-sm"
+        className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-bold bg-[#10b981] hover:bg-[#10b981]/80 disabled:opacity-50 text-[#1e2640] rounded-lg transition-all active:scale-95 shadow-sm"
       >
         {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
         Save Changes

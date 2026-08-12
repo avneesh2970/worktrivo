@@ -4,6 +4,8 @@ import { useSocket } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
 import NotificationCenter from './NotificationCenter';
 
+import LogoImg from '../assets/logo.png';
+
 const Navbar = ({ toggleSidebar, isSidebarOpen }) => {
   const { unreadCount = 0 } = useSocket() || {};
   const { user } = useAuth() || {};
@@ -62,17 +64,17 @@ const Navbar = ({ toggleSidebar, isSidebarOpen }) => {
           onClick={toggleSidebar}
           aria-label={isSidebarOpen ? 'Close sidebar' : 'Open sidebar'}
           aria-expanded={isSidebarOpen}
-          className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#1e2640] bg-[#1e2640]/40 text-slate-300 transition-all duration-200 hover:border-[#dc9750]/50 hover:bg-[#1e2640] hover:text-[#dc9750] focus:outline-none focus:ring-2 focus:ring-[#dc9750]/50 active:scale-95 lg:hidden"
+          className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#1e2640] bg-[#1e2640]/40 text-slate-300 transition-all duration-200 hover:border-[#10b981]/50 hover:bg-[#1e2640] hover:text-[#10b981] focus:outline-none focus:ring-2 focus:ring-[#10b981]/50 active:scale-95 lg:hidden"
         >
           {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
 
         {/* Brand / Logo */}
         <div className="flex items-center gap-2.5">
-          
+          <img src={LogoImg} alt="WorkTrivo Logo" className="h-8 w-8 object-contain rounded-lg" />
           <div>
             <h1 className="text-base font-bold tracking-tight text-slate-100 sm:text-lg">
-              TaskSphere <span className="text-[#dc9750]">Portal</span>
+              WorkTrivo <span className="text-[#10b981]">Portal</span>
             </h1>
           </div>
         </div>
@@ -84,7 +86,7 @@ const Navbar = ({ toggleSidebar, isSidebarOpen }) => {
         {user && (
           <div className="flex items-center gap-2 rounded-xl border border-[#1e2640] bg-[#1e2640]/40 p-1.5 pr-3 shadow-sm transition-all duration-200 hover:bg-[#1e2640]/70">
             {/* Avatar Pill */}
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#dc9750]/20 text-xs font-bold text-[#dc9750]">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#10b981]/20 text-xs font-bold text-[#10b981]">
               {initials || <User size={14} />}
             </div>
 
@@ -95,7 +97,7 @@ const Navbar = ({ toggleSidebar, isSidebarOpen }) => {
               <div className="flex items-center gap-1">
                 <Shield
                   size={10}
-                  className={isAdmin ? 'text-[#dc9750]' : 'text-slate-400'}
+                  className={isAdmin ? 'text-[#10b981]' : 'text-slate-400'}
                 />
                 <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400 leading-none">
                   {user.role || (isAdmin ? 'Administrator' : 'Team Member')}
@@ -112,10 +114,10 @@ const Navbar = ({ toggleSidebar, isSidebarOpen }) => {
             aria-label={`Notifications ${unreadCount > 0 ? `(${unreadCount} unread)` : ''}`}
             aria-haspopup="true"
             aria-expanded={showNotifications}
-            className={`relative flex h-10 w-10 items-center justify-center rounded-xl border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#dc9750]/50 active:scale-95 ${
+            className={`relative flex h-10 w-10 items-center justify-center rounded-xl border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#10b981]/50 active:scale-95 ${
               showNotifications
-                ? 'border-[#dc9750] bg-[#1e2640] text-[#dc9750] shadow-md shadow-[#dc9750]/10'
-                : 'border-[#1e2640] bg-[#1e2640]/40 text-slate-300 hover:border-[#dc9750]/40 hover:bg-[#1e2640] hover:text-[#dc9750]'
+                ? 'border-[#10b981] bg-[#1e2640] text-[#10b981] shadow-md shadow-[#10b981]/10'
+                : 'border-[#1e2640] bg-[#1e2640]/40 text-slate-300 hover:border-[#10b981]/40 hover:bg-[#1e2640] hover:text-[#10b981]'
             }`}
           >
             <Bell size={19} />
@@ -123,8 +125,8 @@ const Navbar = ({ toggleSidebar, isSidebarOpen }) => {
             {/* Notification Badge */}
             {unreadCount > 0 && (
               <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#dc9750] opacity-40"></span>
-                <span className="relative flex h-5 min-w-5 items-center justify-center rounded-full bg-[#dc9750] px-1 text-[10px] font-black text-[#0d101c] ring-2 ring-[#0d101c]">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#10b981] opacity-40"></span>
+                <span className="relative flex h-5 min-w-5 items-center justify-center rounded-full bg-[#10b981] px-1 text-[10px] font-black text-[#0d101c] ring-2 ring-[#0d101c]">
                   {unreadCount > 99 ? '99+' : unreadCount}
                 </span>
               </span>

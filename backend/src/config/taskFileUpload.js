@@ -12,7 +12,7 @@ cloudinary.config({
 const storage = new CloudinaryStorage({
   cloudinary,
   params: async (req, file) => ({
-    folder: "tasksphere/task-files",
+    folder: "worktrivo/task-files",
     // Only true images go through Cloudinary's "image" pipeline (so
     // thumbnails/transformations still work). Everything else — PDFs,
     // Word/Excel/PowerPoint docs, ZIPs — goes through "raw", which is

@@ -108,7 +108,7 @@ const LoginActivity = () => {
       <input
         type="text"
         placeholder="Search by user or email..."
-        className="w-full rounded-lg border border-[#1e2640] bg-[#0d101c] px-3.5 py-2 text-xs sm:text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-[#dc9750] transition-colors"
+        className="w-full rounded-lg border border-[#1e2640] bg-[#0d101c] px-3.5 py-2 text-xs sm:text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-[#10b981] transition-colors"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
       />
@@ -116,7 +116,7 @@ const LoginActivity = () => {
 
     <div className="sm:col-span-3">
       <select
-        className="w-full rounded-lg border border-[#1e2640] bg-[#0d101c] px-3 py-2 text-xs sm:text-sm text-slate-300 focus:outline-none focus:border-[#dc9750] transition-colors"
+        className="w-full rounded-lg border border-[#1e2640] bg-[#0d101c] px-3 py-2 text-xs sm:text-sm text-slate-300 focus:outline-none focus:border-[#10b981] transition-colors"
         value={action}
         onChange={(e) => setAction(e.target.value)}
       >
@@ -129,7 +129,7 @@ const LoginActivity = () => {
     <div className="sm:col-span-3">
       <button
         type="submit"
-        className="w-full rounded-lg bg-[#dc9750] hover:bg-[#c4823f] px-4 py-2 text-xs sm:text-sm font-bold text-[#0d101c] flex items-center justify-center gap-2 transition-colors"
+        className="w-full rounded-lg bg-[#10b981] hover:bg-[#c4823f] px-4 py-2 text-xs sm:text-sm font-bold text-[#0d101c] flex items-center justify-center gap-2 transition-colors"
       >
         <Search size={16} />
         <span>Filter</span>
@@ -155,7 +155,7 @@ const LoginActivity = () => {
         {loading ? (
           <tr>
             <td colSpan="6" className="text-center py-8">
-              <Loader2 className="animate-spin mx-auto text-[#dc9750]" size={24} />
+              <Loader2 className="animate-spin mx-auto text-[#10b981]" size={24} />
             </td>
           </tr>
         ) : currentActivities.length === 0 ? (
@@ -207,7 +207,7 @@ const LoginActivity = () => {
   <div className="block md:hidden space-y-3">
     {loading ? (
       <div className="py-8 text-center">
-        <Loader2 className="animate-spin mx-auto text-[#dc9750]" size={24} />
+        <Loader2 className="animate-spin mx-auto text-[#10b981]" size={24} />
       </div>
     ) : currentActivities.length === 0 ? (
       <p className="text-center py-6 text-xs text-slate-500">No activity history found.</p>
@@ -291,7 +291,7 @@ const LoginActivity = () => {
             onClick={() => handlePageChange(page)}
             className={`px-3 py-1.5 rounded-lg border text-xs font-semibold transition-colors shrink-0 ${
               currentPage === page
-                ? "bg-[#dc9750] border-[#dc9750] text-[#0d101c]"
+                ? "bg-[#10b981] border-[#10b981] text-[#0d101c]"
                 : "border-[#1e2640] bg-[#0d101c] hover:bg-[#141a2e] text-slate-300"
             }`}
           >

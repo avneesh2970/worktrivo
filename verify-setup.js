@@ -2,7 +2,7 @@ const net = require('net');
 const fs = require('fs');
 const path = require('path');
 
-console.log('=== TaskSphere Setup Verification Tool ===\n');
+console.log('=== WorkTrivo Setup Verification Tool ===\n');
 
 // 1. Check Node & Platform
 console.log(`Node.js Version: ${process.version}`);

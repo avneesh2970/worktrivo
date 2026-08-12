@@ -82,7 +82,7 @@ const uploadFile = async (req, res) => {
 
           size: req.file.size,
 
-          folder: "tasksphere/task-files",
+          folder: "worktrivo/task-files",
 
           currentVersion: 1,
         },

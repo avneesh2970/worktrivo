@@ -122,7 +122,7 @@ const VoiceTaskModal = ({ open, onClose, token, onParsed }) => {
       <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-lg w-full p-6 shadow-xl">
         <div className="flex items-center justify-between pb-4 border-b border-slate-800">
           <div className="flex items-center gap-2">
-            <Sparkles size={18} className="text-[#dc9750]" />
+            <Sparkles size={18} className="text-[#10b981]" />
             <h3 className="text-lg font-bold text-slate-100">Voice Task</h3>
           </div>
           <button 
@@ -157,7 +157,7 @@ const VoiceTaskModal = ({ open, onClose, token, onParsed }) => {
             className={`flex items-center justify-center w-16 h-16 rounded-full transition-all shadow-md disabled:opacity-40 disabled:cursor-not-allowed ${
               listening
                 ? 'bg-rose-600 hover:bg-rose-700 animate-pulse'
-                : 'bg-[#dc9750] hover:bg-[#b97737]'
+                : 'bg-[#10b981] hover:bg-[#b97737]'
             }`}
             title={listening ? 'Stop recording' : 'Start recording'}
           >
@@ -177,7 +177,7 @@ const VoiceTaskModal = ({ open, onClose, token, onParsed }) => {
             finalTranscriptRef.current = e.target.value;
           }}
           placeholder="Transcript will appear here — you can also type or edit it directly..."
-          className="w-full mt-4 px-3 py-2 text-sm bg-slate-800/50 border border-slate-700 text-slate-100 placeholder:text-slate-500 rounded-lg outline-none focus:border-[#dc9750]/60 focus:ring-2 focus:ring-[#dc9750]/20 resize-none"
+          className="w-full mt-4 px-3 py-2 text-sm bg-slate-800/50 border border-slate-700 text-slate-100 placeholder:text-slate-500 rounded-lg outline-none focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20 resize-none"
         />
 
         {error && (
@@ -199,7 +199,7 @@ const VoiceTaskModal = ({ open, onClose, token, onParsed }) => {
             type="button"
             onClick={handleParse}
             disabled={!transcript.trim() || parsing}
-            className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold bg-[#dc9750] hover:bg-[#b97737] disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-colors shadow-sm"
+            className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold bg-[#10b981] hover:bg-[#b97737] disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-colors shadow-sm"
           >
             {parsing && <Loader2 size={14} className="animate-spin" />}
             {parsing ? 'Parsing…' : 'Parse Task'}

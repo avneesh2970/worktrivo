@@ -194,7 +194,7 @@ const Groups = () => {
           {user?.role === "admin" && (
             <button
               onClick={() => setShowModal(true)}
-              className="inline-flex items-center justify-center rounded-xl bg-[#dc9750] text-slate-950 px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-lg shadow-[#dc9750]/20 transition-all hover:bg-[#e3a35f] hover:shadow-[#dc9750]/40 active:scale-95 cursor-pointer"
+              className="inline-flex items-center justify-center rounded-xl bg-[#10b981] text-slate-950 px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-lg shadow-[#10b981]/20 transition-all hover:bg-[#e3a35f] hover:shadow-[#10b981]/40 active:scale-95 cursor-pointer"
             >
               <PlusIcon />
               Create Project
@@ -213,12 +213,12 @@ const Groups = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search projects..."
-              className="w-full pl-10 pr-4 py-2 bg-[#171d33] border border-slate-700 rounded-xl text-sm text-slate-100 placeholder-slate-400 focus:outline-none focus:border-[#dc9750] focus:ring-1 focus:ring-[#dc9750] transition-all"
+              className="w-full pl-10 pr-4 py-2 bg-[#171d33] border border-slate-700 rounded-xl text-sm text-slate-100 placeholder-slate-400 focus:outline-none focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] transition-all"
             />
           </div>
 
           <div className="text-xs font-medium text-slate-300 self-end sm:self-center">
-            Showing <span className="text-[#dc9750] font-bold">{filteredGroups.length}</span> of {groups.length} projects
+            Showing <span className="text-[#10b981] font-bold">{filteredGroups.length}</span> of {groups.length} projects
           </div>
         </div>
 
@@ -253,7 +253,7 @@ const Groups = () => {
             {!searchQuery && (
               <button
                 onClick={() => setShowModal(true)}
-                className="mt-5 inline-flex items-center rounded-xl bg-[#171d33] border border-[#dc9750]/40 px-4 py-2 text-sm font-medium text-[#dc9750] hover:bg-[#dc9750]/10 transition-all cursor-pointer"
+                className="mt-5 inline-flex items-center rounded-xl bg-[#171d33] border border-[#10b981]/40 px-4 py-2 text-sm font-medium text-[#10b981] hover:bg-[#10b981]/10 transition-all cursor-pointer"
               >
                 Create One Now
               </button>
@@ -267,18 +267,18 @@ const Groups = () => {
               <div
                 key={group._id}
                 onClick={() => navigate(`/groups/${group._id}`)}
-                className="group flex flex-col justify-between rounded-xl border border-slate-700/60 bg-[#171d33] p-5 transition-all duration-200  hover:border-[#dc9750]/60 hover:bg-[#1a213a] cursor-pointer"
+                className="group flex flex-col justify-between rounded-xl border border-slate-700/60 bg-[#171d33] p-5 transition-all duration-200  hover:border-[#10b981]/60 hover:bg-[#1a213a] cursor-pointer"
               >
                 <div>
                   {/* Header: Title & Status */}
                   <div className="flex items-center justify-between gap-3 mb-2">
-                    <h2 className="text-base font-semibold text-slate-100 group-hover:text-[#dc9750] transition-colors line-clamp-1">
+                    <h2 className="text-base font-semibold text-slate-100 group-hover:text-[#10b981] transition-colors line-clamp-1">
                       {group.name}
                     </h2>
 
                     {/* Subtle status tag - clean and flat */}
-                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium text-[#dc9750] bg-[#dc9750]/10 border border-[#dc9750]/20 shrink-0">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#dc9750]" />
+                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium text-[#10b981] bg-[#10b981]/10 border border-[#10b981]/20 shrink-0">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#10b981]" />
                       Active
                     </span>
                   </div>
@@ -340,7 +340,7 @@ const Groups = () => {
                   <input
                     required
                     type="text"
-                    className="w-full rounded-xl border border-slate-700 bg-[#1e2640]/80 p-3 text-sm text-slate-100 placeholder-slate-400 focus:outline-none focus:border-[#dc9750] focus:ring-1 focus:ring-[#dc9750] transition-all"
+                    className="w-full rounded-xl border border-slate-700 bg-[#1e2640]/80 p-3 text-sm text-slate-100 placeholder-slate-400 focus:outline-none focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] transition-all"
                     placeholder="e.g. Website Redesign"
                     value={projectName}
                     onChange={(e) => setProjectName(e.target.value)}
@@ -352,7 +352,7 @@ const Groups = () => {
                     Description
                   </label>
                   <textarea
-                    className="w-full rounded-xl border border-slate-700 bg-[#1e2640]/80 p-3 text-sm text-slate-100 placeholder-slate-400 focus:outline-none focus:border-[#dc9750] focus:ring-1 focus:ring-[#dc9750] transition-all resize-none"
+                    className="w-full rounded-xl border border-slate-700 bg-[#1e2640]/80 p-3 text-sm text-slate-100 placeholder-slate-400 focus:outline-none focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] transition-all resize-none"
                     placeholder="Briefly describe the goals or scope..."
                     rows={4}
                     value={projectDescription}
@@ -384,7 +384,7 @@ const Groups = () => {
                           type="checkbox"
                           checked={selectedMembers.includes(member._id)}
                           onChange={() => toggleMember(member._id)}
-                          className="w-4 h-4 accent-[#dc9750]"
+                          className="w-4 h-4 accent-[#10b981]"
                         />
                       </label>
                     ))}
@@ -403,7 +403,7 @@ const Groups = () => {
                   <button
                     type="submit"
                     disabled={isSubmitting || !projectName.trim()}
-                    className="inline-flex items-center justify-center rounded-xl bg-[#dc9750] px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-lg shadow-[#dc9750]/20 hover:bg-[#e3a35f] transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    className="inline-flex items-center justify-center rounded-xl bg-[#10b981] px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-lg shadow-[#10b981]/20 hover:bg-[#e3a35f] transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                   >
                     {isSubmitting ? "Creating..." : "Create Project"}
                   </button>

@@ -178,7 +178,7 @@ const TaskDetails = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="w-8 h-8 border-4 border-[#dc9750]/90 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-8 h-8 border-4 border-[#10b981]/90 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -353,7 +353,7 @@ const TaskDetails = () => {
                 <div className="flex flex-wrap gap-2">
                   {task.assignedTo.map(u => (
                     <div key={u._id} className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-xs font-medium text-slate-200">
-                      <span className="w-5 h-5 rounded-full bg-[#dc9750] text-white flex items-center justify-center text-[10px] font-bold uppercase">
+                      <span className="w-5 h-5 rounded-full bg-[#10b981] text-white flex items-center justify-center text-[10px] font-bold uppercase">
                         {u.name.charAt(0)}
                       </span>
                       <span>{u.name}</span>
@@ -367,7 +367,7 @@ const TaskDetails = () => {
           {/* Discussion / Comments Section */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
             <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2 border-b border-slate-800 pb-4">
-              <MessageSquare size={20} className="text-[#dc9750]" />
+              <MessageSquare size={20} className="text-[#10b981]" />
               <span>Discussion ({comments.length})</span>
             </h3>
 
@@ -378,7 +378,7 @@ const TaskDetails = () => {
               ) : (
                 comments.map(c => (
                   <div key={c._id} className="flex gap-3">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#dc9750] to-[#b97737] text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-sm">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#10b981] to-[#b97737] text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-sm">
                       {c.userId?.name.charAt(0).toUpperCase()}
                     </div>
                     <div className="flex-1 bg-slate-800/50 border border-slate-800 rounded-xl p-3.5 space-y-1">
@@ -400,7 +400,7 @@ const TaskDetails = () => {
             <form onSubmit={handleAddComment} className="pt-4 border-t border-slate-800 flex gap-2">
               <input
                 type="text"
-                className="flex-1 px-4 py-2.5 text-sm bg-slate-800/80 border border-slate-700/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#dc9750]/20 focus:border-[#dc9750]/60 text-slate-100 placeholder:text-slate-500"
+                className="flex-1 px-4 py-2.5 text-sm bg-slate-800/80 border border-slate-700/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#10b981]/20 focus:border-[#10b981]/60 text-slate-100 placeholder:text-slate-500"
                 placeholder="Type your message here..."
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
@@ -408,7 +408,7 @@ const TaskDetails = () => {
               />
               <button
                 type="submit"
-                className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-[#dc9750] hover:bg-[#b97737] rounded-xl shadow-sm transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-[#10b981] hover:bg-[#b97737] rounded-xl shadow-sm transition-colors"
               >
                 <span>Post</span>
                 <Send size={14} />
@@ -420,7 +420,7 @@ const TaskDetails = () => {
         {/* Right Column: Audit Trail / History */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-sm">
           <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2 border-b border-slate-800 pb-4 mb-6">
-            <History size={20} className="text-[#dc9750]" />
+            <History size={20} className="text-[#10b981]" />
             <span>Audit Trail / History</span>
           </h3>
 
@@ -431,7 +431,7 @@ const TaskDetails = () => {
               history.map((log) => (
                 <div key={log._id} className="relative group">
                   {/* Timeline Dot */}
-                  <div className="absolute -left-[21px] top-1.5 w-2.5 h-2.5 rounded-full bg-[#dc9750] ring-4 ring-slate-900" />
+                  <div className="absolute -left-[21px] top-1.5 w-2.5 h-2.5 rounded-full bg-[#10b981] ring-4 ring-slate-900" />
 
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 text-xs text-slate-500">

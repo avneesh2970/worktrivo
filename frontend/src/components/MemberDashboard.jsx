@@ -127,7 +127,7 @@ const MemberDashboard = ({ user, tasks = [], handleDownloadReport }) => {
       
       {/* Profile & Welcome Text */}
       <div className="flex items-center gap-4">
-        <div className="relative flex items-center justify-center shrink-0 w-14 h-14 rounded-xl bg-[#dc9750] text-[#0d101c] font-bold text-xl overflow-hidden">
+        <div className="relative flex items-center justify-center shrink-0 w-14 h-14 rounded-xl bg-[#10b981] text-[#0d101c] font-bold text-xl overflow-hidden">
           {profilePhotoUrl ? (
             <img
               src={profilePhotoUrl}
@@ -145,7 +145,7 @@ const MemberDashboard = ({ user, tasks = [], handleDownloadReport }) => {
 
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-semibold tracking-wider text-[#dc9750] uppercase bg-[#dc9750]/10 px-2.5 py-0.5 rounded-md border border-[#dc9750]/20">
+            <span className="text-xs font-semibold tracking-wider text-[#10b981] uppercase bg-[#10b981]/10 px-2.5 py-0.5 rounded-md border border-[#10b981]/20">
               {getGreeting()}
             </span>
           </div>
@@ -153,7 +153,7 @@ const MemberDashboard = ({ user, tasks = [], handleDownloadReport }) => {
             {user?.name || 'Workspace Member'}
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            Personal focus hub. You've completed <span className="text-[#dc9750] font-semibold">{completionPercentage}%</span> of assigned goals today.
+            Personal focus hub. You've completed <span className="text-[#10b981] font-semibold">{completionPercentage}%</span> of assigned goals today.
           </p>
         </div>
       </div>
@@ -170,7 +170,7 @@ const MemberDashboard = ({ user, tasks = [], handleDownloadReport }) => {
 
         <button
           onClick={() => navigate('/tasks')}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#dc9750] hover:bg-[#c4823f] text-[#0d101c] font-semibold text-xs sm:text-sm transition-colors"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#10b981] hover:bg-[#c4823f] text-[#0d101c] font-semibold text-xs sm:text-sm transition-colors"
         >
           <span>Workspace Tasks</span>
           <ArrowUpRight size={16} />
@@ -182,11 +182,11 @@ const MemberDashboard = ({ user, tasks = [], handleDownloadReport }) => {
 
   {/* 2. ANNOUNCEMENT BANNER */}
   {!announcementLoading && latestAnnouncement && (
-    <div className="rounded-xl border border-[#1e2640] bg-[#1e2640]/40 p-4 transition-colors hover:border-[#dc9750]/50">
+    <div className="rounded-xl border border-[#1e2640] bg-[#1e2640]/40 p-4 transition-colors hover:border-[#10b981]/50">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         
         <div className="flex items-start gap-3.5">
-          <div className="p-2.5 rounded-lg bg-[#dc9750]/10 border border-[#dc9750]/20 text-[#dc9750] shrink-0">
+          <div className="p-2.5 rounded-lg bg-[#10b981]/10 border border-[#10b981]/20 text-[#10b981] shrink-0">
             <Megaphone size={20} />
           </div>
 
@@ -222,7 +222,7 @@ const MemberDashboard = ({ user, tasks = [], handleDownloadReport }) => {
           ) : (
             <button
               onClick={() => acknowledge(latestAnnouncement._id)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#dc9750] hover:bg-[#c4823f] text-[#0d101c] text-xs font-bold transition-colors"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#10b981] hover:bg-[#c4823f] text-[#0d101c] text-xs font-bold transition-colors"
             >
               <CheckCircle2 size={14} /> Acknowledge
             </button>
@@ -245,10 +245,10 @@ const MemberDashboard = ({ user, tasks = [], handleDownloadReport }) => {
     {/* Active Tasks */}
     <div 
       onClick={() => navigate('/tasks?filter=active')}
-      className="rounded-xl border border-[#1e2640] bg-[#1e2640]/40 p-4 hover:border-[#dc9750]/50 transition-colors cursor-pointer">
+      className="rounded-xl border border-[#1e2640] bg-[#1e2640]/40 p-4 hover:border-[#10b981]/50 transition-colors cursor-pointer">
       <div className="flex items-center justify-between text-xs font-semibold text-slate-400 uppercase">
         <span>Active Tasks</span>
-        <div className="p-2 rounded-lg bg-[#dc9750]/10 border border-[#dc9750]/20 text-[#dc9750]">
+        <div className="p-2 rounded-lg bg-[#10b981]/10 border border-[#10b981]/20 text-[#10b981]">
           <CheckSquare size={16} />
         </div>
       </div>
@@ -257,7 +257,7 @@ const MemberDashboard = ({ user, tasks = [], handleDownloadReport }) => {
         <span className="text-xs text-slate-400">assigned to you</span>
       </div>
       <div className="mt-3 w-full bg-[#0d101c] rounded-full h-1.5 overflow-hidden">
-        <div className="bg-[#dc9750] h-1.5 rounded-full" style={{ width: `${Math.min(myTasks.length * 10, 100)}%` }} />
+        <div className="bg-[#10b981] h-1.5 rounded-full" style={{ width: `${Math.min(myTasks.length * 10, 100)}%` }} />
       </div>
     </div>
 
@@ -327,7 +327,7 @@ const MemberDashboard = ({ user, tasks = [], handleDownloadReport }) => {
       <div>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#1e2640] pb-3">
           <div className="flex items-center gap-2">
-            <Sparkles size={16} className="text-[#dc9750]" />
+            <Sparkles size={16} className="text-[#10b981]" />
             <h2 className="text-base font-bold text-white">Focus Action List</h2>
           </div>
 
@@ -339,7 +339,7 @@ const MemberDashboard = ({ user, tasks = [], handleDownloadReport }) => {
                 onClick={() => setFilter(tab)}
                 className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
                   filter === tab
-                    ? 'bg-[#dc9750] text-[#0d101c] font-bold'
+                    ? 'bg-[#10b981] text-[#0d101c] font-bold'
                     : 'text-slate-400 hover:text-white hover:bg-[#1e2640]'
                 }`}
               >
@@ -368,12 +368,12 @@ const MemberDashboard = ({ user, tasks = [], handleDownloadReport }) => {
                 <div
                   key={task._id}
                   onClick={() => navigate(`/tasks/${task._id}`)}
-                  className="group flex items-center justify-between rounded-xl border border-[#1e2640] bg-[#141a2e] p-3.5 hover:border-[#dc9750] cursor-pointer transition-colors"
+                  className="group flex items-center justify-between rounded-xl border border-[#1e2640] bg-[#141a2e] p-3.5 hover:border-[#10b981] cursor-pointer transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <div className={`w-2 h-2 rounded-full ${isOverdue ? 'bg-rose-500' : 'bg-[#dc9750]'}`} />
+                    <div className={`w-2 h-2 rounded-full ${isOverdue ? 'bg-rose-500' : 'bg-[#10b981]'}`} />
                     <div>
-                      <p className="text-sm font-semibold text-slate-200 group-hover:text-[#dc9750] transition-colors">
+                      <p className="text-sm font-semibold text-slate-200 group-hover:text-[#10b981] transition-colors">
                         {task.title}
                       </p>
                       <span className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
@@ -386,7 +386,7 @@ const MemberDashboard = ({ user, tasks = [], handleDownloadReport }) => {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <div className="p-1 rounded-md text-slate-400 group-hover:text-[#0d101c] group-hover:bg-[#dc9750] transition-colors">
+                    <div className="p-1 rounded-md text-slate-400 group-hover:text-[#0d101c] group-hover:bg-[#10b981] transition-colors">
                       <ArrowRight size={14} />
                     </div>
                   </div>
@@ -399,7 +399,7 @@ const MemberDashboard = ({ user, tasks = [], handleDownloadReport }) => {
 
       <div className="pt-3 border-t border-[#1e2640] flex items-center justify-between text-xs text-slate-400">
         <span>Showing {filteredTasks.length} items</span>
-        <button onClick={() => navigate('/tasks')} className="text-[#dc9750] hover:underline font-medium">
+        <button onClick={() => navigate('/tasks')} className="text-[#10b981] hover:underline font-medium">
           View All Tasks &rarr;
         </button>
       </div>
@@ -430,7 +430,7 @@ const MemberDashboard = ({ user, tasks = [], handleDownloadReport }) => {
               <div
                 key={task._id}
                 onClick={() => navigate(`/tasks/${task._id}`)}
-                className="group rounded-xl border border-[#1e2640] bg-[#141a2e] p-3.5 space-y-2 cursor-pointer hover:border-[#dc9750] transition-colors"
+                className="group rounded-xl border border-[#1e2640] bg-[#141a2e] p-3.5 space-y-2 cursor-pointer hover:border-[#10b981] transition-colors"
               >
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-bold text-slate-200 group-hover:text-rose-400 transition-colors">

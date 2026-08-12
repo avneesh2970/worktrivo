@@ -79,7 +79,7 @@ const FileUpload = ({ taskId, onUpload }) => {
   type="button"
   onClick={handleChoose}
   disabled={uploading}
-  className="inline-flex items-center gap-2 rounded-lg bg-[#dc9750] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[#c4803d] focus:outline-none focus:ring-2 focus:ring-[#dc9750]/40 disabled:cursor-not-allowed disabled:opacity-50 shadow-lg shadow-[#dc9750]/20"
+  className="inline-flex items-center gap-2 rounded-lg bg-[#10b981] px-4 py-2 text-sm font-medium text-white transition-all hover:bg-[#c4803d] focus:outline-none focus:ring-2 focus:ring-[#10b981]/40 disabled:cursor-not-allowed disabled:opacity-50 shadow-lg shadow-[#10b981]/20"
 >
   {uploading ? (
     <>

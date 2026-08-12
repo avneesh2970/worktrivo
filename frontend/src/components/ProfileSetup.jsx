@@ -104,7 +104,7 @@ const ProfileSetup = ({ onCancel, onSuccess }) => {
     return (
       <div className="flex-1 p-6 md:p-10 max-w-6xl mx-auto flex items-center justify-center min-h-[400px]">
         <div className="flex items-center gap-3 px-5 py-3.5 rounded-xl bg-[#171d33] border border-slate-700/60 text-slate-300">
-          <Loader2 className="animate-spin text-[#dc9750]" size={18} />
+          <Loader2 className="animate-spin text-[#10b981]" size={18} />
           <span className="text-sm font-medium">Fetching profile details...</span>
         </div>
       </div>
@@ -148,7 +148,7 @@ const ProfileSetup = ({ onCancel, onSuccess }) => {
 
               <div className="flex flex-col items-center gap-4 w-full">
                 <div className="relative group">
-                  <div className="relative w-32 h-32 rounded-xl overflow-hidden bg-[#1e2640] border border-dashed border-slate-600 group-hover:border-[#dc9750] transition duration-200 flex items-center justify-center">
+                  <div className="relative w-32 h-32 rounded-xl overflow-hidden bg-[#1e2640] border border-dashed border-slate-600 group-hover:border-[#10b981] transition duration-200 flex items-center justify-center">
                     {previewUrl ? (
                       <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
                     ) : (
@@ -160,7 +160,7 @@ const ProfileSetup = ({ onCancel, onSuccess }) => {
 
                     {/* Overlay trigger */}
                     <label className="absolute inset-0 bg-[#1e2640]/80 opacity-0 group-hover:opacity-100 transition duration-200 flex flex-col items-center justify-center cursor-pointer text-white gap-1">
-                      <Camera size={20} className="text-[#dc9750]" />
+                      <Camera size={20} className="text-[#10b981]" />
                       <span className="text-xs font-medium">Change</span>
                       <input
                         type="file"
@@ -192,7 +192,7 @@ const ProfileSetup = ({ onCancel, onSuccess }) => {
               {/* Personal Identity Row */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2.5 pb-2 border-b border-slate-700/60">
-                  <User size={18} className="text-[#dc9750]" />
+                  <User size={18} className="text-[#10b981]" />
                   <h2 className="text-sm font-semibold text-white">Personal Identity</h2>
                 </div>
 
@@ -225,7 +225,7 @@ const ProfileSetup = ({ onCancel, onSuccess }) => {
               {/* Professional Details Row */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2.5 pb-2 border-b border-slate-700/60">
-                  <Briefcase size={18} className="text-[#dc9750]" />
+                  <Briefcase size={18} className="text-[#10b981]" />
                   <h2 className="text-sm font-semibold text-white">Professional Details</h2>
                 </div>
 
@@ -279,7 +279,7 @@ const ProfileSetup = ({ onCancel, onSuccess }) => {
               <button
                 type="submit"
                 disabled={loading}
-                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#dc9750] hover:bg-[#e3a35f] text-slate-950 rounded-xl font-semibold text-sm transition-all duration-200 disabled:opacity-50 cursor-pointer shadow-md shadow-[#dc9750]/10"
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#10b981] hover:bg-[#e3a35f] text-slate-950 rounded-xl font-semibold text-sm transition-all duration-200 disabled:opacity-50 cursor-pointer shadow-md shadow-[#10b981]/10"
               >
                 {loading ? (
                   <>
@@ -312,7 +312,7 @@ const Input = ({ label, ...props }) => (
     <label className="block text-xs font-medium text-slate-300">{label}</label>
     <input
       {...props}
-      className="w-full bg-[#1e2640] border border-slate-700/80 focus:border-[#dc9750] rounded-xl px-3.5 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-[#dc9750] transition duration-200"
+      className="w-full bg-[#1e2640] border border-slate-700/80 focus:border-[#10b981] rounded-xl px-3.5 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-[#10b981] transition duration-200"
     />
   </div>
 );
@@ -326,7 +326,7 @@ const Select = ({ label, options, ...props }) => (
     <label className="block text-xs font-medium text-slate-300">{label}</label>
     <select
       {...props}
-      className="w-full bg-[#1e2640] border border-slate-700/80 focus:border-[#dc9750] rounded-xl px-3.5 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-1 focus:ring-[#dc9750] transition duration-200"
+      className="w-full bg-[#1e2640] border border-slate-700/80 focus:border-[#10b981] rounded-xl px-3.5 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-1 focus:ring-[#10b981] transition duration-200"
     >
       <option value="" className="bg-[#171d33] text-slate-400">Select...</option>
       {options.map((opt) => (

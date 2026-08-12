@@ -3,6 +3,7 @@ import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { GoogleLogin } from '@react-oauth/google';
 import LoginBg from '../assets/LoginPagebg.png';
+import LogoImg from '../assets/logo.png';
 import {
   KeyRound,
   Mail,
@@ -181,11 +182,11 @@ const Auth = () => {
 
             {/* Mobile Branding (Visible on mobile/tablet screens only) */}
             <div className="lg:hidden flex items-center gap-3 mb-10 ml-8 mt-13">
-              <div className="p-3 bg-[#dc9750]/10 border border-[#dc9750]/30 rounded-xl flex items-center justify-center">
-                <Layers className="w-7 h-7 text-[#dc9750]" />
+              <div className="p-2 bg-[#10b981]/10 border border-[#10b981]/30 rounded-xl flex items-center justify-center">
+                <img src={LogoImg} alt="WorkTrivo Logo" className="w-8 h-8 object-contain rounded-lg" />
               </div>
               <span className="text-xl font-bold text-white tracking-wide">
-                TaskSphere Platform
+                WorkTrivo Platform
               </span>
             </div>
 
@@ -203,7 +204,7 @@ const Auth = () => {
                         <button
                           type="button"
                           onClick={() => toggleMode(false)}
-                          className="text-[#dc9750] hover:underline font-medium transition-colors cursor-pointer"
+                          className="text-[#10b981] hover:underline font-medium transition-colors cursor-pointer"
                         >
                           Sign in
                         </button>
@@ -214,7 +215,7 @@ const Auth = () => {
                         <button
                           type="button"
                           onClick={() => toggleMode(true)}
-                          className="text-[#dc9750] hover:underline font-medium transition-colors cursor-pointer"
+                          className="text-[#10b981] hover:underline font-medium transition-colors cursor-pointer"
                         >
                           Create now
                         </button>
@@ -229,7 +230,7 @@ const Auth = () => {
                   <button
                     type="button"
                     onClick={() => handleSwitchView('auth')}
-                    className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-300/80 hover:text-[#dc9750] transition-colors mb-4 cursor-pointer"
+                    className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-300/80 hover:text-[#10b981] transition-colors mb-4 cursor-pointer"
                   >
                     <ArrowLeft className="w-3.5 h-3.5" /> Back to Sign In
                   </button>
@@ -247,7 +248,7 @@ const Auth = () => {
                   <button
                     type="button"
                     onClick={() => handleSwitchView('forgot')}
-                    className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-300/80 hover:text-[#dc9750] transition-colors mb-4 cursor-pointer"
+                    className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-300/80 hover:text-[#10b981] transition-colors mb-4 cursor-pointer"
                   >
                     <ArrowLeft className="w-3.5 h-3.5" /> Back to Resend OTP
                   </button>
@@ -255,7 +256,7 @@ const Auth = () => {
                     Verify OTP
                   </h1>
                   <p className="text-xs sm:text-sm text-slate-300/80 mt-2">
-                    Enter the OTP sent to <span className="text-[#dc9750] font-medium">{email}</span> along with your new password.
+                    Enter the OTP sent to <span className="text-[#10b981] font-medium">{email}</span> along with your new password.
                   </p>
                 </>
               )}
@@ -302,7 +303,7 @@ const Auth = () => {
                           value={name}
                           onChange={(e) => setName(e.target.value)}
                           required={isSignUp}
-                          className="w-full pl-10 pr-4 py-3 bg-[#1e2640]-900/80 border border-white/10 rounded-xl text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:border-[#dc9750] focus:ring-1 focus:ring-[#dc9750] transition-all"
+                          className="w-full pl-10 pr-4 py-3 bg-[#1e2640]-900/80 border border-white/10 rounded-xl text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] transition-all"
                         />
                       </div>
                     </div>
@@ -324,7 +325,7 @@ const Auth = () => {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required
-                        className="w-full pl-10 pr-4 py-3 bg-[#1e2640]-900/80 border border-white/10 rounded-xl text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:border-[#dc9750] focus:ring-1 focus:ring-[#dc9750] transition-all"
+                        className="w-full pl-10 pr-4 py-3 bg-[#1e2640]-900/80 border border-white/10 rounded-xl text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] transition-all"
                       />
                     </div>
                   </div>
@@ -345,7 +346,7 @@ const Auth = () => {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
-                        className="w-full pl-10 pr-10 py-3 bg-[#1e2640]-900/80 border border-white/10 rounded-xl text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:border-[#dc9750] focus:ring-1 focus:ring-[#dc9750] transition-all"
+                        className="w-full pl-10 pr-10 py-3 bg-[#1e2640]-900/80 border border-white/10 rounded-xl text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] transition-all"
                       />
                       <button
                         type="button"
@@ -370,10 +371,10 @@ const Auth = () => {
                       </label>
                       <div className="w-full pl-3.5 pr-4 py-3 bg-[#1e2640]-900/40 border border-white/10 rounded-xl flex items-center justify-between text-slate-400 text-sm select-none">
                         <div className="flex items-center gap-2">
-                          <UserCheck className="w-4 h-4 text-[#dc9750]" />
+                          <UserCheck className="w-4 h-4 text-[#10b981]" />
                           <span className="font-medium text-slate-200">Member</span>
                         </div>
-                        <span className="text-[11px] px-2 py-0.5 bg-[#dc9750]/10 text-[#dc9750] border border-[#dc9750]/20 rounded-md uppercase font-semibold tracking-wider">
+                        <span className="text-[11px] px-2 py-0.5 bg-[#10b981]/10 text-[#10b981] border border-[#10b981]/20 rounded-md uppercase font-semibold tracking-wider">
                           Default
                         </span>
                       </div>
@@ -394,14 +395,14 @@ const Auth = () => {
                             type="checkbox"
                             checked={rememberMe}
                             onChange={(e) => setRememberMe(e.target.checked)}
-                            className="w-4 h-4 rounded border-white/20 bg-[#1e2640]-900 text-[#dc9750] focus:ring-[#dc9750] focus:ring-offset-[#1e2640] mr-2"
+                            className="w-4 h-4 rounded border-white/20 bg-[#1e2640]-900 text-[#10b981] focus:ring-[#10b981] focus:ring-offset-[#1e2640] mr-2"
                           />
                           Remember me
                         </label>
                         <button
                           type="button"
                           onClick={() => handleSwitchView('forgot')}
-                          className="text-slate-300/80 hover:text-[#dc9750] transition-colors cursor-pointer"
+                          className="text-slate-300/80 hover:text-[#10b981] transition-colors cursor-pointer"
                         >
                           Forgot Password?
                         </button>
@@ -413,7 +414,7 @@ const Auth = () => {
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="w-full mt-2 py-3 px-4 flex items-center justify-center gap-2 bg-[#dc9750] hover:bg-[#c88540] text-white font-medium rounded-xl shadow-lg shadow-[#dc9750]/20 active:scale-[0.99] transition-all duration-200 disabled:opacity-60 cursor-pointer text-sm sm:text-base"
+                    className="w-full mt-2 py-3 px-4 flex items-center justify-center gap-2 bg-[#10b981] hover:bg-[#059669] text-white font-medium rounded-xl shadow-lg shadow-[#10b981]/20 active:scale-[0.99] transition-all duration-200 disabled:opacity-60 cursor-pointer text-sm sm:text-base"
                   >
                     {submitting ? (
                       <>
@@ -473,7 +474,7 @@ const Auth = () => {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
-                      className="w-full pl-10 pr-4 py-3 bg-[#1e2640]-900/80 border border-white/10 rounded-xl text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:border-[#dc9750] focus:ring-1 focus:ring-[#dc9750] transition-all"
+                      className="w-full pl-10 pr-4 py-3 bg-[#1e2640]-900/80 border border-white/10 rounded-xl text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] transition-all"
                     />
                   </div>
                 </div>
@@ -481,7 +482,7 @@ const Auth = () => {
                 <button
                   type="submit"
                   disabled={submitting || !email}
-                  className="w-full py-3 px-4 flex items-center justify-center gap-2 bg-[#dc9750] hover:bg-[#c88540] text-white font-medium rounded-xl shadow-lg shadow-[#dc9750]/20 active:scale-[0.99] transition-all duration-200 disabled:opacity-60 cursor-pointer text-sm sm:text-base"
+                  className="w-full py-3 px-4 flex items-center justify-center gap-2 bg-[#10b981] hover:bg-[#059669] text-white font-medium rounded-xl shadow-lg shadow-[#10b981]/20 active:scale-[0.99] transition-all duration-200 disabled:opacity-60 cursor-pointer text-sm sm:text-base"
                 >
                   {submitting ? (
                     <>
@@ -518,7 +519,7 @@ const Auth = () => {
                       value={otp}
                       onChange={(e) => setOtp(e.target.value)}
                       required
-                      className="w-full pl-10 pr-4 py-3 bg-[#1e2640]-900/80 border border-white/10 rounded-xl text-slate-100 placeholder-slate-500 text-sm tracking-widest font-mono focus:outline-none focus:border-[#dc9750] focus:ring-1 focus:ring-[#dc9750] transition-all"
+                      className="w-full pl-10 pr-4 py-3 bg-[#1e2640]-900/80 border border-white/10 rounded-xl text-slate-100 placeholder-slate-500 text-sm tracking-widest font-mono focus:outline-none focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] transition-all"
                     />
                   </div>
                 </div>
@@ -539,7 +540,7 @@ const Auth = () => {
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                       required
-                      className="w-full pl-10 pr-10 py-3 bg-[#1e2640]-900/80 border border-white/10 rounded-xl text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:border-[#dc9750] focus:ring-1 focus:ring-[#dc9750] transition-all"
+                      className="w-full pl-10 pr-10 py-3 bg-[#1e2640]-900/80 border border-white/10 rounded-xl text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] transition-all"
                     />
                     <button
                       type="button"
@@ -555,7 +556,7 @@ const Auth = () => {
                 <button
                   type="submit"
                   disabled={submitting || !otp || !newPassword}
-                  className="w-full py-3 px-4 flex items-center justify-center gap-2 bg-[#dc9750] hover:bg-[#c88540] text-white font-medium rounded-xl shadow-lg shadow-[#dc9750]/20 active:scale-[0.99] transition-all duration-200 disabled:opacity-60 cursor-pointer text-sm sm:text-base"
+                  className="w-full py-3 px-4 flex items-center justify-center gap-2 bg-[#10b981] hover:bg-[#059669] text-white font-medium rounded-xl shadow-lg shadow-[#10b981]/20 active:scale-[0.99] transition-all duration-200 disabled:opacity-60 cursor-pointer text-sm sm:text-base"
                 >
                   {submitting ? (
                     <>
@@ -579,15 +580,15 @@ const Auth = () => {
           <div className="relative z-10 flex items-center justify-between w-full">
             <div className="flex items-center gap-2">
               <div className="px-3.5 py-1.5 bg-white/5 border border-white/10 rounded-full flex items-center gap-2 shadow-xs backdrop-blur-md">
-                <Sparkles className="w-3.5 h-3.5 text-[#dc9750] animate-pulse" />
+                <Sparkles className="w-3.5 h-3.5 text-[#10b981] animate-pulse" />
                 <span className="text-xs font-semibold text-slate-200 tracking-wide">
-                  Powered by <span className="text-[#dc9750] font-bold">NovaNectar</span>
+                  Powered by <span className="text-[#10b981] font-bold">NovaNectar</span>
                 </span>
               </div>
             </div>
 
-            <button className="flex items-center gap-2 text-xs text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 px-4 py-2 rounded-full transition-all shadow-xs cursor-pointer font-medium backdrop-blur-md hover:border-[#dc9750]/50">
-              <Headphones className="w-3.5 h-3.5 text-[#dc9750]" />
+            <button className="flex items-center gap-2 text-xs text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 px-4 py-2 rounded-full transition-all shadow-xs cursor-pointer font-medium backdrop-blur-md hover:border-[#10b981]/50">
+              <Headphones className="w-3.5 h-3.5 text-[#10b981]" />
               <span>Support</span>
             </button>
           </div>
@@ -596,9 +597,9 @@ const Auth = () => {
 
           {/* Bottom Descriptive Highlights */}
           <div className="relative z-10 space-y-5 max-w-xl mx-auto w-full mt-12">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#dc9750]/15 border border-[#dc9750]/30 rounded-md text-xs font-semibold text-[#dc9750] backdrop-blur-xs">
-              <Layers className="w-3.5 h-3.5 text-[#dc9750]" />
-              <span>TaskSphere Platform</span>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#10b981]/15 border border-[#10b981]/30 rounded-md text-xs font-semibold text-[#10b981] backdrop-blur-xs">
+              <img src={LogoImg} alt="WorkTrivo Logo" className="w-4 h-4 object-contain rounded-sm" />
+              <span>WorkTrivo Platform</span>
             </div>
 
             <h2 className="text-3xl font-bold text-white tracking-tight leading-tight">
@@ -606,18 +607,18 @@ const Auth = () => {
             </h2>
 
             <div className="grid grid-cols-3 gap-3 pt-2">
-              <div className="p-3 bg-white/5 border border-white/10 rounded-xl flex items-center gap-2.5 shadow-xs transition-all hover:border-[#dc9750]/60 hover:bg-white/10 backdrop-blur-sm">
-                <CheckCircle2 className="w-4 h-4 text-[#dc9750] flex-shrink-0" />
+              <div className="p-3 bg-white/5 border border-white/10 rounded-xl flex items-center gap-2.5 shadow-xs transition-all hover:border-[#10b981]/60 hover:bg-white/10 backdrop-blur-sm">
+                <CheckCircle2 className="w-4 h-4 text-[#10b981] flex-shrink-0" />
                 <span className="text-xs font-medium text-slate-200">Auto Workflows</span>
               </div>
 
-              <div className="p-3 bg-white/5 border border-white/10 rounded-xl flex items-center gap-2.5 shadow-xs transition-all hover:border-[#dc9750]/60 hover:bg-white/10 backdrop-blur-sm">
-                <Activity className="w-4 h-4 text-[#dc9750] flex-shrink-0" />
+              <div className="p-3 bg-white/5 border border-white/10 rounded-xl flex items-center gap-2.5 shadow-xs transition-all hover:border-[#10b981]/60 hover:bg-white/10 backdrop-blur-sm">
+                <Activity className="w-4 h-4 text-[#10b981] flex-shrink-0" />
                 <span className="text-xs font-medium text-slate-200">Live Analytics</span>
               </div>
 
-              <div className="p-3 bg-white/5 border border-white/10 rounded-xl flex items-center gap-2.5 shadow-xs transition-all hover:border-[#dc9750]/60 hover:bg-white/10 backdrop-blur-sm">
-                <Users className="w-4 h-4 text-[#dc9750] flex-shrink-0" />
+              <div className="p-3 bg-white/5 border border-white/10 rounded-xl flex items-center gap-2.5 shadow-xs transition-all hover:border-[#10b981]/60 hover:bg-white/10 backdrop-blur-sm">
+                <Users className="w-4 h-4 text-[#10b981] flex-shrink-0" />
                 <span className="text-xs font-medium text-slate-200">Team Sync</span>
               </div>
             </div>

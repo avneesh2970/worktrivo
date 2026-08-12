@@ -116,7 +116,7 @@ await Promise.allSettled(
         `
           <h2>Hello ${user.name},</h2>
 
-          <p>A new announcement has been posted in <b>TaskSphere</b>.</p>
+          <p>A new announcement has been posted in <b>WorkTrivo</b>.</p>
 
           <hr>
 
@@ -128,12 +128,12 @@ await Promise.allSettled(
 
           <br>
 
-          <p>Please login to TaskSphere for more details.</p>
+          <p>Please login to WorkTrivo for more details.</p>
 
           <br>
 
           <p>Regards,</p>
-          <p><b>TaskSphere Team</b></p>
+          <p><b>WorkTrivo Team</b></p>
         `
       );
 

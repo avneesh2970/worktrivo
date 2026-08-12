@@ -191,7 +191,7 @@ const Dashboard = () => {
 
             <button
               onClick={() => navigate('/tasks')}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#dc9750] hover:bg-[#c4823f] px-4 py-2 text-sm font-semibold text-slate-950 transition-colors"
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#10b981] hover:bg-[#c4823f] px-4 py-2 text-sm font-semibold text-slate-950 transition-colors"
             >
               <Plus size={16} />
               Create Task

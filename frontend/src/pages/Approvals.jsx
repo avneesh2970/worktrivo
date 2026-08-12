@@ -261,13 +261,13 @@ const Approvals = () => {
                             placeholder="Search..."
                             value={searchQuery}
                             onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                            className="w-full sm:w-64 py-2.5 pl-10 pr-4 rounded-xl border border-slate-700 bg-[#121826] text-white placeholder:text-slate-500 focus:border-[#dc9750] outline-none transition-all text-sm"
+                            className="w-full sm:w-64 py-2.5 pl-10 pr-4 rounded-xl border border-slate-700 bg-[#121826] text-white placeholder:text-slate-500 focus:border-[#10b981] outline-none transition-all text-sm"
                         />
                     </div>
                     <select
                         value={priorityFilter}
                         onChange={(e) => { setPriorityFilter(e.target.value); setCurrentPage(1); }}
-                        className="py-2.5 pl-3 pr-8 rounded-xl border border-slate-700 bg-[#121826] text-white outline-none focus:border-[#dc9750] text-sm"
+                        className="py-2.5 pl-3 pr-8 rounded-xl border border-slate-700 bg-[#121826] text-white outline-none focus:border-[#10b981] text-sm"
                     >
                         <option value="">All Priorities</option>
                         <option value="High">High Priority</option>
@@ -281,7 +281,7 @@ const Approvals = () => {
                 <button
                     onClick={() => { setActiveTab('tasks'); setCurrentPage(1); }}
                     className={`pb-3 px-6 text-sm font-semibold transition-colors ${
-                        activeTab === 'tasks' ? 'text-[#dc9750] border-b-2 border-[#dc9750]' : 'text-slate-400 hover:text-white'
+                        activeTab === 'tasks' ? 'text-[#10b981] border-b-2 border-[#10b981]' : 'text-slate-400 hover:text-white'
                     }`}
                 >
                     Standalone Tasks ({standaloneTasks.length})
@@ -289,7 +289,7 @@ const Approvals = () => {
                 <button
                     onClick={() => { setActiveTab('projects'); setCurrentPage(1); }}
                     className={`pb-3 px-6 text-sm font-semibold transition-colors ${
-                        activeTab === 'projects' ? 'text-[#dc9750] border-b-2 border-[#dc9750]' : 'text-slate-400 hover:text-white'
+                        activeTab === 'projects' ? 'text-[#10b981] border-b-2 border-[#10b981]' : 'text-slate-400 hover:text-white'
                     }`}
                 >
                     Project Approvals ({projects.length + projectTasks.length})
@@ -298,7 +298,7 @@ const Approvals = () => {
 
             {loading ? (
                 <div className="flex justify-center py-20">
-                    <Loader2 className="h-10 w-10 text-[#dc9750] animate-spin" />
+                    <Loader2 className="h-10 w-10 text-[#10b981] animate-spin" />
                 </div>
             ) : filteredItems.length === 0 ? (
                 <div className="text-center py-20 border border-dashed border-slate-800 rounded-2xl bg-[#121826]/50">
@@ -312,17 +312,17 @@ const Approvals = () => {
                         <div 
                             key={item._id} 
                             onClick={() => handleViewItem(item)}
-                            className="group cursor-pointer bg-[#121826] border border-slate-800 rounded-2xl p-5 hover:border-[#dc9750]/50 hover:bg-[#121826]/80 hover:shadow-lg hover:shadow-[#dc9750]/5 transition-all flex flex-col justify-between"
+                            className="group cursor-pointer bg-[#121826] border border-slate-800 rounded-2xl p-5 hover:border-[#10b981]/50 hover:bg-[#121826]/80 hover:shadow-lg hover:shadow-[#10b981]/5 transition-all flex flex-col justify-between"
                         >
                             <div>
                                 <div className="flex justify-between items-start mb-3">
                                     <div className="flex items-center gap-2 max-w-[70%]">
                                         {activeTab === 'projects' && (
                                             item._itemType === 'project' ? 
-                                            <Folder size={16} className="text-[#dc9750] shrink-0" /> : 
+                                            <Folder size={16} className="text-[#10b981] shrink-0" /> : 
                                             <LayoutList size={16} className="text-sky-400 shrink-0" />
                                         )}
-                                        <h3 className="text-base font-bold text-white truncate group-hover:text-[#dc9750] transition-colors">
+                                        <h3 className="text-base font-bold text-white truncate group-hover:text-[#10b981] transition-colors">
                                             {item.title || item.name}
                                         </h3>
                                     </div>
@@ -360,7 +360,7 @@ const Approvals = () => {
                             </div>
                             
                             <div className="flex items-center gap-3 mt-6 pt-4 border-t border-slate-800/60">
-                                <button className="w-full flex items-center justify-center gap-2 bg-[#dc9750]/10 text-[#dc9750] border border-[#dc9750]/30 hover:bg-[#dc9750] hover:text-[#0B101E] py-2.5 rounded-xl transition-all font-bold text-sm">
+                                <button className="w-full flex items-center justify-center gap-2 bg-[#10b981]/10 text-[#10b981] border border-[#10b981]/30 hover:bg-[#10b981] hover:text-[#0B101E] py-2.5 rounded-xl transition-all font-bold text-sm">
                                     <MessageSquare size={16} />
                                     Review & Action
                                 </button>
@@ -400,7 +400,7 @@ const Approvals = () => {
                     
                     {loadingDetails ? (
                         <div className="flex flex-col items-center justify-center">
-                            <Loader2 className="h-12 w-12 text-[#dc9750] animate-spin mb-4" />
+                            <Loader2 className="h-12 w-12 text-[#10b981] animate-spin mb-4" />
                             <p className="text-slate-300 font-medium animate-pulse">Loading submission details...</p>
                         </div>
                     ) : itemDetails && (
@@ -409,7 +409,7 @@ const Approvals = () => {
                             {/* Modal Header */}
                             <div className="flex items-center justify-between border-b border-slate-800/60 bg-[#121826] px-6 py-5 shrink-0">
                                 <div className="flex items-center gap-3">
-                                    <span className="flex items-center justify-center h-10 w-10 rounded-xl border border-[#dc9750]/30 bg-[#dc9750]/10 text-[#dc9750]">
+                                    <span className="flex items-center justify-center h-10 w-10 rounded-xl border border-[#10b981]/30 bg-[#10b981]/10 text-[#10b981]">
                                         <CheckSquare size={20} />
                                     </span>
                                     <div>
@@ -505,7 +505,7 @@ const Approvals = () => {
                                                             {itemDetails.assignedTo?.length > 0 ? (
                                                                 itemDetails.assignedTo.map((u) => (
                                                                     <div key={u._id} className="flex items-center gap-1.5 rounded-md bg-slate-800 px-2 py-0.5 text-xs font-semibold text-slate-300">
-                                                                        <div className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#dc9750] text-[#121826] text-[8px] font-bold">
+                                                                        <div className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#10b981] text-[#121826] text-[8px] font-bold">
                                                                             {u.name?.charAt(0)}
                                                                         </div>
                                                                         {u.name}
@@ -524,7 +524,7 @@ const Approvals = () => {
                                         {viewingItem._itemType !== 'project' && (
                                             <div className="rounded-2xl border border-slate-800/80 bg-[#121826] p-6 shadow-sm">
                                                 <div className="flex items-center gap-2 mb-6">
-                                                    <MessageSquare className="h-5 w-5 text-[#dc9750]" />
+                                                    <MessageSquare className="h-5 w-5 text-[#10b981]" />
                                                     <h3 className="text-lg font-bold text-white">Discussion ({itemComments.length})</h3>
                                                 </div>
 
@@ -536,7 +536,7 @@ const Approvals = () => {
                                                     ) : (
                                                         itemComments.map(c => (
                                                             <div key={c._id} className="flex gap-3">
-                                                                <div className="w-8 h-8 rounded-full bg-[#dc9750] text-[#121826] font-bold text-xs flex items-center justify-center shrink-0 shadow-sm mt-1">
+                                                                <div className="w-8 h-8 rounded-full bg-[#10b981] text-[#121826] font-bold text-xs flex items-center justify-center shrink-0 shadow-sm mt-1">
                                                                     {c.userId?.name.charAt(0).toUpperCase()}
                                                                 </div>
                                                                 <div className="flex-1 bg-[#0B101E] border border-slate-800 rounded-xl p-3 space-y-1.5">
@@ -558,11 +558,11 @@ const Approvals = () => {
                                                     <input 
                                                         type="text"
                                                         placeholder="Type your message here..."
-                                                        className="w-full rounded-xl border border-slate-700 bg-[#0B101E] px-4 py-3 text-sm text-white placeholder-slate-500 focus:border-[#dc9750] focus:outline-none focus:ring-1 focus:ring-[#dc9750] pr-24"
+                                                        className="w-full rounded-xl border border-slate-700 bg-[#0B101E] px-4 py-3 text-sm text-white placeholder-slate-500 focus:border-[#10b981] focus:outline-none focus:ring-1 focus:ring-[#10b981] pr-24"
                                                         value={commentInput}
                                                         onChange={(e) => setCommentInput(e.target.value)}
                                                     />
-                                                    <button type="submit" disabled={!commentInput.trim()} className="absolute right-1.5 top-1.5 bottom-1.5 flex items-center gap-1.5 rounded-lg bg-[#dc9750] px-4 font-bold text-[#121826] hover:bg-[#c28242] disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm">
+                                                    <button type="submit" disabled={!commentInput.trim()} className="absolute right-1.5 top-1.5 bottom-1.5 flex items-center gap-1.5 rounded-lg bg-[#10b981] px-4 font-bold text-[#121826] hover:bg-[#c28242] disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm">
                                                         Post <Send className="h-3.5 w-3.5 ml-0.5" />
                                                     </button>
                                                 </form>
@@ -582,7 +582,7 @@ const Approvals = () => {
                                                 value={feedback}
                                                 onChange={(e) => setFeedback(e.target.value)}
                                                 placeholder="Add notes for your decision (Required for rejection)..."
-                                                className="w-full h-28 rounded-xl border border-slate-700 bg-[#0B101E] p-4 text-sm text-white placeholder-slate-500 focus:border-[#dc9750] focus:ring-1 focus:ring-[#dc9750] outline-none resize-none transition-all mb-4"
+                                                className="w-full h-28 rounded-xl border border-slate-700 bg-[#0B101E] p-4 text-sm text-white placeholder-slate-500 focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] outline-none resize-none transition-all mb-4"
                                             />
                                             
                                             <div className="flex flex-col sm:flex-row items-center gap-3">
@@ -594,7 +594,7 @@ const Approvals = () => {
                                                 </button>
                                                 <button
                                                     onClick={() => handleProcessApproval('approve')}
-                                                    className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#dc9750] px-4 py-3 text-sm font-bold text-[#121826] hover:bg-[#c28242] transition-all"
+                                                    className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#10b981] px-4 py-3 text-sm font-bold text-[#121826] hover:bg-[#c28242] transition-all"
                                                 >
                                                     <CheckCircle className="h-4 w-4" /> Approve Submission
                                                 </button>
@@ -605,7 +605,7 @@ const Approvals = () => {
                                         {viewingItem._itemType !== 'project' && (
                                             <div className="rounded-2xl border border-slate-800/80 bg-[#121826] p-6 shadow-sm flex-1 flex flex-col max-h-[500px]">
                                                 <div className="flex items-center gap-2 mb-6">
-                                                    <History className="h-5 w-5 text-[#dc9750]" />
+                                                    <History className="h-5 w-5 text-[#10b981]" />
                                                     <h3 className="text-lg font-bold text-white">Audit Trail / History</h3>
                                                 </div>
 
@@ -617,7 +617,7 @@ const Approvals = () => {
                                                         newValue: `Task initialized with status: ${itemDetails.status}`
                                                     }]).map((log, idx) => (
                                                         <div key={idx} className="relative pl-6">
-                                                            <div className="absolute left-[-2px] top-1.5 h-2 w-2 rounded-full bg-[#dc9750] ring-4 ring-[#121826]"></div>
+                                                            <div className="absolute left-[-2px] top-1.5 h-2 w-2 rounded-full bg-[#10b981] ring-4 ring-[#121826]"></div>
                                                             
                                                             <div className="mb-1 flex flex-wrap items-center gap-2 text-[10px] font-bold text-slate-500">
                                                                 <span className="text-white">{log.userId?.name || 'System'}</span>

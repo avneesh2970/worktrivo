@@ -339,7 +339,7 @@ const ChatApp = () => {
                         segment,
                         <span
                             key={`${mention._id}-${index}`}
-                            className="font-semibold text-[#dc9750] hover:text-emerald-300 transition-colors"
+                            className="font-semibold text-[#10b981] hover:text-emerald-300 transition-colors"
                         >
                             {mentionText}
                         </span>,
@@ -367,8 +367,8 @@ const ChatApp = () => {
         const el = document.getElementById(`msg-${msgId}`);
         if (el) {
             el.scrollIntoView({ behavior: "smooth", block: "center" });
-            el.classList.add("ring-2", "ring-[#dc9750]", "transition-all");
-            setTimeout(() => el.classList.remove("ring-2", "ring-[#dc9750]"), 2000);
+            el.classList.add("ring-2", "ring-[#10b981]", "transition-all");
+            setTimeout(() => el.classList.remove("ring-2", "ring-[#10b981]"), 2000);
         }
     };
 
@@ -478,7 +478,7 @@ const ChatApp = () => {
                             </button>
                         </div>
                         <div className="p-4 border-b border-slate-800 bg-slate-950/40 shrink-0">
-                            <div className="flex items-center bg-slate-950 rounded-xl border border-slate-800 focus-within:border-[#dc9750]/80 px-3 transition-colors">
+                            <div className="flex items-center bg-slate-950 rounded-xl border border-slate-800 focus-within:border-[#10b981]/80 px-3 transition-colors">
                                 <Search size={18} className="text-slate-500 shrink-0" />
                                 <input
                                     autoFocus
@@ -501,7 +501,7 @@ const ChatApp = () => {
                                         className="w-full p-3 hover:bg-slate-800/60 active:bg-slate-800/80 rounded-xl flex items-center justify-between transition-all group text-left cursor-pointer"
                                     >
                                         <div className="flex items-center gap-3 min-w-0">
-                                            <div className="w-9 h-9 rounded-full bg-[#dc9750]/20 text-[#dc9750] border border-[#dc9750]/30 flex items-center justify-center text-xs font-bold shrink-0">
+                                            <div className="w-9 h-9 rounded-full bg-[#10b981]/20 text-[#10b981] border border-[#10b981]/30 flex items-center justify-center text-xs font-bold shrink-0">
                                                 {u.name?.charAt(0).toUpperCase()}
                                             </div>
                                             <div className="min-w-0">
@@ -513,7 +513,7 @@ const ChatApp = () => {
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="p-2 text-slate-400 group-hover:text-[#dc9750] group-hover:bg-[#dc9750]/10 rounded-lg transition-colors shrink-0">
+                                        <div className="p-2 text-slate-400 group-hover:text-[#10b981] group-hover:bg-[#10b981]/10 rounded-lg transition-colors shrink-0">
                                             <UserPlus size={18} />
                                         </div>
                                     </button>
@@ -568,7 +568,7 @@ const ChatApp = () => {
             >
                 <div className="h-16 px-4 sm:px-5 border-b border-slate-800 flex items-center justify-between shrink-0 bg-slate-900/50">
                     <div className="flex items-center gap-2.5">
-                        <Users size={18} className="text-[#dc9750]" />
+                        <Users size={18} className="text-[#10b981]" />
                         <span className="font-semibold text-xs tracking-wider uppercase text-slate-300">
                             Channel Members
                         </span>
@@ -623,7 +623,7 @@ const ChatApp = () => {
                                         </div>
 
                                         <div
-                                            className={`text-[10px] sm:text-[11px] ${isOnline ? "text-[#dc9750]/90" : "text-slate-500"
+                                            className={`text-[10px] sm:text-[11px] ${isOnline ? "text-[#10b981]/90" : "text-slate-500"
                                                 }`}
                                         >
                                             {isOnline ? "Online" : "Offline"}
@@ -713,7 +713,7 @@ const ChatApp = () => {
                                     md:px-4
                                     md:py-2.5
 
-                                    bg-[#dc9750]
+                                    bg-[#10b981]
                                     hover:bg-[#e8ac74]
                                     active:bg-[#b87a3d]
 
@@ -723,7 +723,7 @@ const ChatApp = () => {
                                     rounded-xl
 
                                     shadow-lg
-                                    shadow-[#dc9750]/25
+                                    shadow-[#10b981]/25
 
                                     transition-all
                                     duration-300
@@ -752,7 +752,7 @@ const ChatApp = () => {
                                 bg-[#171b23]
                                 backdrop-blur-xl
                                 border-b
-                                border-[#dc9750]/20
+                                border-[#10b981]/20
                                 px-4
                                 py-2
                                 flex
@@ -770,12 +770,12 @@ const ChatApp = () => {
                                     }
                                     className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer group"
                                 >
-                                    <div className="p-1.5 bg-[#dc9750]/10 text-[#dc9750] rounded-lg shrink-0">
+                                    <div className="p-1.5 bg-[#10b981]/10 text-[#10b981] rounded-lg shrink-0">
                                         <Pin size={15} className="rotate-45" />
                                     </div>
                                     <div className="min-w-0 flex-1">
                                         <div className="flex items-center gap-2">
-                                            <span className="text-[10px] font-bold text-[#dc9750] uppercase tracking-wider">
+                                            <span className="text-[10px] font-bold text-[#10b981] uppercase tracking-wider">
                                                 Pinned ({pinnedMessages.length})
                                             </span>
                                         </div>
@@ -927,7 +927,7 @@ const ChatApp = () => {
                                                     {user?.role !== "member" && (
                                                         <button
                                                             onClick={() => pinMessage(msg._id)}
-                                                            className="p-1 hover:bg-slate-800 text-slate-400 hover:text-[#dc9750] rounded cursor-pointer"
+                                                            className="p-1 hover:bg-slate-800 text-slate-400 hover:text-[#10b981] rounded cursor-pointer"
                                                         >
                                                             <Pin size={13} className="rotate-45" />
                                                         </button>
@@ -987,7 +987,7 @@ const ChatApp = () => {
 
                                                     {/* Sender */}
                                                     {!mine && showAvatar && (
-                                                        <div className="text-xs font-semibold text-[#dc9750] mb-1">
+                                                        <div className="text-xs font-semibold text-[#10b981] mb-1">
                                                             {msg.sender?.name}
                                                         </div>
                                                     )}
@@ -1000,7 +1000,7 @@ const ChatApp = () => {
                                                                 onChange={(e) =>
                                                                     setEditingText(e.target.value)
                                                                 }
-                                                                className="w-full bg-slate-950/80 border border-[#dc9750]/50 rounded-lg p-2 text-xs text-white outline-none resize-none"
+                                                                className="w-full bg-slate-950/80 border border-[#10b981]/50 rounded-lg p-2 text-xs text-white outline-none resize-none"
                                                                 rows={2}
                                                             />
 
@@ -1014,7 +1014,7 @@ const ChatApp = () => {
 
                                                                 <button
                                                                     onClick={saveEdit}
-                                                                    className="px-2.5 py-1 text-[10px] bg-[#dc9750] text-white rounded-md"
+                                                                    className="px-2.5 py-1 text-[10px] bg-[#10b981] text-white rounded-md"
                                                                 >
                                                                     Save
                                                                 </button>
@@ -1038,7 +1038,7 @@ const ChatApp = () => {
                                                         {mine && (
                                                             <CheckCheck
                                                                 size={13}
-                                                                className="text-[#dc9750]"
+                                                                className="text-[#10b981]"
                                                             />
                                                         )}
                                                     </div>
@@ -1053,7 +1053,7 @@ const ChatApp = () => {
 
                         {/* Typing indicator */}
                         {otherTypingUsers.length > 0 && (
-                            <div className="px-4 pb-1 text-[10px] sm:text-[11px] text-[#dc9750] italic">
+                            <div className="px-4 pb-1 text-[10px] sm:text-[11px] text-[#10b981] italic">
                                 {otherTypingUsers.join(", ")} typing...
                             </div>
                         )}
@@ -1158,7 +1158,7 @@ const ChatApp = () => {
                                         p-3
                                         sm:p-2.5
 
-                                        bg-[#dc9750]
+                                        bg-[#10b981]
                                         hover:bg-[#e8ac74]
                                         active:bg-[#b87a3d]
 
@@ -1170,7 +1170,7 @@ const ChatApp = () => {
                                         rounded-xl
 
                                         shadow-lg
-                                        shadow-[#dc9750]/25
+                                        shadow-[#10b981]/25
 
                                         transition-all
                                         duration-300

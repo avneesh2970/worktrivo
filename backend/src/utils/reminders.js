@@ -121,7 +121,7 @@ const checkReminders = async () => {
         <br>
 
         <p>Regards,</p>
-        <p>TaskSphere Team</p>
+        <p>WorkTrivo Team</p>
         `
       );
 

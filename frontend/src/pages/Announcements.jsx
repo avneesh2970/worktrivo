@@ -232,8 +232,8 @@ const Announcements = () => {
     <div className="min-h-screen bg-slate-950 text-slate-100 p-4 sm:p-6 lg:p-8">
       {/* Toast Notification */}
       {toastMsg && (
-        <div className="fixed bottom-6 right-6 z-[200] flex items-center gap-2 px-4 py-3 rounded-xl bg-[#1e2640] text-slate-100 shadow-xl border border-[#dc9750]/30 text-sm font-medium transition-all animate-in fade-in slide-in-from-bottom-4">
-          <CheckCircle2 size={18} className="text-[#dc9750]" />
+        <div className="fixed bottom-6 right-6 z-[200] flex items-center gap-2 px-4 py-3 rounded-xl bg-[#1e2640] text-slate-100 shadow-xl border border-[#10b981]/30 text-sm font-medium transition-all animate-in fade-in slide-in-from-bottom-4">
+          <CheckCircle2 size={18} className="text-[#10b981]" />
           {toastMsg}
         </div>
       )}
@@ -243,7 +243,7 @@ const Announcements = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-700/50">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2.5 text-slate-100">
-              <span className="p-2.5 bg-[#1e2640] text-[#dc9750] rounded-xl border border-[#dc9750]/20">
+              <span className="p-2.5 bg-[#1e2640] text-[#10b981] rounded-xl border border-[#10b981]/20">
                 <Megaphone size={22} />
               </span>
               Announcements
@@ -255,7 +255,7 @@ const Announcements = () => {
           {isAdmin && (
             <button
               onClick={() => { resetForm(); setIsModalOpen(true); }}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#dc9750] hover:bg-[#dc9750]/80 text-[#1e2640] text-sm font-bold rounded-xl shadow-sm transition-all active:scale-[0.98]"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#10b981] hover:bg-[#10b981]/80 text-[#1e2640] text-sm font-bold rounded-xl shadow-sm transition-all active:scale-[0.98]"
             >
               <Plus size={18} className="text-[#1e2640]" />
               <span>Post Announcement</span>
@@ -273,7 +273,7 @@ const Announcements = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search announcements..."
-              className="w-full pl-10 pr-9 py-2 text-sm bg-slate-900/60 border border-slate-700/60 rounded-xl focus:outline-none focus:border-[#dc9750] focus:ring-1 focus:ring-[#dc9750]/50 text-slate-100 placeholder-slate-500 shadow-xs transition-all"
+              className="w-full pl-10 pr-9 py-2 text-sm bg-slate-900/60 border border-slate-700/60 rounded-xl focus:outline-none focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981]/50 text-slate-100 placeholder-slate-500 shadow-xs transition-all"
             />
             {searchQuery && (
               <button
@@ -291,7 +291,7 @@ const Announcements = () => {
             <button
               onClick={() => setSelectedCategory('All')}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${selectedCategory === 'All'
-                ? 'bg-[#dc9750] text-[#1e2640] font-bold'
+                ? 'bg-[#10b981] text-[#1e2640] font-bold'
                 : 'bg-[#1e2640] text-slate-300 border border-slate-700/60 hover:bg-slate-800'
                 }`}
             >
@@ -302,7 +302,7 @@ const Announcements = () => {
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${selectedCategory === cat
-                  ? 'bg-[#dc9750] text-[#1e2640] font-bold'
+                  ? 'bg-[#10b981] text-[#1e2640] font-bold'
                   : 'bg-[#1e2640] text-slate-300 border border-slate-700/60 hover:bg-slate-800'
                   }`}
               >
@@ -315,12 +315,12 @@ const Announcements = () => {
         {/* Content Section */}
         {loading ? (
           <div className="flex flex-col justify-center items-center py-20 gap-3">
-            <Loader2 size={32} className="animate-spin text-[#dc9750]" />
+            <Loader2 size={32} className="animate-spin text-[#10b981]" />
             <p className="text-xs text-slate-400">Loading announcements...</p>
           </div>
         ) : filteredAnnouncements.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 px-4 bg-[#1e2640] border border-[#dc9750]/20 rounded-2xl text-center shadow-xs">
-            <div className="p-3 bg-[#dc9750]/10 rounded-full text-[#dc9750] mb-3">
+          <div className="flex flex-col items-center justify-center py-16 px-4 bg-[#1e2640] border border-[#10b981]/20 rounded-2xl text-center shadow-xs">
+            <div className="p-3 bg-[#10b981]/10 rounded-full text-[#10b981] mb-3">
               <Megaphone size={32} />
             </div>
             <h3 className="text-base font-semibold text-slate-200">
@@ -334,7 +334,7 @@ const Announcements = () => {
             {(searchQuery || selectedCategory !== 'All') && (
               <button
                 onClick={() => { setSearchQuery(''); setSelectedCategory('All'); }}
-                className="mt-4 px-3 py-1.5 text-xs font-medium text-[#dc9750] hover:bg-[#dc9750]/10 rounded-lg transition-colors"
+                className="mt-4 px-3 py-1.5 text-xs font-medium text-[#10b981] hover:bg-[#10b981]/10 rounded-lg transition-colors"
               >
                 Clear Filters
               </button>
@@ -347,8 +347,8 @@ const Announcements = () => {
                 key={a._id}
                 onMouseEnter={() => { if (!hasRead(a)) markRead(a._id); }}
                 className={`group bg-[#1e2640] border rounded-2xl p-5 sm:p-6 shadow-xs hover:shadow-md transition-all relative ${a.pinned
-                  ? 'border-[#dc9750] ring-1 ring-[#dc9750]/30'
-                  : 'border-[#dc9750]/20'
+                  ? 'border-[#10b981] ring-1 ring-[#10b981]/30'
+                  : 'border-[#10b981]/20'
                   }`}
               >
                 {/* Header row of Card */}
@@ -356,8 +356,8 @@ const Announcements = () => {
                   <div className="flex flex-col gap-2 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       {a.pinned && (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#dc9750] bg-[#dc9750]/10 px-2.5 py-0.5 rounded-md border border-[#dc9750]/30">
-                          <Pin size={12} className="rotate-45 text-[#dc9750]" /> Pinned
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#10b981] bg-[#10b981]/10 px-2.5 py-0.5 rounded-md border border-[#10b981]/30">
+                          <Pin size={12} className="rotate-45 text-[#10b981]" /> Pinned
                         </span>
                       )}
                       <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-medium border ${categoryStyle[a.category] || 'bg-slate-800 text-slate-300 border-slate-700'}`}>
@@ -378,14 +378,14 @@ const Announcements = () => {
                     <div className="flex items-center gap-1 opacity-90 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity bg-slate-900/80 p-1 rounded-lg border border-slate-700/60 flex-shrink-0">
                       <button
                         onClick={() => togglePin(a)}
-                        className="p-1.5 text-slate-400 hover:text-[#dc9750] rounded-md hover:bg-slate-800 transition-colors"
+                        className="p-1.5 text-slate-400 hover:text-[#10b981] rounded-md hover:bg-slate-800 transition-colors"
                         title={a.pinned ? 'Unpin' : 'Pin to top'}
                       >
                         {a.pinned ? <PinOff size={15} /> : <Pin size={15} />}
                       </button>
                       <button
                         onClick={() => archiveAnnouncement(a._id)}
-                        className="p-1.5 text-slate-400 hover:text-[#dc9750] rounded-md hover:bg-slate-800 transition-colors"
+                        className="p-1.5 text-slate-400 hover:text-[#10b981] rounded-md hover:bg-slate-800 transition-colors"
                         title="Archive"
                       >
                         <Archive size={15} />
@@ -415,7 +415,7 @@ const Announcements = () => {
                         href={att.fileUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#1e2640] border border-slate-700 text-xs text-slate-300 hover:border-[#dc9750] hover:text-[#dc9750] transition-colors shadow-2xs"
+                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#1e2640] border border-slate-700 text-xs text-slate-300 hover:border-[#10b981] hover:text-[#10b981] transition-colors shadow-2xs"
                       >
                         <Paperclip size={13} className="text-slate-400" />
                         <span className="max-w-[160px] truncate font-medium">
@@ -439,7 +439,7 @@ const Announcements = () => {
                     {canViewReadStatus && (
                       <button
                         onClick={() => openReadStatus(a._id)}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-slate-400 hover:text-[#dc9750] hover:bg-slate-800 rounded-lg transition-colors"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-slate-400 hover:text-[#10b981] hover:bg-slate-800 rounded-lg transition-colors"
                       >
                         <Eye size={14} /> Read status
                       </button>
@@ -452,7 +452,7 @@ const Announcements = () => {
                     ) : (
                       <button
                         onClick={() => acknowledge(a._id)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold text-[#dc9750] hover:bg-[#dc9750]/10 border border-[#dc9750]/30 transition-colors"
+                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold text-[#10b981] hover:bg-[#10b981]/10 border border-[#10b981]/30 transition-colors"
                       >
                         <CheckCircle2 size={14} /> Acknowledge
                       </button>
@@ -469,7 +469,7 @@ const Announcements = () => {
       {/* CREATE ANNOUNCEMENT MODAL */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs overflow-y-auto">
-          <div className="bg-[#1e2640] border border-[#dc9750]/20 rounded-2xl max-w-2xl w-full p-6 shadow-2xl my-8 transition-all">
+          <div className="bg-[#1e2640] border border-[#10b981]/20 rounded-2xl max-w-2xl w-full p-6 shadow-2xl my-8 transition-all">
             <div className="flex items-center justify-between pb-4 border-b border-slate-700/50">
               <h3 className="text-lg font-bold text-slate-100">Post New Announcement</h3>
               <button
@@ -496,7 +496,7 @@ const Announcements = () => {
                   type="text"
                   value={formTitle}
                   onChange={(e) => setFormTitle(e.target.value)}
-                  className="w-full px-3.5 py-2.5 text-sm bg-slate-900/60 border border-slate-700/60 rounded-xl outline-none focus:border-[#dc9750] focus:ring-1 focus:ring-[#dc9750]/50 text-slate-100 placeholder:text-slate-500 transition-all"
+                  className="w-full px-3.5 py-2.5 text-sm bg-slate-900/60 border border-slate-700/60 rounded-xl outline-none focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981]/50 text-slate-100 placeholder:text-slate-500 transition-all"
                   placeholder="e.g., Office closed for Holiday"
                 />
               </div>
@@ -509,7 +509,7 @@ const Announcements = () => {
                   rows={4}
                   value={formBody}
                   onChange={(e) => setFormBody(e.target.value)}
-                  className="w-full px-3.5 py-2.5 text-sm bg-slate-900/60 border border-slate-700/60 rounded-xl outline-none focus:border-[#dc9750] focus:ring-1 focus:ring-[#dc9750]/50 text-slate-100 placeholder:text-slate-500 transition-all"
+                  className="w-full px-3.5 py-2.5 text-sm bg-slate-900/60 border border-slate-700/60 rounded-xl outline-none focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981]/50 text-slate-100 placeholder:text-slate-500 transition-all"
                   placeholder="Write full announcement details..."
                 />
               </div>
@@ -520,7 +520,7 @@ const Announcements = () => {
                   <select
                     value={formCategory}
                     onChange={(e) => setFormCategory(e.target.value)}
-                    className="w-full px-3.5 py-2.5 text-sm bg-slate-900/60 border border-slate-700/60 rounded-xl outline-none focus:border-[#dc9750] focus:ring-1 focus:ring-[#dc9750]/50 text-slate-100 transition-all"
+                    className="w-full px-3.5 py-2.5 text-sm bg-slate-900/60 border border-slate-700/60 rounded-xl outline-none focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981]/50 text-slate-100 transition-all"
                   >
                     {CATEGORIES.map((c) => (
                       <option key={c} value={c} className="bg-[#1e2640] text-slate-100">
@@ -537,7 +537,7 @@ const Announcements = () => {
                     type="text"
                     value={formDepartment}
                     onChange={(e) => setFormDepartment(e.target.value)}
-                    className="w-full px-3.5 py-2.5 text-sm bg-slate-900/60 border border-slate-700/60 rounded-xl outline-none focus:border-[#dc9750] focus:ring-1 focus:ring-[#dc9750]/50 text-slate-100 placeholder:text-slate-500 transition-all"
+                    className="w-full px-3.5 py-2.5 text-sm bg-slate-900/60 border border-slate-700/60 rounded-xl outline-none focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981]/50 text-slate-100 placeholder:text-slate-500 transition-all"
                     placeholder="e.g., Engineering"
                   />
                 </div>
@@ -549,7 +549,7 @@ const Announcements = () => {
                   id="pinned"
                   checked={formPinned}
                   onChange={(e) => setFormPinned(e.target.checked)}
-                  className="accent-[#dc9750] rounded border-slate-700 bg-slate-900/60 focus:ring-[#dc9750] h-4 w-4"
+                  className="accent-[#10b981] rounded border-slate-700 bg-slate-900/60 focus:ring-[#10b981] h-4 w-4"
                 />
                 <label htmlFor="pinned" className="text-xs font-medium text-slate-300 cursor-pointer">
                   Pin this announcement to top
@@ -591,7 +591,7 @@ const Announcements = () => {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold bg-[#dc9750] hover:bg-[#dc9750]/80 disabled:opacity-50 text-[#1e2640] rounded-xl shadow-xs transition-all active:scale-95"
+                  className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold bg-[#10b981] hover:bg-[#10b981]/80 disabled:opacity-50 text-[#1e2640] rounded-xl shadow-xs transition-all active:scale-95"
                 >
                   {submitting && <Loader2 size={14} className="animate-spin text-[#1e2640]" />}
                   {submitting ? 'Posting...' : 'Post Announcement'}
@@ -607,7 +607,7 @@ const Announcements = () => {
       {/* READ STATUS MODAL */}
 {readStatusFor && (
   <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs">
-    <div className="bg-[#1e2640] border border-[#dc9750]/20 rounded-2xl max-w-md w-full p-6 shadow-2xl max-h-[80vh] overflow-y-auto">
+    <div className="bg-[#1e2640] border border-[#10b981]/20 rounded-2xl max-w-md w-full p-6 shadow-2xl max-h-[80vh] overflow-y-auto">
       <div className="flex items-center justify-between pb-3 border-b border-slate-700/50">
         <h3 className="text-base font-bold text-slate-100">Read Status</h3>
         <button
@@ -620,7 +620,7 @@ const Announcements = () => {
 
       {!readStatusData ? (
         <div className="flex justify-center py-10">
-          <Loader2 size={24} className="animate-spin text-[#dc9750]" />
+          <Loader2 size={24} className="animate-spin text-[#10b981]" />
         </div>
       ) : (
         <div className="mt-4 space-y-4">
