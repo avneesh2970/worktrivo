@@ -9,6 +9,7 @@ dotenv.config();
 
 // Config
 const connectDB = require("./src/config/db");
+const initAdminUser = require("./src/config/initAdmin");
 const setupMiddleware = require("./src/middleware");
 const { init: initSocket } = require("./src/utils/socket");
 const { startScheduler } = require("./src/utils/reminders");
@@ -113,9 +114,20 @@ initSocket(server);
 const startServer = async () => {
   try {
     await connectDB();
+    await initAdminUser();
 
     // Start Reminder Scheduler
     startScheduler();
+
+    server.on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        console.error(`❌ Port ${PORT} is already in use by another process.`);
+        console.error(`👉 Please stop the existing process running on port ${PORT}.`);
+      } else {
+        console.error('❌ Server error:', err.message);
+      }
+      process.exit(1);
+    });
 
     // Listen on all network interfaces
     server.listen(PORT, "0.0.0.0", () => {

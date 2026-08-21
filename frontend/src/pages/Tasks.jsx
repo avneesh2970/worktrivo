@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth, API_BASE } from '../context/AuthContext';
 import {
   Plus, Search, Filter, RefreshCw, Edit2, Trash2, Calendar, AlertCircle,
-  LayoutGrid, List, X, Paperclip, CheckCircle2,
+  LayoutGrid, List, X, Paperclip, CheckCircle2, Loader2,
   KanbanSquare, CalendarDays, GanttChartSquare, Mic, UserPlus, CheckSquare, Square
 } from 'lucide-react';
 import KanbanBoard from '../components/KanbanBoard';
@@ -84,10 +84,12 @@ const Tasks = () => {
   const [formChecklistInput, setFormChecklistInput] = useState('');
   const [formDependencies, setFormDependencies] = useState([]);
   const [formError, setFormError] = useState('');
+  const [formSubmitting, setFormSubmitting] = useState(false);
 
   // Confirm Delete State
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [deleteTaskId, setDeleteTaskId] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Lightweight built-in toast (no external dependency required)
   const [toastMsg, setToastMsg] = useState(null);
@@ -113,7 +115,14 @@ const Tasks = () => {
       });
       const data = await res.json();
 
-      const taskList = Array.isArray(data) ? data : [];
+      let taskList = Array.isArray(data) ? data : [];
+
+      // Hide Approved tasks initially when no status filter is selected.
+      // Approved tasks will only be shown when the status filter 'Approved' or an explicit filter is selected.
+      if (!statusFilter) {
+        taskList = taskList.filter((t) => t.status !== 'Approved');
+      }
+
       setTasks(taskList);
       setAllTasks(taskList);
     } catch (err) {
@@ -291,6 +300,7 @@ const Tasks = () => {
       dependencies: formDependencies
     };
 
+    setFormSubmitting(true);
     try {
       const url = modalMode === 'create' ? `${API_BASE}/tasks` : `${API_BASE}/tasks/${currentTaskId}`;
       const method = modalMode === 'create' ? 'POST' : 'PUT';
@@ -314,6 +324,8 @@ const Tasks = () => {
       }
     } catch (err) {
       setFormError('Network error. Failed to save task.');
+    } finally {
+      setFormSubmitting(false);
     }
   };
 
@@ -324,6 +336,7 @@ const Tasks = () => {
   };
 
   const handleDeleteTask = async () => {
+    setDeleteLoading(true);
     try {
       const res = await fetch(`${API_BASE}/tasks/${deleteTaskId}`, {
         method: 'DELETE',
@@ -337,6 +350,8 @@ const Tasks = () => {
       }
     } catch (err) {
       console.error('Delete error', err);
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -1323,9 +1338,17 @@ const Tasks = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 text-xs font-semibold bg-[#10b981] hover:bg-[#b97737] text-white rounded-lg transition-colors shadow-sm"
+                  disabled={formSubmitting}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold bg-[#10b981] hover:bg-[#059669] disabled:opacity-50 text-white rounded-lg transition-colors shadow-sm cursor-pointer"
                 >
-                  {modalMode === 'create' ? 'Create Task' : 'Save Changes'}
+                  {formSubmitting ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>{modalMode === 'create' ? 'Creating...' : 'Saving...'}</span>
+                    </>
+                  ) : (
+                    <span>{modalMode === 'create' ? 'Create Task' : 'Save Changes'}</span>
+                  )}
                 </button>
               </div>
             </form>
@@ -1365,9 +1388,17 @@ const Tasks = () => {
               <button
                 type="button"
                 onClick={handleDeleteTask}
-                className="px-4 py-2 text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white rounded-lg transition-colors shadow-sm"
+                disabled={deleteLoading}
+                className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white rounded-lg transition-colors shadow-sm cursor-pointer"
               >
-                Delete Task
+                {deleteLoading ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <span>Delete Task</span>
+                )}
               </button>
             </div>
           </div>
@@ -1418,9 +1449,16 @@ const Tasks = () => {
                 type="button"
                 onClick={handleBulkAssign}
                 disabled={!bulkAssignUserId || bulkAssignLoading}
-                className="px-4 py-2 text-xs font-semibold bg-[#10b981] hover:bg-[#b97737] disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-colors shadow-sm"
+                className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold bg-[#10b981] hover:bg-[#059669] disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-colors shadow-sm cursor-pointer"
               >
-                {bulkAssignLoading ? 'Assigning...' : 'Confirm Assignment'}
+                {bulkAssignLoading ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Assigning...</span>
+                  </>
+                ) : (
+                  <span>Confirm Assignment</span>
+                )}
               </button>
             </div>
           </div>
@@ -1576,11 +1614,16 @@ const Tasks = () => {
                 type="button"
                 onClick={handleBulkCreateSubmit}
                 disabled={bulkCreateLoading}
-                className="px-4 py-2 text-xs font-semibold bg-[#10b981] hover:bg-[#b97737] disabled:opacity-50 text-white rounded-lg transition-colors shadow-sm"
+                className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold bg-[#10b981] hover:bg-[#059669] disabled:opacity-50 text-white rounded-lg transition-colors shadow-sm cursor-pointer"
               >
-                {bulkCreateLoading
-                  ? 'Creating...'
-                  : `Create ${validBulkCount > 0 ? validBulkCount : ''} Task${validBulkCount === 1 ? '' : 's'}`}
+                {bulkCreateLoading ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Creating...</span>
+                  </>
+                ) : (
+                  <span>{`Create ${validBulkCount > 0 ? validBulkCount : ''} Task${validBulkCount === 1 ? '' : 's'}`}</span>
+                )}
               </button>
             </div>
           </div>

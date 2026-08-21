@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { downloadReport } from "../utils/reportGenerator";
 import { useAuth, API_BASE } from '../context/AuthContext';
+import { useSocket } from '../context/SocketContext';
 import LoginActivity from "../components/LoginActivity";
 import MemberDashboard from "../components/MemberDashboard";
 import {
@@ -14,6 +15,7 @@ import toast from 'react-hot-toast';
 
 const Dashboard = () => {
   const { user, token } = useAuth();
+  const { socket } = useSocket();
   const navigate = useNavigate();
 
   const [tasks, setTasks] = useState([]);
@@ -57,7 +59,39 @@ const Dashboard = () => {
     if (user) {
       fetchData();
     }
-  }, [user]);
+    if (socket) {
+      socket.on('taskUpdated', fetchData);
+      socket.on('projectUpdated', fetchData);
+      socket.on('notification', fetchData);
+    }
+    return () => {
+      if (socket) {
+        socket.off('taskUpdated', fetchData);
+        socket.off('projectUpdated', fetchData);
+        socket.off('notification', fetchData);
+      }
+    };
+  }, [user, socket]);
+
+  const handleActivityClick = (log) => {
+    const taskId = log.taskId?._id || log.taskId;
+    const groupId = log.groupId?._id || log.groupId;
+
+    if (taskId) {
+      navigate(`/tasks/${taskId}`);
+    } else if (groupId) {
+      navigate(`/groups/${groupId}`);
+    } else {
+      const actionText = (log.action || '').toLowerCase();
+      if (actionText.includes('project') || actionText.includes('group')) {
+        navigate('/groups');
+      } else if (actionText.includes('user') || actionText.includes('account')) {
+        navigate('/users');
+      } else {
+        navigate('/tasks');
+      }
+    }
+  };
 
   // Loading Skeleton State
   if (loading) {
@@ -398,6 +432,50 @@ const Dashboard = () => {
               </div>
             )}
           </div>
+
+          {/* Recently Approved Tasks */}
+          <div className="rounded-2xl border border-white/10 bg-[#0d1426]/80 p-6 backdrop-blur-md space-y-4 shadow-lg">
+            <div className="flex items-center justify-between border-b border-white/5 pb-4">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 size={18} className="text-emerald-400" />
+                <h3 className="font-heading text-base font-semibold text-white">
+                  Recently Approved Tasks
+                </h3>
+              </div>
+              <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                {tasks.filter(t => t.status === 'Approved').length} Approved
+              </span>
+            </div>
+
+            {tasks.filter(t => t.status === 'Approved').length === 0 ? (
+              <div className="py-6 text-center text-xs text-gray-400">
+                No approved tasks yet.
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
+                {tasks.filter(t => t.status === 'Approved').slice(0, 5).map(task => (
+                  <div
+                    key={task._id}
+                    onClick={() => navigate(`/tasks/${task._id}`)}
+                    className="group flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.02] p-3.5 hover:bg-white/5 hover:border-emerald-500/30 cursor-pointer transition-all duration-200"
+                  >
+                    <div className="space-y-1 pr-2">
+                      <p className="text-xs font-semibold text-white group-hover:text-emerald-300 transition-colors line-clamp-1">
+                        {task.title}
+                      </p>
+                      <p className="text-[11px] text-gray-400 flex items-center gap-1.5">
+                        <CheckCircle2 size={12} className="text-emerald-400" />
+                        <span>Approved by: <strong className="text-emerald-300 font-semibold">{task.approvedBy?.name || task.createdBy?.name || 'Manager'}</strong></span>
+                      </p>
+                    </div>
+                    <div className="p-1.5 rounded-lg bg-white/5 group-hover:bg-emerald-500 group-hover:text-slate-900 text-gray-400 transition-all shrink-0">
+                      <ArrowRight size={14} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Right Column */}
@@ -420,7 +498,11 @@ const Dashboard = () => {
             ) : (
               <div className="relative pl-3 space-y-4 max-h-80 overflow-y-auto pr-1 border-l border-white/10 custom-scrollbar ml-2">
                 {auditLogs.map(log => (
-                  <div key={log._id} className="relative flex items-start justify-between gap-3 text-xs pl-4 group">
+                  <div
+                    key={log._id}
+                    onClick={() => handleActivityClick(log)}
+                    className="relative flex items-start justify-between gap-3 text-xs pl-4 py-1.5 rounded-lg group cursor-pointer hover:bg-white/5 transition-colors"
+                  >
                     {/* Timeline Node */}
                     <div className="absolute -left-[17px] top-1 h-2.5 w-2.5 rounded-full border border-indigo-500 bg-[#0d1426] group-hover:bg-indigo-500 transition-colors"></div>
 

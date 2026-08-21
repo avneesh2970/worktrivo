@@ -4,7 +4,7 @@ import { useAuth, API_BASE } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import {
   ArrowLeft, Calendar, User, MessageSquare, History, FileText,
-  Play, CheckCircle, XCircle, AlertCircle, ArrowUpCircle, Send
+  Play, CheckCircle, XCircle, AlertCircle, ArrowUpCircle, Send, Loader2
 } from 'lucide-react';
 import FileUpload from "../components/FileUpload";
 import FileList from "../components/FileList";
@@ -26,12 +26,14 @@ const TaskDetails = () => {
     setRefreshFiles(prev => !prev);
   };
 
-  // Input states
+  // Input & Loading states
   const [newComment, setNewComment] = useState('');
   const [feedbackText, setFeedbackText] = useState('');
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
   const [isApproveConfirmOpen, setIsApproveConfirmOpen] = useState(false);
   const [actionError, setActionError] = useState('');
+  const [actionLoading, setActionLoading] = useState(false);
+  const [commentSubmitting, setCommentSubmitting] = useState(false);
 
   const fetchTaskDetails = async () => {
     try {
@@ -93,6 +95,7 @@ const TaskDetails = () => {
 
   const handleStatusChange = async (newStatus, feedback = '') => {
     setActionError('');
+    setActionLoading(true);
     try {
       const res = await fetch(`${API_BASE}/tasks/${id}/status`, {
         method: 'PATCH',
@@ -114,6 +117,8 @@ const TaskDetails = () => {
       }
     } catch (err) {
       setActionError('Network error. Failed to update status.');
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -121,6 +126,7 @@ const TaskDetails = () => {
     e.preventDefault();
     if (!newComment.trim()) return;
 
+    setCommentSubmitting(true);
     try {
       const res = await fetch(`${API_BASE}/tasks/${id}/comments`, {
         method: 'POST',
@@ -140,6 +146,8 @@ const TaskDetails = () => {
       }
     } catch (err) {
       alert('Error posting comment.');
+    } finally {
+      setCommentSubmitting(false);
     }
   };
 
@@ -242,9 +250,10 @@ const TaskDetails = () => {
                       <button
                         type="button"
                         onClick={() => handleStatusChange('In Progress')}
-                        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 rounded-lg shadow-sm transition-colors"
+                        disabled={actionLoading}
+                        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 disabled:opacity-50 rounded-lg shadow-sm transition-colors cursor-pointer"
                       >
-                        <Play size={16} />
+                        {actionLoading ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
                         <span>Start Work</span>
                       </button>
                     )}
@@ -252,9 +261,10 @@ const TaskDetails = () => {
                       <button
                         type="button"
                         onClick={() => handleStatusChange('Completed (Pending Approval)')}
-                        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 rounded-lg shadow-sm transition-colors"
+                        disabled={actionLoading}
+                        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-50 rounded-lg shadow-sm transition-colors cursor-pointer"
                       >
-                        <ArrowUpCircle size={16} />
+                        {actionLoading ? <Loader2 size={16} className="animate-spin" /> : <ArrowUpCircle size={16} />}
                         <span>Submit for Approval</span>
                       </button>
                     )}
@@ -269,7 +279,8 @@ const TaskDetails = () => {
                         <button
                           type="button"
                           onClick={() => setIsApproveConfirmOpen(true)}
-                          className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-500 rounded-lg shadow-sm transition-colors"
+                          disabled={actionLoading}
+                          className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 rounded-lg shadow-sm transition-colors cursor-pointer"
                         >
                           <CheckCircle size={16} />
                           <span>Approve</span>
@@ -277,7 +288,8 @@ const TaskDetails = () => {
                         <button
                           type="button"
                           onClick={() => setIsRejectDialogOpen(true)}
-                          className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-semibold text-white bg-rose-600 hover:bg-rose-500 rounded-lg shadow-sm transition-colors"
+                          disabled={actionLoading}
+                          className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-semibold text-white bg-rose-600 hover:bg-rose-500 disabled:opacity-50 rounded-lg shadow-sm transition-colors cursor-pointer"
                         >
                           <XCircle size={16} />
                           <span>Reject</span>
@@ -348,6 +360,20 @@ const TaskDetails = () => {
                 </div>
               </div>
 
+              {task.approvedBy && (
+                <div className="flex items-center gap-3 sm:col-span-2">
+                  <div className="p-2.5 bg-emerald-950/50 text-emerald-400 rounded-lg border border-emerald-800/40">
+                    <CheckCircle size={18} />
+                  </div>
+                  <div>
+                    <span className="block text-xs font-medium text-slate-400">Approved By</span>
+                    <span className="text-sm font-bold text-emerald-400">
+                      {task.approvedBy.name} <span className="text-xs text-slate-400 font-normal">({task.approvedBy.role || 'Manager'})</span>
+                    </span>
+                  </div>
+                </div>
+              )}
+
               <div className="sm:col-span-2 pt-2">
                 <span className="block text-xs font-medium text-slate-400 mb-2">Assigned Team Members</span>
                 <div className="flex flex-wrap gap-2">
@@ -408,10 +434,20 @@ const TaskDetails = () => {
               />
               <button
                 type="submit"
-                className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-[#10b981] hover:bg-[#b97737] rounded-xl shadow-sm transition-colors"
+                disabled={commentSubmitting || !newComment.trim()}
+                className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-[#10b981] hover:bg-[#059669] disabled:opacity-50 rounded-xl shadow-sm transition-colors cursor-pointer"
               >
-                <span>Post</span>
-                <Send size={14} />
+                {commentSubmitting ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    <span>Posting...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Post</span>
+                    <Send size={14} />
+                  </>
+                )}
               </button>
             </form>
           </div>
@@ -482,10 +518,12 @@ const TaskDetails = () => {
         </button>
         <button
           type="button"
-          className="px-4 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-500 rounded-lg shadow-sm transition-colors"
+          disabled={actionLoading}
+          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 rounded-lg shadow-sm transition-colors cursor-pointer"
           onClick={() => handleStatusChange('Approved')}
         >
-          Approve Task
+          {actionLoading ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />}
+          <span>Approve Task</span>
         </button>
       </div>
     </div>
@@ -521,11 +559,12 @@ const TaskDetails = () => {
         </button>
         <button
           type="button"
-          className="px-4 py-2 text-sm font-semibold text-white bg-rose-600 hover:bg-rose-500 disabled:opacity-50 disabled:hover:bg-rose-600 rounded-lg shadow-sm transition-colors"
+          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-rose-600 hover:bg-rose-500 disabled:opacity-50 disabled:hover:bg-rose-600 rounded-lg shadow-sm transition-colors cursor-pointer"
           onClick={() => handleStatusChange('Rejected', feedbackText)}
-          disabled={!feedbackText.trim()}
+          disabled={!feedbackText.trim() || actionLoading}
         >
-          Reject Task
+          {actionLoading ? <Loader2 size={16} className="animate-spin" /> : <XCircle size={16} />}
+          <span>Reject Task</span>
         </button>
       </div>
     </div>

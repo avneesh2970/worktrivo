@@ -5,6 +5,7 @@ const { authenticate, requireRole } = require("../middleware/auth");
 
 const User = require("../models/User");
 const sendEmail = require("../utils/sendEmail");
+const { getIo } = require("../utils/socket");
 
 const multer = require("multer");
 
@@ -144,6 +145,9 @@ await Promise.allSettled(
     }
   })
 );
+
+    const io = getIo();
+    if (io) io.emit("announcementUpdated");
 
     res.status(201).json(populated);
   } catch (err) {

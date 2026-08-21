@@ -53,6 +53,8 @@ const Approvals = () => {
     // Action States
     const [feedback, setFeedback] = useState('');
     const [commentInput, setCommentInput] = useState('');
+    const [actionLoading, setActionLoading] = useState(false);
+    const [commentSubmitting, setCommentSubmitting] = useState(false);
 
     useEffect(() => {
         fetchData();
@@ -139,6 +141,7 @@ const Approvals = () => {
             return;
         }
         
+        setActionLoading(true);
         try {
             if (viewingItem._itemType === 'task' || viewingItem._itemType === 'projectTask') {
                 const res = await fetch(`${API_BASE}/tasks/${viewingItem._id}/status`, {
@@ -167,6 +170,8 @@ const Approvals = () => {
             fetchData(); 
         } catch (error) {
             toast.error(error.message);
+        } finally {
+            setActionLoading(false);
         }
     };
 
@@ -175,6 +180,7 @@ const Approvals = () => {
         e.preventDefault();
         if (!commentInput.trim() || !itemDetails) return;
 
+        setCommentSubmitting(true);
         try {
             const res = await fetch(`${API_BASE}/tasks/${itemDetails._id}/comments`, {
                 method: 'POST',
@@ -193,6 +199,8 @@ const Approvals = () => {
             }
         } catch (err) {
             toast.error('Error posting comment.');
+        } finally {
+            setCommentSubmitting(false);
         }
     };
 
@@ -517,6 +525,19 @@ const Approvals = () => {
                                                         </div>
                                                     </div>
                                                 </div>
+                                                {itemDetails.approvedBy && (
+                                                     <div className="flex items-center gap-3">
+                                                         <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-700/60 bg-emerald-950/50 text-emerald-400">
+                                                             <CheckSquare className="h-4 w-4" />
+                                                         </div>
+                                                         <div>
+                                                             <p className="text-[10px] uppercase font-bold text-slate-500">Approved By</p>
+                                                             <p className="text-sm font-bold text-emerald-400">
+                                                                 {itemDetails.approvedBy.name} ({itemDetails.approvedBy.role || 'Manager'})
+                                                             </p>
+                                                         </div>
+                                                     </div>
+                                                 )}
                                             </div>
                                         </div>
 
@@ -562,9 +583,9 @@ const Approvals = () => {
                                                         value={commentInput}
                                                         onChange={(e) => setCommentInput(e.target.value)}
                                                     />
-                                                    <button type="submit" disabled={!commentInput.trim()} className="absolute right-1.5 top-1.5 bottom-1.5 flex items-center gap-1.5 rounded-lg bg-[#10b981] px-4 font-bold text-[#121826] hover:bg-[#c28242] disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm">
-                                                        Post <Send className="h-3.5 w-3.5 ml-0.5" />
-                                                    </button>
+                                                     <button type="submit" disabled={!commentInput.trim() || commentSubmitting} className="absolute right-1.5 top-1.5 bottom-1.5 flex items-center gap-1.5 rounded-lg bg-[#10b981] px-4 font-bold text-[#121826] hover:bg-[#059669] disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm cursor-pointer">
+                                                        {commentSubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <>Post <Send className="h-3.5 w-3.5 ml-0.5" /></>}
+                                                     </button>
                                                 </form>
                                             </div>
                                         )}
@@ -588,15 +609,19 @@ const Approvals = () => {
                                             <div className="flex flex-col sm:flex-row items-center gap-3">
                                                 <button
                                                     onClick={() => handleProcessApproval('reject')}
-                                                    className="w-full flex items-center justify-center gap-2 rounded-xl border border-rose-500/50 bg-transparent px-4 py-3 text-sm font-bold text-rose-500 hover:bg-rose-500/10 transition-all"
+                                                    disabled={actionLoading}
+                                                    className="w-full flex items-center justify-center gap-2 rounded-xl border border-rose-500/50 bg-transparent px-4 py-3 text-sm font-bold text-rose-500 hover:bg-rose-500/10 disabled:opacity-50 transition-all cursor-pointer"
                                                 >
-                                                    <XCircle className="h-4 w-4" /> Reject Submission
+                                                    {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
+                                                    <span>Reject Submission</span>
                                                 </button>
                                                 <button
                                                     onClick={() => handleProcessApproval('approve')}
-                                                    className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#10b981] px-4 py-3 text-sm font-bold text-[#121826] hover:bg-[#c28242] transition-all"
+                                                    disabled={actionLoading}
+                                                    className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#10b981] px-4 py-3 text-sm font-bold text-[#121826] hover:bg-[#059669] disabled:opacity-50 transition-all cursor-pointer"
                                                 >
-                                                    <CheckCircle className="h-4 w-4" /> Approve Submission
+                                                    {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                                                    <span>Approve Submission</span>
                                                 </button>
                                             </div>
                                         </div>

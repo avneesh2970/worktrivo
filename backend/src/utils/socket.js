@@ -55,9 +55,10 @@ const init = (server) => {
     // Personal socket room for direct notifications (e.g., mentions)
     socket.join(userId.toString());
 
-    // Admin room
-    if (role === "admin") {
+    // Admin & Manager management room
+    if (role === "admin" || role === "manager") {
       socket.join("admins");
+      socket.join("managers");
     }
 
     // Broadcast online status
@@ -294,8 +295,11 @@ const sendAdminNotification = (notification) => {
 // tasks changed, so any open Task/Kanban/Calendar view can refresh live.
 const sendTaskUpdate = (userId, taskId) => {
   if (!io) return;
-  io.to(userId.toString()).emit("taskUpdated", { taskId });
+  if (userId) {
+    io.to(userId.toString()).emit("taskUpdated", { taskId });
+  }
   io.to("admins").emit("taskUpdated", { taskId });
+  io.emit("taskUpdated", { taskId });
 };
 
 const getOnlineUsers = () => {

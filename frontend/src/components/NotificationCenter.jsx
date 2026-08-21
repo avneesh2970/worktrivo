@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from "react";
-import { Check, Trash2, BellOff, X, Sparkles } from 'lucide-react';
+import { useNavigate } from "react-router-dom";
+import { Check, Trash2, BellOff, X, Sparkles, ExternalLink } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import axios from "axios";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000/api";
 
 const NotificationCenter = ({ onClose }) => {
+  const navigate = useNavigate();
   const {
     notifications,
     markAllAsRead,
@@ -13,6 +15,45 @@ const NotificationCenter = ({ onClose }) => {
     deleteNotification,
     clearAllNotifications
   } = useSocket();
+
+  const handleNotificationClick = (notif) => {
+    if (!notif.read) {
+      markAsRead(notif._id);
+    }
+    if (onClose) {
+      onClose();
+    }
+
+    const taskId = notif.taskId?._id || notif.taskId;
+    const groupId = notif.groupId?._id || notif.groupId;
+
+    if (taskId) {
+      if (notif.type === 'approval') {
+        navigate('/approvals');
+      } else {
+        navigate(`/tasks/${taskId}`);
+      }
+    } else if (groupId) {
+      navigate(`/groups/${groupId}`);
+    } else if (notif.type === 'approval') {
+      navigate('/approvals');
+    } else if (notif.type === 'project') {
+      navigate('/groups');
+    } else if (notif.type === 'announcement') {
+      navigate('/announcements');
+    } else {
+      const msgLower = (notif.message || '').toLowerCase();
+      if (msgLower.includes('approval') || msgLower.includes('review')) {
+        navigate('/approvals');
+      } else if (msgLower.includes('announcement')) {
+        navigate('/announcements');
+      } else if (msgLower.includes('project') || msgLower.includes('group')) {
+        navigate('/groups');
+      } else {
+        navigate('/tasks');
+      }
+    }
+  };
 
   const [notificationMuted, setNotificationMuted] = useState(false);
     useEffect(() => {
@@ -161,9 +202,9 @@ const NotificationCenter = ({ onClose }) => {
             {notifications.map((notif) => (
               <div
                 key={notif._id}
-                onClick={() => !notif.read && markAsRead(notif._id)}
-                className={`group relative flex flex-col gap-1.5 p-3.5 transition-all cursor-pointer hover:bg-slate-900/60 ${
-                  !notif.read ? 'bg-indigo-950/20' : 'bg-transparent'
+                onClick={() => handleNotificationClick(notif)}
+                className={`group relative flex flex-col gap-1.5 p-3.5 transition-all cursor-pointer hover:bg-slate-900/80 hover:border-[#10b981]/30 ${
+                  !notif.read ? 'bg-indigo-950/30' : 'bg-transparent'
                 }`}
               >
                 {/* Unread Accent Bar */}

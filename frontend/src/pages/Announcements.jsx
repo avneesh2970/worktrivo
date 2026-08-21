@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { API_BASE, useAuth } from '../context/AuthContext';
+import { useSocket } from '../context/SocketContext';
 import {
   Megaphone, Pin, PinOff, Plus, X, Paperclip, AlertCircle,
   Trash2, Archive, CheckCircle2, Eye, Loader2, Search, Filter, Calendar
@@ -16,6 +17,7 @@ const categoryStyle = {
 
 const Announcements = () => {
   const { user, token } = useAuth();
+  const { socket } = useSocket();
   const isAdmin = user?.role === 'admin';
   const canViewReadStatus = ['admin', 'manager'].includes(user?.role);
 
@@ -64,8 +66,15 @@ const Announcements = () => {
 
   useEffect(() => {
     fetchAnnouncements();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (socket) {
+      socket.on('announcementUpdated', fetchAnnouncements);
+    }
+    return () => {
+      if (socket) {
+        socket.off('announcementUpdated', fetchAnnouncements);
+      }
+    };
+  }, [socket]);
 
   const markRead = async (id) => {
     try {

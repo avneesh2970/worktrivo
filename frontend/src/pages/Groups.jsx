@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from "react";
 import { useAuth, API_BASE } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useSocket } from "../context/SocketContext";
+import { Loader2 } from "lucide-react";
 
 // --- Inline SVGs for zero extra dependencies ---
 const PlusIcon = () => (
@@ -403,9 +404,16 @@ const Groups = () => {
                   <button
                     type="submit"
                     disabled={isSubmitting || !projectName.trim()}
-                    className="inline-flex items-center justify-center rounded-xl bg-[#10b981] px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-lg shadow-[#10b981]/20 hover:bg-[#e3a35f] transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#10b981] px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-lg shadow-[#10b981]/20 hover:bg-[#059669] transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                   >
-                    {isSubmitting ? "Creating..." : "Create Project"}
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Creating...</span>
+                      </>
+                    ) : (
+                      <span>Create Project</span>
+                    )}
                   </button>
                 </div>
               </form>

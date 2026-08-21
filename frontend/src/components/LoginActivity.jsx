@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Search,
   Trash2,
@@ -7,11 +8,13 @@ import {
   Loader2,
   ChevronLeft,
   ChevronRight,
+  ExternalLink,
 } from "lucide-react";
 import { useLoginActivityApi } from "../services/loginActivityApi";
 import { useAuth } from "../context/AuthContext";
 
 const LoginActivity = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { getLoginActivities, getMyLoginActivities, clearLoginActivities } = useLoginActivityApi();
 
@@ -65,6 +68,14 @@ const LoginActivity = () => {
       loadActivities();
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleRowClick = (item) => {
+    if (['admin', 'manager'].includes(user?.role)) {
+      navigate(`/users?search=${encodeURIComponent(item.email || item.name || '')}`);
+    } else {
+      navigate('/tasks');
     }
   };
 
@@ -166,9 +177,16 @@ const LoginActivity = () => {
           </tr>
         ) : (
           currentActivities.map((item) => (
-            <tr key={item._id} className="hover:bg-[#141a2e]/50 transition-colors">
+            <tr
+              key={item._id}
+              onClick={() => handleRowClick(item)}
+              className="hover:bg-[#141a2e] cursor-pointer transition-colors"
+            >
               <td className="p-3.5">
-                <p className="font-semibold text-white">{item.name}</p>
+                <p className="font-semibold text-white flex items-center gap-1.5 hover:text-[#10b981]">
+                  {item.name}
+                  <ExternalLink size={12} className="opacity-0 group-hover:opacity-100 text-[#10b981]" />
+                </p>
                 <p className="text-[10px] text-slate-400">{item.email}</p>
               </td>
 
@@ -215,7 +233,8 @@ const LoginActivity = () => {
       currentActivities.map((item) => (
         <div
           key={item._id}
-          className="rounded-xl border border-[#1e2640] bg-[#141a2e] p-3.5 space-y-3 text-xs"
+          onClick={() => handleRowClick(item)}
+          className="rounded-xl border border-[#1e2640] bg-[#141a2e] p-3.5 space-y-3 text-xs cursor-pointer hover:border-[#10b981]/50 transition-colors"
         >
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
