@@ -27,6 +27,7 @@ const settingsRoutes = require("./src/routes/settings");
 const calendarRoutes = require("./src/routes/calendarRoutes");
 const fileRoutes = require("./src/routes/fileRoute");
 const loginActivityRoutes = require("./src/routes/loginActivityRoute");
+const dailyReportRoutes = require("./src/routes/dailyReports");
 
 // Express App
 const app = express();
@@ -92,6 +93,7 @@ app.use("/api/settings", settingsRoutes);
 app.use("/api/calendar", calendarRoutes);
 app.use("/api/files", fileRoutes);
 app.use("/api/login-activity", loginActivityRoutes);
+app.use("/api/daily-reports", dailyReportRoutes);
 
 // ===============================
 // 404 Route

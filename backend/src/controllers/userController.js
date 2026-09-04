@@ -4,6 +4,7 @@ const transporter = require('../utils/nodemailer');
 const csv = require('csv-parser');
 const { Readable } = require('stream'); // Core Node.js module
 const { v4: uuidv4 } = require("uuid");
+const { getSupervisorsForUser } = require('../utils/managerHelper');
 
 // --- SELF PROFILE CONTROLLERS ---
 
@@ -165,18 +166,35 @@ exports.registerUser = async (req, res) => {
   }
 };
 
+// --- SUPERVISOR CONTROLLERS ---
+
+exports.getMySupervisors = async (req, res) => {
+  try {
+    const supervisors = await getSupervisorsForUser(req.user);
+    res.json(supervisors);
+  } catch (err) {
+    console.error('getMySupervisors error:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
 // --- USER MANAGEMENT CONTROLLERS ---
 
 exports.getUsers = async (req, res) => {
   try {
     if (req.user.role === 'admin' || req.user.role === 'manager') {
-      const users = await User.find().sort({ name: 1 });
+      const users = await User.find()
+        .populate('assignedMembers', '_id name email role department employeeId profilePhoto designationRole')
+        .populate('manager', '_id name email role profilePhoto designationRole department')
+        .sort({ name: 1 });
       res.json(users);
     } else {
       const users = await User.find(
         { active: true },
-        '_id name email role profilePhoto designationRole department employeeId'
-      ).sort({ name: 1 });
+        '_id name email role profilePhoto designationRole department employeeId manager'
+      )
+        .populate('manager', '_id name email role profilePhoto designationRole department')
+        .sort({ name: 1 });
       res.json(users);
     }
   } catch (err) {
@@ -194,6 +212,10 @@ exports.createUser = async (req, res) => {
     profilePhoto, 
     designationRole, 
     department, 
+    assignedDepartment,
+    assignedDepartments,
+    assignedMembers,
+    manager,
     workLocation 
   } = req.body;
 
@@ -218,8 +240,6 @@ exports.createUser = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
-    
-
     const newUser = new User({
       name: name.trim(),
       email: email.toLowerCase().trim(),
@@ -229,11 +249,18 @@ exports.createUser = async (req, res) => {
       profilePhoto: profilePhoto ? profilePhoto.trim() : undefined,
       designationRole: designationRole ? designationRole.trim() : undefined,
       department: department ? department.trim() : undefined,
+      assignedDepartment: assignedDepartment ? assignedDepartment.trim() : undefined,
+      assignedDepartments: Array.isArray(assignedDepartments) ? assignedDepartments : (assignedDepartment ? [assignedDepartment.trim()] : []),
+      assignedMembers: Array.isArray(assignedMembers) ? assignedMembers : [],
+      manager: manager || null,
       workLocation: workLocation ? workLocation.trim() : undefined
     });
 
     await newUser.save();
-    res.status(201).json(newUser);
+    const populatedUser = await User.findById(newUser._id)
+      .populate('assignedMembers', '_id name email role department employeeId profilePhoto designationRole')
+      .populate('manager', '_id name email role profilePhoto designationRole department');
+    res.status(201).json(populatedUser);
   } catch (err) {
     if (err.code === 11000) {
       const field = Object.keys(err.keyPattern)[0];
@@ -257,6 +284,10 @@ exports.updateUser = async (req, res) => {
     profilePhoto, 
     designationRole, 
     department, 
+    assignedDepartment,
+    assignedDepartments,
+    assignedMembers,
+    manager,
     workLocation 
   } = req.body;
   const userId = req.params.id;
@@ -295,6 +326,10 @@ exports.updateUser = async (req, res) => {
     if (profilePhoto !== undefined) user.profilePhoto = profilePhoto.trim();
     if (designationRole !== undefined) user.designationRole = designationRole;
     if (department !== undefined) user.department = department;
+    if (assignedDepartment !== undefined) user.assignedDepartment = assignedDepartment;
+    if (assignedDepartments !== undefined) user.assignedDepartments = assignedDepartments;
+    if (assignedMembers !== undefined) user.assignedMembers = assignedMembers;
+    if (manager !== undefined) user.manager = manager || null;
     if (workLocation !== undefined) user.workLocation = workLocation;
 
     if (password) {
@@ -303,7 +338,10 @@ exports.updateUser = async (req, res) => {
     }
 
     await user.save();
-    res.json(user);
+    const populatedUser = await User.findById(user._id)
+      .populate('assignedMembers', '_id name email role department employeeId profilePhoto designationRole')
+      .populate('manager', '_id name email role profilePhoto designationRole department');
+    res.json(populatedUser);
   } catch (err) {
     if (err.code === 11000) {
       const field = Object.keys(err.keyPattern)[0];

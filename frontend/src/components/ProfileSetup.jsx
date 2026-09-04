@@ -103,8 +103,8 @@ const ProfileSetup = ({ onCancel, onSuccess }) => {
   if (fetching) {
     return (
       <div className="flex-1 p-6 md:p-10 max-w-6xl mx-auto flex items-center justify-center min-h-[400px]">
-        <div className="flex items-center gap-3 px-5 py-3.5 rounded-xl bg-[#171d33] border border-slate-700/60 text-slate-300">
-          <Loader2 className="animate-spin text-[#10b981]" size={18} />
+        <div className="flex items-center gap-3 px-5 py-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 shadow-sm">
+          <Loader2 className="animate-spin text-emerald-500" size={18} />
           <span className="text-sm font-medium">Fetching profile details...</span>
         </div>
       </div>
@@ -112,14 +112,14 @@ const ProfileSetup = ({ onCancel, onSuccess }) => {
   }
 
   return (
-    <div className="flex-1 p-4 md:p-8 max-w-6xl mx-auto space-y-6 text-slate-100">
+    <div className="flex-1 p-4 md:p-8 max-w-6xl mx-auto space-y-6 text-slate-900 dark:text-slate-100">
       {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-700/60">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
             Edit Profile
           </h1>
-          <p className="text-slate-400 text-sm mt-1">
+          <p className="text-slate-600 dark:text-slate-400 text-sm mt-1">
             Keep your personal and professional details up to date.
           </p>
         </div>
@@ -127,7 +127,7 @@ const ProfileSetup = ({ onCancel, onSuccess }) => {
         <button
           type="button"
           onClick={onCancel || (() => navigate('/profile'))}
-          className="self-start sm:self-auto inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#171d33] hover:bg-slate-800 text-slate-300 text-sm font-medium border border-slate-700/60 transition duration-200 cursor-pointer"
+          className="self-start sm:self-auto inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-sm font-medium border border-slate-200 dark:border-slate-700 transition duration-200 cursor-pointer shadow-sm"
         >
           <X size={16} />
           <span>Cancel</span>
@@ -135,20 +135,20 @@ const ProfileSetup = ({ onCancel, onSuccess }) => {
       </div>
 
       {/* Single Unified Card */}
-      <div className="bg-[#171d33] border border-slate-700/60 rounded-xl overflow-hidden shadow-xl">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
         <form onSubmit={handleSubmit}>
           {/* Main Content Layout: Photo (Left/Top) | Personal & Professional Details (Right Column) */}
           <div className="p-6 md:p-8 flex flex-col lg:flex-row gap-8">
             
             {/* Left/Top Section: Profile Photo */}
-            <div className="lg:w-1/4 flex flex-col items-center lg:border-r border-slate-700/60 lg:pr-8">
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4 w-full text-center lg:text-left">
+            <div className="lg:w-1/4 flex flex-col items-center lg:border-r border-slate-200 dark:border-slate-800 lg:pr-8">
+              <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-4 w-full text-center lg:text-left">
                 Profile Photo
               </label>
 
               <div className="flex flex-col items-center gap-4 w-full">
                 <div className="relative group">
-                  <div className="relative w-32 h-32 rounded-xl overflow-hidden bg-[#1e2640] border border-dashed border-slate-600 group-hover:border-[#10b981] transition duration-200 flex items-center justify-center">
+                  <div className="relative w-32 h-32 rounded-2xl overflow-hidden bg-slate-50 dark:bg-slate-950 border border-dashed border-slate-300 dark:border-slate-700 group-hover:border-emerald-500 transition duration-200 flex items-center justify-center shadow-inner">
                     {previewUrl ? (
                       <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
                     ) : (
@@ -159,8 +159,8 @@ const ProfileSetup = ({ onCancel, onSuccess }) => {
                     )}
 
                     {/* Overlay trigger */}
-                    <label className="absolute inset-0 bg-[#1e2640]/80 opacity-0 group-hover:opacity-100 transition duration-200 flex flex-col items-center justify-center cursor-pointer text-white gap-1">
-                      <Camera size={20} className="text-[#10b981]" />
+                    <label className="absolute inset-0 bg-slate-900/80 opacity-0 group-hover:opacity-100 transition duration-200 flex flex-col items-center justify-center cursor-pointer text-white gap-1">
+                      <Camera size={20} className="text-emerald-400" />
                       <span className="text-xs font-medium">Change</span>
                       <input
                         type="file"
@@ -178,8 +178,8 @@ const ProfileSetup = ({ onCancel, onSuccess }) => {
                 </div>
 
                 <div className="space-y-1 text-center">
-                  <h3 className="text-sm font-semibold text-slate-200">Upload new picture</h3>
-                  <p className="text-xs text-slate-400 max-w-[200px]">
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-200">Upload new picture</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 max-w-[200px]">
                     JPG, PNG, or WEBP. Aspect ratio 1:1.
                   </p>
                 </div>
@@ -191,9 +191,9 @@ const ProfileSetup = ({ onCancel, onSuccess }) => {
               
               {/* Personal Identity Row */}
               <div className="space-y-4">
-                <div className="flex items-center gap-2.5 pb-2 border-b border-slate-700/60">
-                  <User size={18} className="text-[#10b981]" />
-                  <h2 className="text-sm font-semibold text-white">Personal Identity</h2>
+                <div className="flex items-center gap-2.5 pb-2 border-b border-slate-200 dark:border-slate-800">
+                  <User size={18} className="text-emerald-500" />
+                  <h2 className="text-sm font-bold text-slate-900 dark:text-white">Personal Identity</h2>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -224,9 +224,9 @@ const ProfileSetup = ({ onCancel, onSuccess }) => {
 
               {/* Professional Details Row */}
               <div className="space-y-4">
-                <div className="flex items-center gap-2.5 pb-2 border-b border-slate-700/60">
-                  <Briefcase size={18} className="text-[#10b981]" />
-                  <h2 className="text-sm font-semibold text-white">Professional Details</h2>
+                <div className="flex items-center gap-2.5 pb-2 border-b border-slate-200 dark:border-slate-800">
+                  <Briefcase size={18} className="text-emerald-500" />
+                  <h2 className="text-sm font-bold text-slate-900 dark:text-white">Professional Details</h2>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -258,10 +258,10 @@ const ProfileSetup = ({ onCancel, onSuccess }) => {
           </div>
 
           {/* Integrated Action Footer Inside the Single Card */}
-          <div className="px-6 py-4 bg-[#14192d] border-t border-slate-700/60 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="px-6 py-4 bg-slate-50 dark:bg-slate-950/60 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div>
               {message.text && (
-                <div className={`flex items-center gap-2 text-xs font-medium ${message.type === 'error' ? 'text-rose-400' : 'text-emerald-400'}`}>
+                <div className={`flex items-center gap-2 text-xs font-semibold ${message.type === 'error' ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
                   {message.type === 'error' ? <AlertCircle size={15} /> : <CheckCircle2 size={15} />}
                   <span>{message.text}</span>
                 </div>
@@ -272,14 +272,14 @@ const ProfileSetup = ({ onCancel, onSuccess }) => {
               <button
                 type="button"
                 onClick={onCancel || (() => navigate('/profile'))}
-                className="px-4 py-2 text-slate-300 hover:text-white rounded-xl font-medium text-sm transition duration-200 cursor-pointer"
+                className="px-4 py-2 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded-xl font-medium text-sm transition duration-200 cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#10b981] hover:bg-[#e3a35f] text-slate-950 rounded-xl font-semibold text-sm transition-all duration-200 disabled:opacity-50 cursor-pointer shadow-md shadow-[#10b981]/10"
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold text-sm transition-all duration-200 disabled:opacity-50 cursor-pointer shadow-md shadow-emerald-500/15"
               >
                 {loading ? (
                   <>
@@ -309,10 +309,10 @@ ProfileSetup.propTypes = {
 // Clean Form Inputs
 const Input = ({ label, ...props }) => (
   <div className="space-y-1.5">
-    <label className="block text-xs font-medium text-slate-300">{label}</label>
+    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">{label}</label>
     <input
       {...props}
-      className="w-full bg-[#1e2640] border border-slate-700/80 focus:border-[#10b981] rounded-xl px-3.5 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-[#10b981] transition duration-200"
+      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 focus:border-emerald-500 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition duration-200"
     />
   </div>
 );
@@ -323,14 +323,14 @@ Input.propTypes = {
 
 const Select = ({ label, options, ...props }) => (
   <div className="space-y-1.5">
-    <label className="block text-xs font-medium text-slate-300">{label}</label>
+    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">{label}</label>
     <select
       {...props}
-      className="w-full bg-[#1e2640] border border-slate-700/80 focus:border-[#10b981] rounded-xl px-3.5 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-1 focus:ring-[#10b981] transition duration-200"
+      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 focus:border-emerald-500 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition duration-200"
     >
-      <option value="" className="bg-[#171d33] text-slate-400">Select...</option>
+      <option value="" className="bg-white dark:bg-slate-900 text-slate-500">Select...</option>
       {options.map((opt) => (
-        <option key={opt} value={opt} className="bg-[#171d33] text-slate-200">
+        <option key={opt} value={opt} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-200">
           {opt}
         </option>
       ))}

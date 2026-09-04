@@ -14,12 +14,8 @@ import FileList from '../components/FileList';
 // --- FIXED HELPER: Replaces Windows backslashes ---
 const getFileUrl = (path) => {
     if (!path) return '#';
-    
     if (path.startsWith('http') || path.startsWith('data:')) return path;
-    
-    // FIX: Convert Windows backslashes to forward slashes
     const normalizedPath = path.replace(/\\/g, '/');
-    
     const baseUrl = API_BASE.replace(/\/api$/, '');
     return normalizedPath.startsWith('/') ? `${baseUrl}${normalizedPath}` : `${baseUrl}/${normalizedPath}`;
 };
@@ -35,6 +31,7 @@ const Approvals = () => {
     const [standaloneTasks, setStandaloneTasks] = useState([]); 
     const [projectTasks, setProjectTasks] = useState([]);       
     const [projects, setProjects] = useState([]);               
+    const [dailyReports, setDailyReports] = useState([]);
     const [loading, setLoading] = useState(true);
     
     // Pagination & Filters
@@ -61,18 +58,20 @@ const Approvals = () => {
         if (socket) {
             socket.on('taskUpdated', fetchTasks);
             socket.on('projectUpdated', fetchProjects);
+            socket.on('dailyReportUpdated', fetchDailyReports);
         }
         return () => {
             if (socket) {
                 socket.off('taskUpdated', fetchTasks);
                 socket.off('projectUpdated', fetchProjects);
+                socket.off('dailyReportUpdated', fetchDailyReports);
             }
         };
     }, [socket, token]);
 
     const fetchData = async () => {
         setLoading(true);
-        await Promise.all([fetchTasks(), fetchProjects()]);
+        await Promise.all([fetchTasks(), fetchProjects(), fetchDailyReports()]);
         setLoading(false);
     };
 
@@ -100,6 +99,18 @@ const Approvals = () => {
             setProjects((Array.isArray(data) ? data : []).map(p => ({...p, _itemType: 'project'})));
         } catch (error) {
             toast.error("Failed to load pending projects");
+        }
+    };
+
+    const fetchDailyReports = async () => {
+        try {
+            const res = await fetch(`${API_BASE}/daily-reports?status=Pending`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const data = await res.json();
+            setDailyReports((Array.isArray(data) ? data : []).map(r => ({...r, _itemType: 'dailyReport'})));
+        } catch (error) {
+            toast.error("Failed to load pending daily reports");
         }
     };
 
@@ -164,6 +175,21 @@ const Approvals = () => {
                 if (!res.ok) throw new Error("Failed to process project");
                 toast.success(`Project successfully ${isApprove ? 'approved' : 'rejected'}`);
             }
+            else if (viewingItem._itemType === 'dailyReport') {
+                const res = await fetch(`${API_BASE}/daily-reports/${viewingItem._id}/status`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                    body: JSON.stringify({
+                        status: isApprove ? 'Approved' : 'Rejected',
+                        feedback: feedback.trim()
+                    })
+                });
+                if (!res.ok) {
+                    const errData = await res.json();
+                    throw new Error(errData.error || "Failed to process daily report");
+                }
+                toast.success(`Daily report successfully ${isApprove ? 'approved' : 'rejected'}`);
+            }
             
             setViewingItem(null);
             setItemDetails(null);
@@ -211,14 +237,22 @@ const Approvals = () => {
                 const priorityMatch = priorityFilter === '' || item.priority === priorityFilter;
                 return titleMatch && priorityMatch;
             });
-        } else {
+        } else if (activeTab === 'projects') {
             const combined = [...projects, ...projectTasks];
             return combined.filter(item => {
                 const titleMatch = (item.title || item.name || '').toLowerCase().includes(searchQuery.toLowerCase());
                 const priorityMatch = priorityFilter === '' || (item._itemType === 'projectTask' ? item.priority === priorityFilter : true);
                 return titleMatch && priorityMatch;
             });
+        } else if (activeTab === 'dailyReports') {
+            return dailyReports.filter(item => {
+                const authorMatch = (item.user?.name || '').toLowerCase().includes(searchQuery.toLowerCase());
+                const workMatch = (item.todayWork || '').toLowerCase().includes(searchQuery.toLowerCase());
+                const deptMatch = (item.department || '').toLowerCase().includes(searchQuery.toLowerCase());
+                return authorMatch || workMatch || deptMatch;
+            });
         }
+        return [];
     };
 
     const filteredItems = getFilteredItems();
@@ -227,13 +261,13 @@ const Approvals = () => {
 
     const getPriorityBadge = (priority) => {
         const styles = {
-            High: 'border-[#FF1744] text-[#FF1744]',
-            Urgent: 'border-[#FF1744] text-[#FF1744]',
-            Medium: 'border-[#FFC400] text-[#FFC400]',
-            Low: 'border-[#00E676] text-[#00E676]',
+            High: 'border-rose-500 text-rose-600 dark:text-rose-400 bg-rose-500/10',
+            Urgent: 'border-rose-600 text-rose-700 dark:text-rose-400 bg-rose-500/15',
+            Medium: 'border-amber-500 text-amber-600 dark:text-amber-400 bg-amber-500/10',
+            Low: 'border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10',
         };
         return (
-            <span className={`inline-flex items-center px-3 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${styles[priority] || 'border-slate-500 text-slate-500'}`}>
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${styles[priority] || 'border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400'}`}>
                 {priority} Priority
             </span>
         );
@@ -241,41 +275,44 @@ const Approvals = () => {
 
     const getStatusBadge = (status) => {
         const styles = {
-            'Approved': 'border-[#00E676] text-[#00E676]',
-            'Completed': 'border-[#00E676] text-[#00E676]',
-            'Pending': 'border-[#FFC400] text-[#FFC400]',
-            'Completed (Pending Approval)': 'border-[#FFC400] text-[#FFC400]',
+            'Approved': 'border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10',
+            'Completed': 'border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10',
+            'Pending': 'border-amber-500 text-amber-600 dark:text-amber-400 bg-amber-500/10',
+            'Completed (Pending Approval)': 'border-amber-500 text-amber-600 dark:text-amber-400 bg-amber-500/10',
         };
         return (
-            <span className={`inline-flex items-center px-3 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${styles[status] || 'border-[#2979FF] text-[#2979FF]'}`}>
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${styles[status] || 'border-sky-500 text-sky-600 dark:text-sky-400 bg-sky-500/10'}`}>
                 {status || "Pending"}
             </span>
         );
     };
 
     return (
-        <div className="p-6 h-full overflow-y-auto bg-[#0B101E] text-slate-100 selection:bg-indigo-500 selection:text-white relative">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+        <div className="space-y-6 text-slate-800 dark:text-slate-100">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-white tracking-tight">Approval Center</h1>
-                    <p className="text-sm text-slate-400 mt-1">Review and manage pending items.</p>
+                    <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
+                        Approval <span className="text-[#10b981]">Center</span>
+                    </h1>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 font-medium">Review and manage pending tasks, projects, and daily reports.</p>
                 </div>
                 
                 <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
                     <div className="relative">
-                        <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                        <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                         <input
                             type="text"
-                            placeholder="Search..."
+                            placeholder="Search submissions..."
                             value={searchQuery}
                             onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                            className="w-full sm:w-64 py-2.5 pl-10 pr-4 rounded-xl border border-slate-700 bg-[#121826] text-white placeholder:text-slate-500 focus:border-[#10b981] outline-none transition-all text-sm"
+                            className="w-full sm:w-64 py-2.5 pl-10 pr-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-[#10b981] outline-none transition-all text-sm shadow-sm"
                         />
                     </div>
                     <select
                         value={priorityFilter}
                         onChange={(e) => { setPriorityFilter(e.target.value); setCurrentPage(1); }}
-                        className="py-2.5 pl-3 pr-8 rounded-xl border border-slate-700 bg-[#121826] text-white outline-none focus:border-[#10b981] text-sm"
+                        className="py-2.5 pl-3 pr-8 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:border-[#10b981] text-sm shadow-sm"
                     >
                         <option value="">All Priorities</option>
                         <option value="High">High Priority</option>
@@ -285,34 +322,44 @@ const Approvals = () => {
                 </div>
             </div>
 
-            <div className="flex border-b border-slate-800 mb-6">
+            {/* Navigation Tabs */}
+            <div className="flex border-b border-slate-200 dark:border-slate-800 gap-2">
                 <button
                     onClick={() => { setActiveTab('tasks'); setCurrentPage(1); }}
-                    className={`pb-3 px-6 text-sm font-semibold transition-colors ${
-                        activeTab === 'tasks' ? 'text-[#10b981] border-b-2 border-[#10b981]' : 'text-slate-400 hover:text-white'
+                    className={`pb-3 px-5 text-sm font-semibold transition-colors cursor-pointer ${
+                        activeTab === 'tasks' ? 'text-[#10b981] border-b-2 border-[#10b981]' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                     }`}
                 >
                     Standalone Tasks ({standaloneTasks.length})
                 </button>
                 <button
                     onClick={() => { setActiveTab('projects'); setCurrentPage(1); }}
-                    className={`pb-3 px-6 text-sm font-semibold transition-colors ${
-                        activeTab === 'projects' ? 'text-[#10b981] border-b-2 border-[#10b981]' : 'text-slate-400 hover:text-white'
+                    className={`pb-3 px-5 text-sm font-semibold transition-colors cursor-pointer ${
+                        activeTab === 'projects' ? 'text-[#10b981] border-b-2 border-[#10b981]' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                     }`}
                 >
                     Project Approvals ({projects.length + projectTasks.length})
                 </button>
+                <button
+                    onClick={() => { setActiveTab('dailyReports'); setCurrentPage(1); }}
+                    className={`pb-3 px-5 text-sm font-semibold transition-colors cursor-pointer ${
+                        activeTab === 'dailyReports' ? 'text-[#10b981] border-b-2 border-[#10b981]' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                >
+                    Daily Reports ({dailyReports.length})
+                </button>
             </div>
 
+            {/* Content List */}
             {loading ? (
-                <div className="flex justify-center py-20">
+                <div className="flex justify-center py-20 bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800">
                     <Loader2 className="h-10 w-10 text-[#10b981] animate-spin" />
                 </div>
             ) : filteredItems.length === 0 ? (
-                <div className="text-center py-20 border border-dashed border-slate-800 rounded-2xl bg-[#121826]/50">
-                    <CheckCircle className="mx-auto h-12 w-12 text-slate-700 mb-3" />
-                    <h3 className="text-lg font-medium text-white">All Caught Up!</h3>
-                    <p className="text-sm text-slate-400">No pending items in this category.</p>
+                <div className="text-center py-20 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900/30">
+                    <CheckCircle className="mx-auto h-12 w-12 text-slate-400 dark:text-slate-600 mb-3" />
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">All Caught Up!</h3>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">No pending items in this category.</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -320,55 +367,66 @@ const Approvals = () => {
                         <div 
                             key={item._id} 
                             onClick={() => handleViewItem(item)}
-                            className="group cursor-pointer bg-[#121826] border border-slate-800 rounded-2xl p-5 hover:border-[#10b981]/50 hover:bg-[#121826]/80 hover:shadow-lg hover:shadow-[#10b981]/5 transition-all flex flex-col justify-between"
+                            className="group cursor-pointer bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 hover:border-[#10b981]/50 hover:shadow-md transition-all flex flex-col justify-between"
                         >
                             <div>
-                                <div className="flex justify-between items-start mb-3">
+                                <div className="flex justify-between items-start mb-3 gap-2">
                                     <div className="flex items-center gap-2 max-w-[70%]">
-                                        {activeTab === 'projects' && (
+                                        {activeTab === 'projects' ? (
                                             item._itemType === 'project' ? 
-                                            <Folder size={16} className="text-[#10b981] shrink-0" /> : 
-                                            <LayoutList size={16} className="text-sky-400 shrink-0" />
-                                        )}
-                                        <h3 className="text-base font-bold text-white truncate group-hover:text-[#10b981] transition-colors">
-                                            {item.title || item.name}
+                                            <Folder size={18} className="text-[#10b981] shrink-0" /> : 
+                                            <LayoutList size={18} className="text-sky-500 shrink-0" />
+                                        ) : activeTab === 'dailyReports' ? (
+                                            <FileText size={18} className="text-[#10b981] shrink-0" />
+                                        ) : null}
+                                        <h3 className="text-base font-bold text-slate-900 dark:text-white truncate group-hover:text-[#10b981] transition-colors">
+                                            {item._itemType === 'dailyReport'
+                                                ? `Daily Report: ${item.user?.name || 'Member'}`
+                                                : (item.title || item.name)}
                                         </h3>
                                     </div>
-                                    <span className="px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-bold whitespace-nowrap uppercase tracking-wider">
-                                        {item._itemType === 'project' ? 'Project' : 'Task'}
+                                    <span className="px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-[10px] font-bold whitespace-nowrap uppercase tracking-wider">
+                                        {item._itemType === 'project' ? 'Project' : item._itemType === 'dailyReport' ? 'Daily Report' : 'Task'}
                                     </span>
                                 </div>
                                 
-                                <p className="text-sm text-slate-400 line-clamp-2 mb-5 leading-relaxed font-medium">
-                                    {item.description || "No description provided."}
+                                <p className="text-sm text-slate-600 dark:text-slate-300 line-clamp-2 mb-5 leading-relaxed font-normal">
+                                    {item._itemType === 'dailyReport' ? item.todayWork : (item.description || "No description provided.")}
                                 </p>
                                 
                                 <div className="grid grid-cols-2 gap-y-4 text-sm mb-2">
                                     <div className="flex flex-col">
-                                        <span className="text-[10px] uppercase font-bold tracking-widest text-slate-500 mb-1">Submitted By</span>
-                                        <span className="text-white font-semibold truncate">{item.createdBy?.name || item.assignedTo?.[0]?.name || 'System'}</span>
+                                        <span className="text-[10px] uppercase font-bold tracking-widest text-slate-500 dark:text-slate-400 mb-1">Submitted By</span>
+                                        <span className="text-slate-900 dark:text-white font-semibold truncate">
+                                            {item.user?.name || item.createdBy?.name || item.assignedTo?.[0]?.name || 'System'}
+                                        </span>
                                     </div>
                                     
-                                    {item._itemType !== 'project' && activeTab === 'projects' && (
+                                    {item._itemType === 'dailyReport' ? (
                                         <div className="flex flex-col">
-                                            <span className="text-[10px] uppercase font-bold tracking-widest text-slate-500 mb-1">From Project</span>
-                                            <span className="text-indigo-400 font-semibold truncate">Project Task</span>
+                                            <span className="text-[10px] uppercase font-bold tracking-widest text-slate-500 dark:text-slate-400 mb-1">Department / Date</span>
+                                            <span className="text-[#10b981] font-semibold truncate">
+                                                {item.department || 'General'} • {new Date(item.reportDate).toLocaleDateString()}
+                                            </span>
                                         </div>
-                                    )}
-
-                                    {(activeTab === 'tasks' || item._itemType === 'projectTask') && (
+                                    ) : item._itemType !== 'project' && activeTab === 'projects' ? (
                                         <div className="flex flex-col">
-                                            <span className="text-[10px] uppercase font-bold tracking-widest text-slate-500 mb-1">Priority</span>
-                                            <span className={`font-bold ${item.priority === 'High' || item.priority === 'Urgent' ? 'text-rose-400' : item.priority === 'Medium' ? 'text-amber-400' : 'text-emerald-400'}`}>
+                                            <span className="text-[10px] uppercase font-bold tracking-widest text-slate-500 dark:text-slate-400 mb-1">From Project</span>
+                                            <span className="text-indigo-600 dark:text-indigo-400 font-semibold truncate">Project Task</span>
+                                        </div>
+                                    ) : (activeTab === 'tasks' || item._itemType === 'projectTask') ? (
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] uppercase font-bold tracking-widest text-slate-500 dark:text-slate-400 mb-1">Priority</span>
+                                            <span className={`font-bold ${item.priority === 'High' || item.priority === 'Urgent' ? 'text-rose-600 dark:text-rose-400' : item.priority === 'Medium' ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
                                                 {item.priority}
                                             </span>
                                         </div>
-                                    )}
+                                    ) : null}
                                 </div>
                             </div>
                             
-                            <div className="flex items-center gap-3 mt-6 pt-4 border-t border-slate-800/60">
-                                <button className="w-full flex items-center justify-center gap-2 bg-[#10b981]/10 text-[#10b981] border border-[#10b981]/30 hover:bg-[#10b981] hover:text-[#0B101E] py-2.5 rounded-xl transition-all font-bold text-sm">
+                            <div className="flex items-center gap-3 mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
+                                <button className="w-full flex items-center justify-center gap-2 bg-[#10b981]/10 text-[#10b981] border border-[#10b981]/30 hover:bg-[#10b981] hover:text-slate-950 py-2.5 rounded-xl transition-all font-bold text-sm cursor-pointer">
                                     <MessageSquare size={16} />
                                     Review & Action
                                 </button>
@@ -379,21 +437,21 @@ const Approvals = () => {
             )}
 
             {totalPages > 1 && (
-                <div className="flex justify-between items-center mt-6 p-4 bg-[#121826] border border-slate-800 rounded-2xl">
+                <div className="flex justify-between items-center mt-6 p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm">
                     <button
                         disabled={currentPage === 1}
                         onClick={() => setCurrentPage(p => p - 1)}
-                        className="p-2 rounded-lg bg-[#0B101E] border border-slate-700 text-slate-400 hover:text-white disabled:opacity-50 transition-colors"
+                        className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white disabled:opacity-50 transition-colors cursor-pointer"
                     >
                         <ChevronLeft size={18} />
                     </button>
-                    <span className="text-sm text-slate-400 font-medium">
-                        Page <span className="text-white font-bold">{currentPage}</span> of {totalPages}
+                    <span className="text-xs text-slate-600 dark:text-slate-400 font-medium">
+                        Page <span className="text-slate-900 dark:text-white font-bold">{currentPage}</span> of {totalPages}
                     </span>
                     <button
                         disabled={currentPage === totalPages}
                         onClick={() => setCurrentPage(p => p + 1)}
-                        className="p-2 rounded-lg bg-[#0B101E] border border-slate-700 text-slate-400 hover:text-white disabled:opacity-50 transition-colors"
+                        className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white disabled:opacity-50 transition-colors cursor-pointer"
                     >
                         <ChevronRight size={18} />
                     </button>
@@ -404,107 +462,129 @@ const Approvals = () => {
                 FULL-FEATURED REVIEW REQUEST MODAL
             ========================================================= */}
             {viewingItem && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0B101E]/95 p-4 backdrop-blur-md animate-in fade-in zoom-in-95 duration-200">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-md animate-in fade-in zoom-in-95 duration-200">
                     
                     {loadingDetails ? (
-                        <div className="flex flex-col items-center justify-center">
+                        <div className="flex flex-col items-center justify-center p-8 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl">
                             <Loader2 className="h-12 w-12 text-[#10b981] animate-spin mb-4" />
-                            <p className="text-slate-300 font-medium animate-pulse">Loading submission details...</p>
+                            <p className="text-slate-700 dark:text-slate-300 font-medium">Loading submission details...</p>
                         </div>
                     ) : itemDetails && (
-                        <div className="w-full max-w-[1200px] h-[95vh] rounded-3xl border border-slate-800 bg-[#0B101E] shadow-2xl flex flex-col overflow-hidden relative">
+                        <div className="w-full max-w-[1200px] h-[95vh] rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-2xl flex flex-col overflow-hidden relative">
                             
                             {/* Modal Header */}
-                            <div className="flex items-center justify-between border-b border-slate-800/60 bg-[#121826] px-6 py-5 shrink-0">
+                            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-6 py-5 shrink-0">
                                 <div className="flex items-center gap-3">
-                                    <span className="flex items-center justify-center h-10 w-10 rounded-xl border border-[#10b981]/30 bg-[#10b981]/10 text-[#10b981]">
+                                    <span className="flex items-center justify-center h-10 w-10 rounded-xl border border-[#10b981]/30 bg-[#10b981]/15 text-[#10b981]">
                                         <CheckSquare size={20} />
                                     </span>
                                     <div>
-                                        <h2 className="text-xl font-bold text-white tracking-tight">Review Request</h2>
-                                        <p className="text-xs text-slate-400 font-medium tracking-wide mt-0.5">
-                                            Submitted by <span className="text-white font-bold">{itemDetails.createdBy?.name || itemDetails.assignedTo?.[0]?.name || 'System'}</span>
+                                        <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Review Request</h2>
+                                        <p className="text-xs text-slate-600 dark:text-slate-400 font-medium tracking-wide mt-0.5">
+                                            Submitted by <span className="text-slate-900 dark:text-white font-bold">{itemDetails.createdBy?.name || itemDetails.assignedTo?.[0]?.name || 'System'}</span>
                                         </p>
                                     </div>
                                 </div>
                                 <button 
                                     onClick={() => { setViewingItem(null); setItemDetails(null); }} 
-                                    className="rounded-xl p-2 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
+                                    className="rounded-xl p-2 text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
                                 >
                                     <X className="h-6 w-6" />
                                 </button>
                             </div>
 
                             {/* Modal Body (2 Columns) */}
-                            <div className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
+                            <div className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700 scrollbar-track-transparent">
                                 <div className="flex flex-col lg:flex-row gap-6">
                                     
                                     {/* --- LEFT COLUMN: DETAILS & DISCUSSION --- */}
                                     <div className="flex-1 flex flex-col gap-6">
                                         
                                         {/* Details Card */}
-                                        <div className="rounded-2xl border border-slate-800/80 bg-[#121826] p-6 shadow-sm">
-                                            <h1 className="text-2xl font-black text-white tracking-tight mb-4">
-                                                {itemDetails.title || itemDetails.name}
+                                        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-6 shadow-sm">
+                                            <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight mb-4">
+                                                {viewingItem._itemType === 'dailyReport'
+                                                    ? `Daily Report: ${itemDetails.user?.name || 'Team Member'}`
+                                                    : (itemDetails.title || itemDetails.name)}
                                             </h1>
                                             
                                             <div className="flex items-center gap-3 mb-8">
                                                 {getStatusBadge(itemDetails.status || itemDetails.approvalStatus)}
-                                                {viewingItem._itemType !== 'project' && getPriorityBadge(itemDetails.priority)}
+                                                {viewingItem._itemType !== 'project' && viewingItem._itemType !== 'dailyReport' && getPriorityBadge(itemDetails.priority)}
                                             </div>
 
-                                            <div className="mb-8">
-                                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-3 flex items-center gap-2">
-                                                    <AlignLeft className="h-3.5 w-3.5" /> Description
-                                                </p>
-                                                <div className="rounded-xl border border-slate-800 bg-[#0B101E] p-4 text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">
-                                                    {itemDetails.description || "No additional description provided."}
-                                                </div>
-                                            </div>
-
-                                            {/* FileList Integration for Attachments */}
-                                            {viewingItem._itemType !== 'project' ? (
-                                                <div className="mb-8">
-                                                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-3 flex items-center gap-2">
-                                                        <FileText className="h-3.5 w-3.5" /> Attachments
-                                                    </p>
-                                                    <div className="rounded-xl border border-slate-800 bg-[#0B101E] p-2 min-h-[80px]">
-                                                        {/* FileList component handles fetching and downloading properly */}
-                                                        <FileList taskId={itemDetails._id} />
+                                            {viewingItem._itemType === 'dailyReport' ? (
+                                                <div className="space-y-6 mb-8">
+                                                    <div>
+                                                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-3 flex items-center gap-2">
+                                                            <AlignLeft className="h-3.5 w-3.5 text-[#10b981]" /> Today's Accomplishments
+                                                        </p>
+                                                        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-4 text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">
+                                                            {itemDetails.todayWork || "No details provided."}
+                                                        </div>
                                                     </div>
+
+                                                    {itemDetails.tomorrowPlan && (
+                                                        <div>
+                                                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-3 flex items-center gap-2">
+                                                                <FileText className="h-3.5 w-3.5 text-sky-500" /> Plans for Tomorrow
+                                                            </p>
+                                                            <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-4 text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">
+                                                                {itemDetails.tomorrowPlan}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {itemDetails.blockers && (
+                                                        <div>
+                                                            <p className="text-[10px] font-bold uppercase tracking-widest text-rose-600 dark:text-rose-400 mb-3 flex items-center gap-2">
+                                                                <Flag className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" /> Blockers / Roadblocks
+                                                            </p>
+                                                            <div className="rounded-xl border border-rose-200 dark:border-rose-500/20 bg-rose-50 dark:bg-rose-500/10 p-4 text-sm text-rose-800 dark:text-rose-200 whitespace-pre-wrap leading-relaxed font-medium">
+                                                                {itemDetails.blockers}
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             ) : (
                                                 <div className="mb-8">
                                                     <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-3 flex items-center gap-2">
-                                                        <FileText className="h-3.5 w-3.5" /> Attachments
+                                                        <AlignLeft className="h-3.5 w-3.5" /> Description
                                                     </p>
-                                                    <div className="rounded-xl border border-slate-800 bg-[#0B101E] overflow-hidden">
-                                                        <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
-                                                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-800/50 mb-3 border border-slate-700">
-                                                                <FileText className="h-4 w-4 text-slate-500" />
-                                                            </div>
-                                                            <p className="text-sm font-bold text-slate-400">No media files attached to this project submission.</p>
-                                                        </div>
+                                                    <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-4 text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">
+                                                        {itemDetails.description || "No additional description provided."}
                                                     </div>
                                                 </div>
                                             )}
 
+                                            {/* FileList Integration for Attachments */}
+                                            {viewingItem._itemType === 'task' || viewingItem._itemType === 'projectTask' ? (
+                                                <div className="mb-8">
+                                                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-3 flex items-center gap-2">
+                                                        <FileText className="h-3.5 w-3.5" /> Attachments
+                                                    </p>
+                                                    <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-2 min-h-[80px]">
+                                                        <FileList taskId={itemDetails._id} />
+                                                    </div>
+                                                </div>
+                                            ) : null}
+
                                             {/* Metadata Footer */}
-                                            <div className="flex flex-col sm:flex-row gap-6 pt-6 border-t border-slate-800/60">
+                                            <div className="flex flex-col sm:flex-row gap-6 pt-6 border-t border-slate-200 dark:border-slate-800">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-700 bg-slate-800/50 text-slate-400">
+                                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400">
                                                         <Calendar className="h-4 w-4" />
                                                     </div>
                                                     <div>
                                                         <p className="text-[10px] uppercase font-bold text-slate-500">Due Date</p>
-                                                        <p className="text-sm font-bold text-white">
+                                                        <p className="text-sm font-bold text-slate-900 dark:text-white">
                                                             {itemDetails.dueDate ? new Date(itemDetails.dueDate).toLocaleString() : "Not Set"}
                                                         </p>
                                                     </div>
                                                 </div>
                                                 
                                                 <div className="flex items-center gap-3">
-                                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-700 bg-slate-800/50 text-slate-400">
+                                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400">
                                                         <Users className="h-4 w-4" />
                                                     </div>
                                                     <div>
@@ -512,8 +592,8 @@ const Approvals = () => {
                                                         <div className="flex items-center gap-1 mt-0.5">
                                                             {itemDetails.assignedTo?.length > 0 ? (
                                                                 itemDetails.assignedTo.map((u) => (
-                                                                    <div key={u._id} className="flex items-center gap-1.5 rounded-md bg-slate-800 px-2 py-0.5 text-xs font-semibold text-slate-300">
-                                                                        <div className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#10b981] text-[#121826] text-[8px] font-bold">
+                                                                    <div key={u._id} className="flex items-center gap-1.5 rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                                                                        <div className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#10b981] text-slate-950 text-[8px] font-bold">
                                                                             {u.name?.charAt(0)}
                                                                         </div>
                                                                         {u.name}
@@ -527,12 +607,12 @@ const Approvals = () => {
                                                 </div>
                                                 {itemDetails.approvedBy && (
                                                      <div className="flex items-center gap-3">
-                                                         <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-700/60 bg-emerald-950/50 text-emerald-400">
+                                                         <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
                                                              <CheckSquare className="h-4 w-4" />
                                                          </div>
                                                          <div>
                                                              <p className="text-[10px] uppercase font-bold text-slate-500">Approved By</p>
-                                                             <p className="text-sm font-bold text-emerald-400">
+                                                             <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
                                                                  {itemDetails.approvedBy.name} ({itemDetails.approvedBy.role || 'Manager'})
                                                              </p>
                                                          </div>
@@ -543,32 +623,32 @@ const Approvals = () => {
 
                                         {/* Discussion Card (Only for tasks) */}
                                         {viewingItem._itemType !== 'project' && (
-                                            <div className="rounded-2xl border border-slate-800/80 bg-[#121826] p-6 shadow-sm">
+                                            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-6 shadow-sm">
                                                 <div className="flex items-center gap-2 mb-6">
                                                     <MessageSquare className="h-5 w-5 text-[#10b981]" />
-                                                    <h3 className="text-lg font-bold text-white">Discussion ({itemComments.length})</h3>
+                                                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">Discussion ({itemComments.length})</h3>
                                                 </div>
 
-                                                <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 mb-4 scrollbar-thin scrollbar-thumb-slate-700">
+                                                <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 mb-4 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700">
                                                     {itemComments.length === 0 ? (
-                                                        <div className="border-t border-slate-800 pt-8 pb-4 flex flex-col items-center text-center">
+                                                        <div className="border-t border-slate-200 dark:border-slate-800 pt-8 pb-4 flex flex-col items-center text-center">
                                                             <p className="text-sm font-medium text-slate-500">No comments yet. Start the conversation!</p>
                                                         </div>
                                                     ) : (
                                                         itemComments.map(c => (
                                                             <div key={c._id} className="flex gap-3">
-                                                                <div className="w-8 h-8 rounded-full bg-[#10b981] text-[#121826] font-bold text-xs flex items-center justify-center shrink-0 shadow-sm mt-1">
+                                                                <div className="w-8 h-8 rounded-full bg-[#10b981] text-slate-950 font-bold text-xs flex items-center justify-center shrink-0 shadow-sm mt-1">
                                                                     {c.userId?.name.charAt(0).toUpperCase()}
                                                                 </div>
-                                                                <div className="flex-1 bg-[#0B101E] border border-slate-800 rounded-xl p-3 space-y-1.5">
+                                                                <div className="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 space-y-1.5">
                                                                     <div className="flex items-center gap-2 text-xs flex-wrap">
-                                                                        <span className="font-bold text-white">{c.userId?.name}</span>
-                                                                        <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-slate-800 text-slate-400 rounded">
+                                                                        <span className="font-bold text-slate-900 dark:text-white">{c.userId?.name}</span>
+                                                                        <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-400 rounded">
                                                                             {c.userId?.role === 'admin' ? 'Manager' : 'Member'}
                                                                         </span>
                                                                         <span className="text-slate-500 ml-auto">{new Date(c.createdAt).toLocaleString()}</span>
                                                                     </div>
-                                                                    <p className="text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">{c.message}</p>
+                                                                    <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">{c.message}</p>
                                                                 </div>
                                                             </div>
                                                         ))
@@ -579,11 +659,11 @@ const Approvals = () => {
                                                     <input 
                                                         type="text"
                                                         placeholder="Type your message here..."
-                                                        className="w-full rounded-xl border border-slate-700 bg-[#0B101E] px-4 py-3 text-sm text-white placeholder-slate-500 focus:border-[#10b981] focus:outline-none focus:ring-1 focus:ring-[#10b981] pr-24"
+                                                        className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-3 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-[#10b981] focus:outline-none pr-24"
                                                         value={commentInput}
                                                         onChange={(e) => setCommentInput(e.target.value)}
                                                     />
-                                                     <button type="submit" disabled={!commentInput.trim() || commentSubmitting} className="absolute right-1.5 top-1.5 bottom-1.5 flex items-center gap-1.5 rounded-lg bg-[#10b981] px-4 font-bold text-[#121826] hover:bg-[#059669] disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm cursor-pointer">
+                                                     <button type="submit" disabled={!commentInput.trim() || commentSubmitting} className="absolute right-1.5 top-1.5 bottom-1.5 flex items-center gap-1.5 rounded-lg bg-[#10b981] px-4 font-bold text-slate-950 hover:bg-[#059669] disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm cursor-pointer">
                                                         {commentSubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <>Post <Send className="h-3.5 w-3.5 ml-0.5" /></>}
                                                      </button>
                                                 </form>
@@ -595,7 +675,7 @@ const Approvals = () => {
                                     <div className="w-full lg:w-[400px] shrink-0 flex flex-col gap-6">
                                         
                                         {/* Review Request Decision Box */}
-                                        <div className="rounded-2xl border border-slate-800/80 bg-[#121826] p-6 shadow-sm">
+                                        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-6 shadow-sm">
                                             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-3 flex items-center gap-2">
                                                 <MessageSquare className="h-3.5 w-3.5" /> Decision Note / Feedback
                                             </p>
@@ -603,14 +683,14 @@ const Approvals = () => {
                                                 value={feedback}
                                                 onChange={(e) => setFeedback(e.target.value)}
                                                 placeholder="Add notes for your decision (Required for rejection)..."
-                                                className="w-full h-28 rounded-xl border border-slate-700 bg-[#0B101E] p-4 text-sm text-white placeholder-slate-500 focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] outline-none resize-none transition-all mb-4"
+                                                className="w-full h-28 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-[#10b981] outline-none resize-none transition-all mb-4"
                                             />
                                             
                                             <div className="flex flex-col sm:flex-row items-center gap-3">
                                                 <button
                                                     onClick={() => handleProcessApproval('reject')}
                                                     disabled={actionLoading}
-                                                    className="w-full flex items-center justify-center gap-2 rounded-xl border border-rose-500/50 bg-transparent px-4 py-3 text-sm font-bold text-rose-500 hover:bg-rose-500/10 disabled:opacity-50 transition-all cursor-pointer"
+                                                    className="w-full flex items-center justify-center gap-2 rounded-xl border border-rose-500/50 bg-rose-50 dark:bg-rose-500/10 px-4 py-3 text-sm font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-500/20 disabled:opacity-50 transition-all cursor-pointer"
                                                 >
                                                     {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
                                                     <span>Reject Submission</span>
@@ -618,7 +698,7 @@ const Approvals = () => {
                                                 <button
                                                     onClick={() => handleProcessApproval('approve')}
                                                     disabled={actionLoading}
-                                                    className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#10b981] px-4 py-3 text-sm font-bold text-[#121826] hover:bg-[#059669] disabled:opacity-50 transition-all cursor-pointer"
+                                                    className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#10b981] px-4 py-3 text-sm font-bold text-slate-950 hover:bg-[#059669] disabled:opacity-50 transition-all cursor-pointer shadow-md shadow-[#10b981]/20"
                                                 >
                                                     {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
                                                     <span>Approve Submission</span>
@@ -628,13 +708,13 @@ const Approvals = () => {
 
                                         {/* Audit Trail / History (Only for tasks) */}
                                         {viewingItem._itemType !== 'project' && (
-                                            <div className="rounded-2xl border border-slate-800/80 bg-[#121826] p-6 shadow-sm flex-1 flex flex-col max-h-[500px]">
+                                            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-6 shadow-sm flex-1 flex flex-col max-h-[500px]">
                                                 <div className="flex items-center gap-2 mb-6">
                                                     <History className="h-5 w-5 text-[#10b981]" />
-                                                    <h3 className="text-lg font-bold text-white">Audit Trail / History</h3>
+                                                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">Audit Trail / History</h3>
                                                 </div>
 
-                                                <div className="relative pl-3 space-y-6 before:absolute before:left-[15px] before:top-2 before:bottom-2 before:w-[2px] before:bg-slate-800 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-700">
+                                                <div className="relative pl-3 space-y-6 before:absolute before:left-[15px] before:top-2 before:bottom-2 before:w-[2px] before:bg-slate-200 dark:before:bg-slate-800 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700">
                                                     {(itemHistory.length > 0 ? itemHistory : [{
                                                         userId: { name: itemDetails.createdBy?.name || 'System' },
                                                         createdAt: new Date().toISOString(),
@@ -642,32 +722,32 @@ const Approvals = () => {
                                                         newValue: `Task initialized with status: ${itemDetails.status}`
                                                     }]).map((log, idx) => (
                                                         <div key={idx} className="relative pl-6">
-                                                            <div className="absolute left-[-2px] top-1.5 h-2 w-2 rounded-full bg-[#10b981] ring-4 ring-[#121826]"></div>
+                                                            <div className="absolute left-[-2px] top-1.5 h-2 w-2 rounded-full bg-[#10b981] ring-4 ring-white dark:ring-slate-900"></div>
                                                             
                                                             <div className="mb-1 flex flex-wrap items-center gap-2 text-[10px] font-bold text-slate-500">
-                                                                <span className="text-white">{log.userId?.name || 'System'}</span>
+                                                                <span className="text-slate-900 dark:text-white">{log.userId?.name || 'System'}</span>
                                                                 <span>•</span>
                                                                 <span>{new Date(log.createdAt).toLocaleString()}</span>
                                                             </div>
                                                             
-                                                            <p className="text-xs font-bold text-white mb-2">{log.action}</p>
+                                                            <p className="text-xs font-bold text-slate-900 dark:text-white mb-2">{log.action}</p>
                                                             
                                                             {log.oldValue && log.newValue && (
-                                                                <div className="rounded-lg border border-slate-700/50 bg-[#0B101E] p-3 text-xs">
-                                                                    <div className="flex items-center gap-2 text-slate-400 mb-1">
+                                                                <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-3 text-xs">
+                                                                    <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 mb-1">
                                                                         <span className="w-10">From:</span>
-                                                                        <span className="text-rose-500 font-semibold line-through">{log.oldValue}</span>
+                                                                        <span className="text-rose-600 dark:text-rose-400 font-semibold line-through">{log.oldValue}</span>
                                                                     </div>
-                                                                    <div className="flex items-center gap-2 text-slate-400">
+                                                                    <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
                                                                         <span className="w-10">To:</span>
-                                                                        <span className="text-[#00E676] font-semibold">{log.newValue}</span>
+                                                                        <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{log.newValue}</span>
                                                                     </div>
                                                                 </div>
                                                             )}
 
                                                             {!log.oldValue && log.newValue && (
-                                                                <div className="rounded-lg border border-slate-700/50 bg-[#0B101E] p-2.5 text-xs text-slate-400">
-                                                                    Info: <span className="text-white font-medium">{log.newValue}</span>
+                                                                <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-2.5 text-xs text-slate-600 dark:text-slate-400">
+                                                                    Info: <span className="text-slate-900 dark:text-white font-medium">{log.newValue}</span>
                                                                 </div>
                                                             )}
                                                         </div>

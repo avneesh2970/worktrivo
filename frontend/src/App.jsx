@@ -16,11 +16,19 @@ import ChatApp from './pages/ChatApp';
 import Announcements from './pages/Announcements';
 import AdminSettings from './pages/AdminSettings';
 import Approvals from './pages/Approvals';
+import DailyReports from './pages/DailyReports';
 
 const AdminRoute = ({ children }) => {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
   if (user.role !== 'admin') return <Navigate to="/" replace />;
+  return children;
+};
+
+const ManagerOrAdminRoute = ({ children }) => {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role !== 'admin' && user.role !== 'manager') return <Navigate to="/" replace />;
   return children;
 };
 
@@ -69,6 +77,7 @@ function App() {
           <Route path="profile/edit" element={<ProfileSetup />} />
           <Route path="chat" element={<ChatApp />} />
           <Route path="announcements" element={<Announcements />} />
+          <Route path="daily-reports" element={<DailyReports />} />
           
           <Route
             path="users"
@@ -89,9 +98,9 @@ function App() {
           <Route
             path="approvals"
             element={
-              <AdminRoute>
+              <ManagerOrAdminRoute>
                 <Approvals />
-              </AdminRoute>
+              </ManagerOrAdminRoute>
             }
           />
         </Route>

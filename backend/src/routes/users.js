@@ -28,6 +28,9 @@ router.patch(
 );
 
 
+// Supervisor List for Task Creation / Verbal Assignment (Manager(s) or fallback to Admins)
+router.get('/my-supervisors', userController.getMySupervisors);
+
 // User List
 router.get('/', userController.getUsers);
 

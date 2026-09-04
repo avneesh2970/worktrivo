@@ -91,22 +91,22 @@ const LoginActivity = () => {
   };
 
   return (
-    <div className="rounded-2xl border border-[#1e2640] bg-[#1e2640]/40 p-4 sm:p-6 space-y-5">
+    <div className="rounded-2xl border border-slate-200 dark:border-[#1e2640] bg-white dark:bg-[#1e2640]/40 p-4 sm:p-6 space-y-5 shadow-sm text-slate-800 dark:text-slate-100">
   
   {/* Header */}
   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
     <div>
-      <h2 className="text-base sm:text-lg font-bold text-white tracking-tight">
+      <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white tracking-tight">
         Login Activity Logs
       </h2>
-      <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
+      <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-0.5">
         Monitor authentication history and active session records.
       </p>
     </div>
 
     <button
       onClick={handleClear}
-      className="inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-xs sm:text-sm font-semibold transition-colors w-full sm:w-auto shrink-0"
+      className="inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20 text-xs sm:text-sm font-bold transition-colors w-full sm:w-auto shrink-0"
     >
       <Trash2 size={16} />
       <span>Clear Activity</span>
@@ -119,7 +119,7 @@ const LoginActivity = () => {
       <input
         type="text"
         placeholder="Search by user or email..."
-        className="w-full rounded-lg border border-[#1e2640] bg-[#0d101c] px-3.5 py-2 text-xs sm:text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-[#10b981] transition-colors"
+        className="w-full rounded-xl border border-slate-200 dark:border-[#1e2640] bg-slate-50 dark:bg-[#0d101c] px-3.5 py-2 text-xs sm:text-sm text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#10b981] transition-colors"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
       />
@@ -127,20 +127,20 @@ const LoginActivity = () => {
 
     <div className="sm:col-span-3">
       <select
-        className="w-full rounded-lg border border-[#1e2640] bg-[#0d101c] px-3 py-2 text-xs sm:text-sm text-slate-300 focus:outline-none focus:border-[#10b981] transition-colors"
+        className="w-full rounded-xl border border-slate-200 dark:border-[#1e2640] bg-slate-50 dark:bg-[#0d101c] px-3 py-2 text-xs sm:text-sm text-slate-800 dark:text-slate-300 focus:outline-none focus:border-[#10b981] transition-colors"
         value={action}
         onChange={(e) => setAction(e.target.value)}
       >
-        <option value="">All Actions</option>
-        <option value="login">Login</option>
-        <option value="logout">Logout</option>
+        <option value="" className="bg-white dark:bg-[#0d101c]">All Actions</option>
+        <option value="login" className="bg-white dark:bg-[#0d101c]">Login</option>
+        <option value="logout" className="bg-white dark:bg-[#0d101c]">Logout</option>
       </select>
     </div>
 
     <div className="sm:col-span-3">
       <button
         type="submit"
-        className="w-full rounded-lg bg-[#10b981] hover:bg-[#c4823f] px-4 py-2 text-xs sm:text-sm font-bold text-[#0d101c] flex items-center justify-center gap-2 transition-colors"
+        className="w-full rounded-xl bg-[#10b981] hover:bg-[#059669] px-4 py-2 text-xs sm:text-sm font-bold text-slate-950 flex items-center justify-center gap-2 shadow-sm transition-colors cursor-pointer"
       >
         <Search size={16} />
         <span>Filter</span>
@@ -149,9 +149,9 @@ const LoginActivity = () => {
   </form>
 
   {/* Desktop Table View */}
-  <div className="hidden md:block overflow-x-auto rounded-xl border border-[#1e2640] bg-[#0d101c]">
+  <div className="hidden md:block overflow-x-auto rounded-xl border border-slate-200 dark:border-[#1e2640] bg-white dark:bg-[#0d101c]">
     <table className="w-full text-left text-xs">
-      <thead className="bg-[#141a2e] text-slate-400 border-b border-[#1e2640] uppercase tracking-wider font-semibold">
+      <thead className="bg-slate-100/90 dark:bg-[#141a2e] text-slate-700 dark:text-slate-400 border-b border-slate-200 dark:border-[#1e2640] uppercase tracking-wider font-bold">
         <tr>
           <th className="p-3.5">User</th>
           <th className="p-3.5">Action</th>
@@ -162,7 +162,7 @@ const LoginActivity = () => {
         </tr>
       </thead>
 
-      <tbody className="divide-y divide-[#1e2640] text-slate-300">
+      <tbody className="divide-y divide-slate-200 dark:divide-[#1e2640] text-slate-700 dark:text-slate-300">
         {loading ? (
           <tr>
             <td colSpan="6" className="text-center py-8">
@@ -180,22 +180,22 @@ const LoginActivity = () => {
             <tr
               key={item._id}
               onClick={() => handleRowClick(item)}
-              className="hover:bg-[#141a2e] cursor-pointer transition-colors"
+              className="hover:bg-slate-50 dark:hover:bg-[#141a2e] cursor-pointer transition-colors"
             >
               <td className="p-3.5">
-                <p className="font-semibold text-white flex items-center gap-1.5 hover:text-[#10b981]">
+                <p className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 hover:text-[#10b981]">
                   {item.name}
                   <ExternalLink size={12} className="opacity-0 group-hover:opacity-100 text-[#10b981]" />
                 </p>
-                <p className="text-[10px] text-slate-400">{item.email}</p>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400">{item.email}</p>
               </td>
 
               <td className="p-3.5">
                 <span
                   className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold border ${
                     item.action === "login"
-                      ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                      : "bg-rose-500/10 text-rose-400 border-rose-500/20"
+                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                      : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20"
                   }`}
                 >
                   {item.action === "login" ? <LogIn size={13} /> : <LogOut size={13} />}
@@ -203,15 +203,15 @@ const LoginActivity = () => {
                 </span>
               </td>
 
-              <td className="p-3.5 capitalize text-slate-400">{item.loginProvider || "Password"}</td>
+              <td className="p-3.5 capitalize text-slate-600 dark:text-slate-400 font-medium">{item.loginProvider || "Password"}</td>
 
-              <td className="p-3.5 font-mono text-slate-400">{item.ipAddress || "—"}</td>
+              <td className="p-3.5 font-mono text-slate-600 dark:text-slate-400 font-medium">{item.ipAddress || "—"}</td>
 
-              <td className="p-3.5">
+              <td className="p-3.5 font-medium">
                 {item.loginTime ? new Date(item.loginTime).toLocaleString() : "—"}
               </td>
 
-              <td className="p-3.5">
+              <td className="p-3.5 font-medium">
                 {item.logoutTime ? new Date(item.logoutTime).toLocaleString() : "—"}
               </td>
             </tr>
@@ -234,18 +234,18 @@ const LoginActivity = () => {
         <div
           key={item._id}
           onClick={() => handleRowClick(item)}
-          className="rounded-xl border border-[#1e2640] bg-[#141a2e] p-3.5 space-y-3 text-xs cursor-pointer hover:border-[#10b981]/50 transition-colors"
+          className="rounded-xl border border-slate-200 dark:border-[#1e2640] bg-slate-50 dark:bg-[#141a2e] p-3.5 space-y-3 text-xs cursor-pointer hover:border-[#10b981]/50 transition-colors shadow-xs"
         >
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <p className="font-semibold text-white truncate">{item.name}</p>
-              <p className="text-[11px] text-slate-400 truncate">{item.email}</p>
+              <p className="font-bold text-slate-900 dark:text-white truncate">{item.name}</p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{item.email}</p>
             </div>
             <span
               className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border uppercase ${
                 item.action === "login"
-                  ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                  : "bg-rose-500/10 text-rose-400 border-rose-500/20"
+                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                  : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20"
               }`}
             >
               {item.action === "login" ? <LogIn size={12} /> : <LogOut size={12} />}
@@ -253,27 +253,27 @@ const LoginActivity = () => {
             </span>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#1e2640] text-[11px]">
+          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200 dark:border-[#1e2640] text-[11px]">
             <div>
               <span className="block text-[10px] text-slate-500 font-medium">IP Address</span>
-              <span className="font-mono text-slate-300">{item.ipAddress || "—"}</span>
+              <span className="font-mono text-slate-700 dark:text-slate-300 font-medium">{item.ipAddress || "—"}</span>
             </div>
             <div>
               <span className="block text-[10px] text-slate-500 font-medium">Provider</span>
-              <span className="text-slate-300 capitalize">{item.loginProvider || "Password"}</span>
+              <span className="text-slate-700 dark:text-slate-300 capitalize font-medium">{item.loginProvider || "Password"}</span>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#1e2640] text-[11px]">
+          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200 dark:border-[#1e2640] text-[11px]">
             <div>
               <span className="block text-[10px] text-slate-500 font-medium">Login Time</span>
-              <span className="text-slate-300">
+              <span className="text-slate-700 dark:text-slate-300 font-medium">
                 {item.loginTime ? new Date(item.loginTime).toLocaleString() : "—"}
               </span>
             </div>
             <div>
               <span className="block text-[10px] text-slate-500 font-medium">Logout Time</span>
-              <span className="text-slate-300">
+              <span className="text-slate-700 dark:text-slate-300 font-medium">
                 {item.logoutTime ? new Date(item.logoutTime).toLocaleString() : "—"}
               </span>
             </div>
@@ -285,20 +285,20 @@ const LoginActivity = () => {
 
   {/* Pagination Controls */}
   {!loading && activities.length > 0 && (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-[#1e2640] text-xs text-slate-400">
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-slate-200 dark:border-[#1e2640] text-xs text-slate-600 dark:text-slate-400">
       <div className="text-center sm:text-left">
-        Showing <span className="text-white font-semibold">{startIndex + 1}</span> to{" "}
-        <span className="text-white font-semibold">
+        Showing <span className="text-slate-900 dark:text-white font-bold">{startIndex + 1}</span> to{" "}
+        <span className="text-slate-900 dark:text-white font-bold">
           {Math.min(startIndex + itemsPerPage, activities.length)}
         </span>{" "}
-        of <span className="text-white font-semibold">{activities.length}</span> entries
+        of <span className="text-slate-900 dark:text-white font-bold">{activities.length}</span> entries
       </div>
 
       <div className="flex items-center gap-1 overflow-x-auto max-w-full pb-1 sm:pb-0">
         <button
           onClick={() => handlePageChange(currentPage - 1)}
           disabled={currentPage === 1}
-          className="p-1.5 rounded-lg border border-[#1e2640] bg-[#0d101c] hover:bg-[#141a2e] disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-slate-200 shrink-0"
+          className="p-1.5 rounded-lg border border-slate-200 dark:border-[#1e2640] bg-slate-100 dark:bg-[#0d101c] hover:bg-slate-200 dark:hover:bg-[#141a2e] disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-slate-700 dark:text-slate-200 shrink-0"
           title="Previous Page"
         >
           <ChevronLeft size={16} />
@@ -308,10 +308,10 @@ const LoginActivity = () => {
           <button
             key={page}
             onClick={() => handlePageChange(page)}
-            className={`px-3 py-1.5 rounded-lg border text-xs font-semibold transition-colors shrink-0 ${
+            className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-colors shrink-0 ${
               currentPage === page
-                ? "bg-[#10b981] border-[#10b981] text-[#0d101c]"
-                : "border-[#1e2640] bg-[#0d101c] hover:bg-[#141a2e] text-slate-300"
+                ? "bg-[#10b981] border-[#10b981] text-slate-950 shadow-xs"
+                : "border-slate-200 dark:border-[#1e2640] bg-slate-100 dark:bg-[#0d101c] hover:bg-slate-200 dark:hover:bg-[#141a2e] text-slate-700 dark:text-slate-300"
             }`}
           >
             {page}
@@ -321,7 +321,7 @@ const LoginActivity = () => {
         <button
           onClick={() => handlePageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
-          className="p-1.5 rounded-lg border border-[#1e2640] bg-[#0d101c] hover:bg-[#141a2e] disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-slate-200 shrink-0"
+          className="p-1.5 rounded-lg border border-slate-200 dark:border-[#1e2640] bg-slate-100 dark:bg-[#0d101c] hover:bg-slate-200 dark:hover:bg-[#141a2e] disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-slate-700 dark:text-slate-200 shrink-0"
           title="Next Page"
         >
           <ChevronRight size={16} />

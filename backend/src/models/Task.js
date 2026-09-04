@@ -94,6 +94,15 @@ estimatedHours: {
     ref: 'User',
     required: true
   },
+  isSelfCreated: {
+    type: Boolean,
+    default: false
+  },
+  verballyAssignedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
   approvedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',

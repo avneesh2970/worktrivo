@@ -193,22 +193,22 @@ const Dashboard = () => {
   const overdueTasksList = tasks.filter(t => t.status === 'Overdue');
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
+    <div className="mx-auto max-w-7xl space-y-6 text-slate-800 dark:text-slate-100">
       {/* Header Banner */}
-      <div className="rounded-xl border border-slate-800 bg-[#0d1426] p-6 shadow-sm">
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0d1426] p-6 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
 
           {/* Left: User Info */}
           <div>
             <div className="mb-2">
-              <span className="inline-block rounded-md bg-slate-800 px-2.5 py-1 text-xs font-medium text-slate-300 border border-slate-700 capitalize">
+              <span className="inline-block rounded-md bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 capitalize">
                 {user.role} Workspace
               </span>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
               Welcome back, {user.name}
             </h2>
-            <p className="text-sm text-slate-400 mt-1">
+            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
               Here is what's happening across your team's workflow today.
             </p>
           </div>
@@ -217,7 +217,7 @@ const Dashboard = () => {
           <div className="flex items-center gap-3">
             <button
               onClick={handleDownloadReport}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-sm font-medium transition-colors"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-sm font-semibold transition-colors"
             >
               <Download size={16} />
               Export Report
@@ -225,7 +225,7 @@ const Dashboard = () => {
 
             <button
               onClick={() => navigate('/tasks')}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#10b981] hover:bg-[#c4823f] px-4 py-2 text-sm font-semibold text-slate-950 transition-colors"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-[#10b981] hover:bg-[#059669] text-slate-950 font-bold text-sm shadow-md shadow-[#10b981]/20 transition-colors"
             >
               <Plus size={16} />
               Create Task
@@ -240,22 +240,22 @@ const Dashboard = () => {
         onClick={() => navigate("/tasks?filter=active")}
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Metric 1 */}
-        <div className="group rounded-2xl border border-white/10 bg-[#0d1426]/80 p-5 backdrop-blur-md hover:border-indigo-500/30 transition-all duration-300 shadow-md cursor-pointer">
-          <div className="flex items-center justify-between text-xs text-gray-400 font-medium">
+        <div className="group rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0d1426]/80 p-5 shadow-sm hover:shadow-md hover:border-indigo-400 dark:hover:border-indigo-500/30 transition-all duration-300 cursor-pointer">
+          <div className="flex items-center justify-between text-xs text-slate-600 dark:text-gray-400 font-semibold">
             <span>Total Active Tasks</span>
-            <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 group-hover:scale-110 transition-transform">
+            <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 group-hover:scale-110 transition-transform">
               <CheckSquare size={18} />
             </div>
           </div>
           <div className="mt-3 flex items-baseline justify-between">
-            <span className="text-3xl font-extrabold tracking-tight text-white">{totalTasks}</span>
-            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+            <span className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">{totalTasks}</span>
+            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
               <TrendingUp size={12} /> Active
             </span>
           </div>
-          <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between text-[11px] text-gray-400">
+          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-[11px] text-slate-500 dark:text-gray-400 font-medium">
             <span>{todoTasks} To Do</span>
-            <span className="h-1 w-1 rounded-full bg-gray-600"></span>
+            <span className="h-1 w-1 rounded-full bg-slate-400 dark:bg-gray-600"></span>
             <span>{inProgressTasks} In Progress</span>
           </div>
         </div>
@@ -263,44 +263,45 @@ const Dashboard = () => {
         {/* Metric 2 */}
         <div 
           onClick={() => navigate("/approvals?filter=pending")}
-          className="group rounded-2xl border border-white/10 bg-[#0d1426]/80 p-5 backdrop-blur-md hover:border-amber-500/30 transition-all duration-300 shadow-md cursor-pointer">
-          <div className="flex items-center justify-between text-xs text-gray-400 font-medium">
+          className="group rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0d1426]/80 p-5 shadow-sm hover:shadow-md hover:border-amber-400 dark:hover:border-amber-500/30 transition-all duration-300 cursor-pointer">
+          <div className="flex items-center justify-between text-xs text-slate-600 dark:text-gray-400 font-semibold">
             <span>Pending Approvals</span>
-            <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 group-hover:scale-110 transition-transform">
+            <div className="p-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 group-hover:scale-110 transition-transform">
               <Clock size={18} />
             </div>
           </div>
           <div className="mt-3 flex items-baseline justify-between">
-            <span className="text-3xl font-extrabold tracking-tight text-amber-400">{pendingApprovals}</span>
+            <span className="text-3xl font-extrabold tracking-tight text-amber-600 dark:text-amber-400">{pendingApprovals}</span>
             {pendingApprovals > 0 && (
-              <span className="animate-pulse text-[11px] font-medium text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+              <span className="animate-pulse text-[11px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
                 Action Required
               </span>
             )}
           </div>
-          <div className="mt-3 pt-3 border-t border-white/5 text-[11px] text-gray-400 truncate">
+          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-white/5 text-[11px] text-slate-500 dark:text-gray-400 font-medium truncate">
             {pendingApprovals === 0 ? "All caught up!" : "Awaiting management review"}
           </div>
         </div>
 
         {/* Metric 3 */}
         <div 
-          onClick={() => navigate("/tasks?filter=overdue")}className="group rounded-2xl border border-white/10 bg-[#0d1426]/80 p-5 backdrop-blur-md hover:border-rose-500/30 transition-all duration-300 shadow-md cursor-pointer">
-          <div className="flex items-center justify-between text-xs text-gray-400 font-medium">
+          onClick={() => navigate("/tasks?filter=overdue")}
+          className="group rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0d1426]/80 p-5 shadow-sm hover:shadow-md hover:border-rose-400 dark:hover:border-rose-500/30 transition-all duration-300 cursor-pointer">
+          <div className="flex items-center justify-between text-xs text-slate-600 dark:text-gray-400 font-semibold">
             <span>Overdue Tasks</span>
-            <div className="p-2 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20 group-hover:scale-110 transition-transform">
+            <div className="p-2 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 group-hover:scale-110 transition-transform">
               <AlertTriangle size={18} />
             </div>
           </div>
           <div className="mt-3 flex items-baseline justify-between">
-            <span className="text-3xl font-extrabold tracking-tight text-rose-400">{overdueTasks}</span>
+            <span className="text-3xl font-extrabold tracking-tight text-rose-600 dark:text-rose-400">{overdueTasks}</span>
             {overdueTasks > 0 && (
-              <span className="text-[11px] font-medium text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-full border border-rose-500/20">
+              <span className="text-[11px] font-semibold text-rose-600 dark:text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-full border border-rose-500/20">
                 Critical
               </span>
             )}
           </div>
-          <div className="mt-3 pt-3 border-t border-white/5 text-[11px] text-gray-400">
+          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-white/5 text-[11px] text-slate-500 dark:text-gray-400 font-medium">
             Missed completion deadlines
           </div>
         </div>
@@ -308,20 +309,20 @@ const Dashboard = () => {
         {/* Metric 4 */}
         <div 
           onClick={() => navigate("/manage-team?filter=active")}
-          className="group rounded-2xl border border-white/10 bg-[#0d1426]/80 p-5 backdrop-blur-md hover:border-emerald-500/30 transition-all duration-300 shadow-md cursor-pointer">
-          <div className="flex items-center justify-between text-xs text-gray-400 font-medium">
+          className="group rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0d1426]/80 p-5 shadow-sm hover:shadow-md hover:border-emerald-400 dark:hover:border-emerald-500/30 transition-all duration-300 cursor-pointer">
+          <div className="flex items-center justify-between text-xs text-slate-600 dark:text-gray-400 font-semibold">
             <span>Active Team Members</span>
-            <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 group-hover:scale-110 transition-transform">
+            <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 group-hover:scale-110 transition-transform">
               <Users size={18} />
             </div>
           </div>
           <div className="mt-3 flex items-baseline justify-between">
-            <span className="text-3xl font-extrabold tracking-tight text-white">{activeMembers}</span>
-            <span className="text-[11px] font-medium text-gray-400 bg-white/5 px-2 py-0.5 rounded-full border border-white/10">
+            <span className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">{activeMembers}</span>
+            <span className="text-[11px] font-semibold text-slate-600 dark:text-gray-400 bg-slate-100 dark:bg-white/5 px-2 py-0.5 rounded-full border border-slate-200 dark:border-white/10">
               Total {users.length}
             </span>
           </div>
-          <div className="mt-3 pt-3 border-t border-white/5 text-[11px] text-gray-400">
+          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-white/5 text-[11px] text-slate-500 dark:text-gray-400 font-medium">
             Currently assigned members
           </div>
         </div>
@@ -332,56 +333,56 @@ const Dashboard = () => {
         {/* Left Column */}
         <div className="space-y-6">
           {/* Status Breakdown Card */}
-          <div className="rounded-2xl border border-white/10 bg-[#0d1426]/80 p-6 backdrop-blur-md space-y-5 shadow-lg">
-            <div className="flex items-center justify-between border-b border-white/5 pb-4">
+          <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0d1426]/80 p-6 space-y-5 shadow-sm">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/5 pb-4">
               <div className="flex items-center gap-2">
-                <Activity size={18} className="text-indigo-400" />
-                <h3 className="font-heading text-base font-semibold text-white">Task Status Breakdown</h3>
+                <Activity size={18} className="text-indigo-600 dark:text-indigo-400" />
+                <h3 className="font-heading text-base font-bold text-slate-900 dark:text-white">Task Status Breakdown</h3>
               </div>
-              <span className="text-xs text-gray-400">{totalTasks} Total Tasks</span>
+              <span className="text-xs font-semibold text-slate-500 dark:text-gray-400">{totalTasks} Total Tasks</span>
             </div>
 
             <div className="space-y-4 text-xs">
               {/* Approved */}
               <div>
-                <div className="flex justify-between items-center text-gray-300 mb-1.5 font-medium">
-                  <span className="flex items-center gap-1.5"><CheckCircle2 size={14} className="text-emerald-400" /> Approved / Completed</span>
-                  <span className="text-gray-400">{getPercentage(approvedTasks)}% <span className="text-gray-500">({approvedTasks})</span></span>
+                <div className="flex justify-between items-center text-slate-700 dark:text-gray-300 mb-1.5 font-semibold">
+                  <span className="flex items-center gap-1.5"><CheckCircle2 size={14} className="text-emerald-500" /> Approved / Completed</span>
+                  <span className="text-slate-600 dark:text-gray-400">{getPercentage(approvedTasks)}% <span className="text-slate-400 dark:text-gray-500">({approvedTasks})</span></span>
                 </div>
-                <div className="h-2 w-full overflow-hidden rounded-full bg-white/5 p-0.5 border border-white/5">
+                <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-white/5 p-0.5 border border-slate-200 dark:border-white/5">
                   <div className="h-full bg-emerald-500 rounded-full transition-all duration-500" style={{ width: `${getPercentage(approvedTasks)}%` }}></div>
                 </div>
               </div>
 
               {/* In Progress */}
               <div>
-                <div className="flex justify-between items-center text-gray-300 mb-1.5 font-medium">
-                  <span className="flex items-center gap-1.5"><PlayCircle size={14} className="text-blue-400" /> In Progress</span>
-                  <span className="text-gray-400">{getPercentage(inProgressTasks)}% <span className="text-gray-500">({inProgressTasks})</span></span>
+                <div className="flex justify-between items-center text-slate-700 dark:text-gray-300 mb-1.5 font-semibold">
+                  <span className="flex items-center gap-1.5"><PlayCircle size={14} className="text-blue-500" /> In Progress</span>
+                  <span className="text-slate-600 dark:text-gray-400">{getPercentage(inProgressTasks)}% <span className="text-slate-400 dark:text-gray-500">({inProgressTasks})</span></span>
                 </div>
-                <div className="h-2 w-full overflow-hidden rounded-full bg-white/5 p-0.5 border border-white/5">
+                <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-white/5 p-0.5 border border-slate-200 dark:border-white/5">
                   <div className="h-full bg-blue-500 rounded-full transition-all duration-500" style={{ width: `${getPercentage(inProgressTasks)}%` }}></div>
                 </div>
               </div>
 
               {/* Pending Approval */}
               <div>
-                <div className="flex justify-between items-center text-gray-300 mb-1.5 font-medium">
-                  <span className="flex items-center gap-1.5"><Clock size={14} className="text-amber-400" /> Pending Approval</span>
-                  <span className="text-gray-400">{getPercentage(pendingApprovals)}% <span className="text-gray-500">({pendingApprovals})</span></span>
+                <div className="flex justify-between items-center text-slate-700 dark:text-gray-300 mb-1.5 font-semibold">
+                  <span className="flex items-center gap-1.5"><Clock size={14} className="text-amber-500" /> Pending Approval</span>
+                  <span className="text-slate-600 dark:text-gray-400">{getPercentage(pendingApprovals)}% <span className="text-slate-400 dark:text-gray-500">({pendingApprovals})</span></span>
                 </div>
-                <div className="h-2 w-full overflow-hidden rounded-full bg-white/5 p-0.5 border border-white/5">
+                <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-white/5 p-0.5 border border-slate-200 dark:border-white/5">
                   <div className="h-full bg-amber-500 rounded-full transition-all duration-500" style={{ width: `${getPercentage(pendingApprovals)}%` }}></div>
                 </div>
               </div>
 
               {/* Overdue */}
               <div>
-                <div className="flex justify-between items-center text-gray-300 mb-1.5 font-medium">
-                  <span className="flex items-center gap-1.5"><XCircle size={14} className="text-rose-400" /> Overdue</span>
-                  <span className="text-gray-400">{getPercentage(overdueTasks)}% <span className="text-gray-500">({overdueTasks})</span></span>
+                <div className="flex justify-between items-center text-slate-700 dark:text-gray-300 mb-1.5 font-semibold">
+                  <span className="flex items-center gap-1.5"><XCircle size={14} className="text-rose-500" /> Overdue</span>
+                  <span className="text-slate-600 dark:text-gray-400">{getPercentage(overdueTasks)}% <span className="text-slate-400 dark:text-gray-500">({overdueTasks})</span></span>
                 </div>
-                <div className="h-2 w-full overflow-hidden rounded-full bg-white/5 p-0.5 border border-white/5">
+                <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-white/5 p-0.5 border border-slate-200 dark:border-white/5">
                   <div className="h-full bg-rose-500 rounded-full transition-all duration-500" style={{ width: `${getPercentage(overdueTasks)}%` }}></div>
                 </div>
               </div>
@@ -389,23 +390,23 @@ const Dashboard = () => {
           </div>
 
           {/* Pending Approvals Action List */}
-          <div className="rounded-2xl border border-white/10 bg-[#0d1426]/80 p-6 backdrop-blur-md space-y-4 shadow-lg">
-            <div className="flex items-center justify-between border-b border-white/5 pb-4">
+          <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0d1426]/80 p-6 space-y-4 shadow-sm">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/5 pb-4">
               <div className="flex items-center gap-2">
-                <Clock size={18} className="text-amber-400" />
-                <h3 className="font-heading text-base font-semibold text-white">
+                <Clock size={18} className="text-amber-500" />
+                <h3 className="font-heading text-base font-bold text-slate-900 dark:text-white">
                   Pending Approvals
                 </h3>
               </div>
-              <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+              <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
                 {pendingTasksList.length} Tasks
               </span>
             </div>
 
             {pendingTasksList.length === 0 ? (
               <div className="py-8 text-center space-y-2">
-                <CheckCircle2 size={32} className="mx-auto text-emerald-400/50" />
-                <p className="text-xs text-gray-400">All submissions have been reviewed.</p>
+                <CheckCircle2 size={32} className="mx-auto text-emerald-500/60" />
+                <p className="text-xs text-slate-500 dark:text-gray-400 font-medium">All submissions have been reviewed.</p>
               </div>
             ) : (
               <div className="space-y-2 max-h-72 overflow-y-auto pr-1 custom-scrollbar">
@@ -413,18 +414,18 @@ const Dashboard = () => {
                   <div
                     key={task._id}
                     onClick={() => navigate(`/tasks/${task._id}`)}
-                    className="group flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.02] p-3.5 hover:bg-white/5 hover:border-amber-500/30 cursor-pointer transition-all duration-200"
+                    className="group flex items-center justify-between rounded-xl border border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-white/[0.02] p-3.5 hover:bg-slate-100 dark:hover:bg-white/5 hover:border-amber-400 dark:hover:border-amber-500/30 cursor-pointer transition-all duration-200"
                   >
                     <div className="space-y-1 pr-2">
-                      <p className="text-xs font-semibold text-white group-hover:text-amber-300 transition-colors line-clamp-1">
+                      <p className="text-xs font-semibold text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-300 transition-colors line-clamp-1">
                         {task.title}
                       </p>
-                      <p className="text-[11px] text-gray-400 flex items-center gap-1">
-                        <Users size={12} className="text-gray-500" />
+                      <p className="text-[11px] text-slate-500 dark:text-gray-400 flex items-center gap-1 font-medium">
+                        <Users size={12} className="text-slate-400 dark:text-gray-500" />
                         <span>Assigned: {task.assignedTo?.map(u => u.name).join(', ') || 'Unassigned'}</span>
                       </p>
                     </div>
-                    <div className="p-1.5 rounded-lg bg-white/5 group-hover:bg-amber-500 group-hover:text-slate-900 text-gray-400 transition-all shrink-0">
+                    <div className="p-1.5 rounded-lg bg-slate-200 dark:bg-white/5 group-hover:bg-amber-500 group-hover:text-slate-950 text-slate-600 dark:text-gray-400 transition-all shrink-0">
                       <ArrowRight size={14} />
                     </div>
                   </div>
@@ -434,21 +435,21 @@ const Dashboard = () => {
           </div>
 
           {/* Recently Approved Tasks */}
-          <div className="rounded-2xl border border-white/10 bg-[#0d1426]/80 p-6 backdrop-blur-md space-y-4 shadow-lg">
-            <div className="flex items-center justify-between border-b border-white/5 pb-4">
+          <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0d1426]/80 p-6 space-y-4 shadow-sm">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/5 pb-4">
               <div className="flex items-center gap-2">
-                <CheckCircle2 size={18} className="text-emerald-400" />
-                <h3 className="font-heading text-base font-semibold text-white">
+                <CheckCircle2 size={18} className="text-emerald-500" />
+                <h3 className="font-heading text-base font-bold text-slate-900 dark:text-white">
                   Recently Approved Tasks
                 </h3>
               </div>
-              <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                 {tasks.filter(t => t.status === 'Approved').length} Approved
               </span>
             </div>
 
             {tasks.filter(t => t.status === 'Approved').length === 0 ? (
-              <div className="py-6 text-center text-xs text-gray-400">
+              <div className="py-6 text-center text-xs text-slate-500 dark:text-gray-400 font-medium">
                 No approved tasks yet.
               </div>
             ) : (
@@ -457,18 +458,18 @@ const Dashboard = () => {
                   <div
                     key={task._id}
                     onClick={() => navigate(`/tasks/${task._id}`)}
-                    className="group flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.02] p-3.5 hover:bg-white/5 hover:border-emerald-500/30 cursor-pointer transition-all duration-200"
+                    className="group flex items-center justify-between rounded-xl border border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-white/[0.02] p-3.5 hover:bg-slate-100 dark:hover:bg-white/5 hover:border-emerald-400 dark:hover:border-emerald-500/30 cursor-pointer transition-all duration-200"
                   >
                     <div className="space-y-1 pr-2">
-                      <p className="text-xs font-semibold text-white group-hover:text-emerald-300 transition-colors line-clamp-1">
+                      <p className="text-xs font-semibold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-300 transition-colors line-clamp-1">
                         {task.title}
                       </p>
-                      <p className="text-[11px] text-gray-400 flex items-center gap-1.5">
-                        <CheckCircle2 size={12} className="text-emerald-400" />
-                        <span>Approved by: <strong className="text-emerald-300 font-semibold">{task.approvedBy?.name || task.createdBy?.name || 'Manager'}</strong></span>
+                      <p className="text-[11px] text-slate-500 dark:text-gray-400 flex items-center gap-1.5 font-medium">
+                        <CheckCircle2 size={12} className="text-emerald-500" />
+                        <span>Approved by: <strong className="text-emerald-600 dark:text-emerald-300 font-semibold">{task.approvedBy?.name || task.createdBy?.name || 'Manager'}</strong></span>
                       </p>
                     </div>
-                    <div className="p-1.5 rounded-lg bg-white/5 group-hover:bg-emerald-500 group-hover:text-slate-900 text-gray-400 transition-all shrink-0">
+                    <div className="p-1.5 rounded-lg bg-slate-200 dark:bg-white/5 group-hover:bg-emerald-500 group-hover:text-slate-950 text-slate-600 dark:text-gray-400 transition-all shrink-0">
                       <ArrowRight size={14} />
                     </div>
                   </div>
@@ -481,37 +482,37 @@ const Dashboard = () => {
         {/* Right Column */}
         <div className="space-y-6">
           {/* Audit Activity Feed */}
-          <div className="rounded-2xl border border-white/10 bg-[#0d1426]/80 p-6 backdrop-blur-md space-y-4 shadow-lg">
-            <div className="flex items-center justify-between border-b border-white/5 pb-4">
+          <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0d1426]/80 p-6 space-y-4 shadow-sm">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/5 pb-4">
               <div className="flex items-center gap-2">
-                <History size={18} className="text-indigo-400" />
-                <h3 className="font-heading text-base font-semibold text-white">Recent Activity Feed</h3>
+                <History size={18} className="text-indigo-600 dark:text-indigo-400" />
+                <h3 className="font-heading text-base font-bold text-slate-900 dark:text-white">Recent Activity Feed</h3>
               </div>
-              <span className="text-xs text-gray-400">Live System Logs</span>
+              <span className="text-xs font-semibold text-slate-500 dark:text-gray-400">Live System Logs</span>
             </div>
 
             {auditLogs.length === 0 ? (
               <div className="py-8 text-center space-y-2">
-                <FileText size={32} className="mx-auto text-gray-600" />
-                <p className="text-xs text-gray-400">No activity logged yet.</p>
+                <FileText size={32} className="mx-auto text-slate-400 dark:text-gray-600" />
+                <p className="text-xs text-slate-500 dark:text-gray-400 font-medium">No activity logged yet.</p>
               </div>
             ) : (
-              <div className="relative pl-3 space-y-4 max-h-80 overflow-y-auto pr-1 border-l border-white/10 custom-scrollbar ml-2">
+              <div className="relative pl-3 space-y-4 max-h-80 overflow-y-auto pr-1 border-l border-slate-200 dark:border-white/10 custom-scrollbar ml-2">
                 {auditLogs.map(log => (
                   <div
                     key={log._id}
                     onClick={() => handleActivityClick(log)}
-                    className="relative flex items-start justify-between gap-3 text-xs pl-4 py-1.5 rounded-lg group cursor-pointer hover:bg-white/5 transition-colors"
+                    className="relative flex items-start justify-between gap-3 text-xs pl-4 py-1.5 rounded-lg group cursor-pointer hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
                   >
                     {/* Timeline Node */}
-                    <div className="absolute -left-[17px] top-1 h-2.5 w-2.5 rounded-full border border-indigo-500 bg-[#0d1426] group-hover:bg-indigo-500 transition-colors"></div>
+                    <div className="absolute -left-[17px] top-1 h-2.5 w-2.5 rounded-full border border-indigo-500 bg-white dark:bg-[#0d1426] group-hover:bg-indigo-500 transition-colors"></div>
 
                     <div className="space-y-1">
-                      <p className="text-gray-300 leading-relaxed">
-                        <strong className="text-white font-medium">{log.userId ? log.userId.name : 'System'}</strong>{' '}
-                        <span className="text-gray-400">{formatLogAction(log)}</span>
+                      <p className="text-slate-700 dark:text-gray-300 leading-relaxed">
+                        <strong className="text-slate-900 dark:text-white font-semibold">{log.userId ? log.userId.name : 'System'}</strong>{' '}
+                        <span className="text-slate-600 dark:text-gray-400">{formatLogAction(log)}</span>
                       </p>
-                      <p className="text-gray-500 text-[10px]">
+                      <p className="text-slate-400 dark:text-gray-500 text-[10px] font-medium">
                         {new Date(log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {new Date(log.createdAt).toLocaleDateString()}
                       </p>
                     </div>
@@ -527,15 +528,15 @@ const Dashboard = () => {
 
           {/* Critical Overdue Tasks Alert */}
           {overdueTasksList.length > 0 && (
-            <div className="rounded-2xl border border-rose-500/20 bg-rose-500/5 p-6 backdrop-blur-md space-y-4 shadow-lg">
-              <div className="flex items-center justify-between border-b border-rose-500/10 pb-3">
+            <div className="rounded-2xl border border-rose-200 dark:border-rose-500/20 bg-rose-50/70 dark:bg-rose-500/5 p-6 space-y-4 shadow-sm">
+              <div className="flex items-center justify-between border-b border-rose-200 dark:border-rose-500/10 pb-3">
                 <div className="flex items-center gap-2">
-                  <AlertCircle size={18} className="text-rose-400" />
-                  <h3 className="font-heading text-base font-semibold text-rose-400">
+                  <AlertCircle size={18} className="text-rose-600 dark:text-rose-400" />
+                  <h3 className="font-heading text-base font-bold text-rose-600 dark:text-rose-400">
                     Critical Overdue Tasks
                   </h3>
                 </div>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-500/30">
                   High Priority
                 </span>
               </div>
@@ -545,17 +546,17 @@ const Dashboard = () => {
                   <div
                     key={task._id}
                     onClick={() => navigate(`/tasks/${task._id}`)}
-                    className="group flex items-center justify-between rounded-xl border border-rose-500/10 bg-white/[0.02] p-3 hover:bg-rose-500/10 cursor-pointer transition-all duration-200"
+                    className="group flex items-center justify-between rounded-xl border border-rose-200/80 dark:border-rose-500/10 bg-white/80 dark:bg-white/[0.02] p-3 hover:bg-rose-100/60 dark:hover:bg-rose-500/10 cursor-pointer transition-all duration-200 shadow-xs"
                   >
                     <div className="space-y-1">
-                      <p className="text-xs font-semibold text-white group-hover:text-rose-300 transition-colors line-clamp-1">
+                      <p className="text-xs font-semibold text-slate-900 dark:text-white group-hover:text-rose-600 dark:group-hover:text-rose-300 transition-colors line-clamp-1">
                         {task.title}
                       </p>
-                      <p className="text-[11px] text-rose-400 font-medium">
+                      <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold">
                         Due: {new Date(task.dueDate).toLocaleDateString()}
                       </p>
                     </div>
-                    <ArrowRight size={14} className="text-rose-400 group-hover:translate-x-1 transition-transform" />
+                    <ArrowRight size={14} className="text-rose-500 dark:text-rose-400 group-hover:translate-x-1 transition-transform" />
                   </div>
                 ))}
               </div>

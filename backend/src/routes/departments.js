@@ -10,7 +10,9 @@ router.use(authenticate);
 // department field, etc.)
 router.get('/', async (req, res) => {
   try {
-    const departments = await Department.find().sort({ name: 1 });
+    const departments = await Department.find()
+      .populate('manager', '_id name email role profilePhoto designationRole')
+      .sort({ name: 1 });
     res.json(departments);
   } catch (err) {
     res.status(500).json({ error: 'Internal Server Error' });
@@ -19,7 +21,7 @@ router.get('/', async (req, res) => {
 
 // POST /api/departments - create a department (admin only)
 router.post('/', requireRole(['admin']), async (req, res) => {
-  const { name, description } = req.body;
+  const { name, description, manager } = req.body;
 
   if (!name || !name.trim()) {
     return res.status(400).json({ error: 'Department name is required.' });
@@ -34,11 +36,13 @@ router.post('/', requireRole(['admin']), async (req, res) => {
     const department = new Department({
       name: name.trim(),
       description: description?.trim() || '',
+      manager: manager || null,
       createdBy: req.user._id,
     });
     await department.save();
 
-    res.status(201).json(department);
+    const populated = await Department.findById(department._id).populate('manager', '_id name email role profilePhoto designationRole');
+    res.status(201).json(populated);
   } catch (err) {
     res.status(500).json({ error: 'Internal Server Error' });
   }
@@ -46,7 +50,7 @@ router.post('/', requireRole(['admin']), async (req, res) => {
 
 // PUT /api/departments/:id - update a department (admin only)
 router.put('/:id', requireRole(['admin']), async (req, res) => {
-  const { name, description } = req.body;
+  const { name, description, manager } = req.body;
 
   try {
     const department = await Department.findById(req.params.id);
@@ -54,9 +58,11 @@ router.put('/:id', requireRole(['admin']), async (req, res) => {
 
     if (name && name.trim()) department.name = name.trim();
     if (description !== undefined) department.description = description.trim();
+    if (manager !== undefined) department.manager = manager || null;
 
     await department.save();
-    res.json(department);
+    const populated = await Department.findById(department._id).populate('manager', '_id name email role profilePhoto designationRole');
+    res.json(populated);
   } catch (err) {
     res.status(500).json({ error: 'Internal Server Error' });
   }

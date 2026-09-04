@@ -63,6 +63,26 @@ const userSchema = new mongoose.Schema(
       trim: true,
       default: ''
     },
+    // For managers: assigned department(s) and assigned direct members
+    assignedDepartment: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    assignedDepartments: [{
+      type: String,
+      trim: true
+    }],
+    assignedMembers: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    }],
+    // For members: directly assigned manager
+    manager: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null
+    },
     workLocation: {
       type: String,
       trim: true,

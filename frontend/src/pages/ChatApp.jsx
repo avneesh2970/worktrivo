@@ -377,15 +377,15 @@ const ChatApp = () => {
     );
 
     return (
-        <div className="relative flex h-full w-full overflow-hidden bg-[#12151b]">
+        <div className="relative flex h-full w-full overflow-hidden bg-slate-50 dark:bg-[#080d1a]">
             {/* Toast Notification */}
             {toastMessage && (
                 <div
-                    className={`fixed top-4 left-4 right-4 sm:left-auto sm:right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-xl shadow-2xl border text-xs font-medium backdrop-blur-md transition-all duration-300 ${toastMessage.type === "error"
-                        ? "bg-rose-950/90 border-rose-800 text-rose-200"
+                    className={`fixed top-4 left-4 right-4 sm:left-auto sm:right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-xl shadow-2xl border text-xs font-semibold backdrop-blur-md transition-all duration-300 ${toastMessage.type === "error"
+                        ? "bg-rose-50 dark:bg-rose-950/90 border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-200"
                         : toastMessage.type === "success"
-                            ? "bg-emerald-950/90 border-emerald-800 text-emerald-200"
-                            : "bg-slate-900/90 border-slate-700 text-slate-200"
+                            ? "bg-emerald-50 dark:bg-emerald-950/90 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-200"
+                            : "bg-white dark:bg-slate-900/90 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200"
                         }`}
                 >
                     <AlertCircle size={16} className="shrink-0" />
@@ -395,36 +395,28 @@ const ChatApp = () => {
 
             {/* Remove Member Modal */}
             {userToDelete && (
-                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-0 sm:p-4 transition-all">
-                    <div className="bg-[#1c212b] border-t sm:border border-slate-800 rounded-t-2xl sm:rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-2xl animate-in fade-in slide-in-from-bottom-4 sm:zoom-in-95">
-                        <div className="flex items-center gap-3 text-rose-400">
+                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-950/60 backdrop-blur-sm p-0 sm:p-4 transition-all">
+                    <div className="bg-white dark:bg-slate-900 border-t sm:border border-slate-200 dark:border-slate-800 rounded-t-2xl sm:rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-2xl animate-in fade-in slide-in-from-bottom-4 sm:zoom-in-95">
+                        <div className="flex items-center gap-3 text-rose-600 dark:text-rose-400">
                             <div className="p-2.5 bg-rose-500/10 rounded-xl shrink-0">
                                 <UserMinus size={22} />
                             </div>
-                            <h3 className="font-semibold text-slate-100 text-sm sm:text-base">Remove Member</h3>
+                            <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm sm:text-base">Remove Member</h3>
                         </div>
-                        <p
-                            className="
-                            text-[13px]
-                            sm:text-sm
-                            leading-6
-                            break-words
-                            whitespace-pre-wrap
-                            "
-                        >
+                        <p className="text-[13px] sm:text-sm text-slate-600 dark:text-slate-300 leading-6 break-words whitespace-pre-wrap">
                             Are you sure you want to remove{" "}
-                            <strong className="text-slate-200">{userToDelete.name}</strong> from this channel?
+                            <strong className="text-slate-900 dark:text-slate-100 font-bold">{userToDelete.name}</strong> from this channel?
                         </p>
                         <div className="flex justify-end gap-2 pt-2">
                             <button
                                 onClick={() => setUserToDelete(null)}
-                                className="flex-1 sm:flex-none px-4 py-2.5 text-xs font-medium text-slate-400 hover:bg-slate-800 active:bg-slate-800 rounded-xl transition-colors cursor-pointer"
+                                className="flex-1 sm:flex-none px-4 py-2.5 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={handleRemoveMember}
-                                className="flex-1 sm:flex-none px-4 py-2.5 text-xs font-medium bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white rounded-xl transition-colors cursor-pointer"
+                                className="flex-1 sm:flex-none px-4 py-2.5 text-xs font-semibold bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white rounded-xl transition-colors cursor-pointer shadow-sm"
                             >
                                 Remove
                             </button>
@@ -435,27 +427,27 @@ const ChatApp = () => {
 
             {/* Delete Message Modal */}
             {msgToDelete && (
-                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-0 sm:p-4 transition-all">
-                    <div className="bg-[#1c212b] border-t sm:border border-slate-800 rounded-t-2xl sm:rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-2xl animate-in fade-in slide-in-from-bottom-4 sm:zoom-in-95">
-                        <div className="flex items-center gap-3 text-rose-400">
+                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-950/60 backdrop-blur-sm p-0 sm:p-4 transition-all">
+                    <div className="bg-white dark:bg-slate-900 border-t sm:border border-slate-200 dark:border-slate-800 rounded-t-2xl sm:rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-2xl animate-in fade-in slide-in-from-bottom-4 sm:zoom-in-95">
+                        <div className="flex items-center gap-3 text-rose-600 dark:text-rose-400">
                             <div className="p-2.5 bg-rose-500/10 rounded-xl shrink-0">
                                 <Trash2 size={22} />
                             </div>
-                            <h3 className="font-semibold text-slate-100 text-sm sm:text-base">Delete Message</h3>
+                            <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm sm:text-base">Delete Message</h3>
                         </div>
-                        <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
+                        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
                             This message will be permanently removed for all members in this channel.
                         </p>
                         <div className="flex justify-end gap-2 pt-2">
                             <button
                                 onClick={() => setMsgToDelete(null)}
-                                className="flex-1 sm:flex-none px-4 py-2.5 text-xs font-medium text-slate-400 hover:bg-slate-800 active:bg-slate-800 rounded-xl transition-colors cursor-pointer"
+                                className="flex-1 sm:flex-none px-4 py-2.5 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={confirmDeleteMessage}
-                                className="flex-1 sm:flex-none px-4 py-2.5 text-xs font-medium bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white rounded-xl transition-colors cursor-pointer"
+                                className="flex-1 sm:flex-none px-4 py-2.5 text-xs font-semibold bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white rounded-xl transition-colors cursor-pointer shadow-sm"
                             >
                                 Delete
                             </button>
@@ -466,29 +458,29 @@ const ChatApp = () => {
 
             {/* Add Member Modal */}
             {isAddMemberOpen && (
-                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-0 sm:p-4">
-                    <div className="bg-slate-900 w-full max-w-md rounded-t-2xl sm:rounded-2xl border-t sm:border border-slate-800 shadow-2xl flex flex-col max-h-[85vh] sm:max-h-[80vh] overflow-hidden">
-                        <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900/50 shrink-0">
-                            <h3 className="font-semibold text-sm sm:text-base">Add People to Channel</h3>
+                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-950/60 backdrop-blur-sm p-0 sm:p-4">
+                    <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-t-2xl sm:rounded-2xl border-t sm:border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col max-h-[85vh] sm:max-h-[80vh] overflow-hidden">
+                        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-950/50 shrink-0">
+                            <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm sm:text-base">Add People to Channel</h3>
                             <button
                                 onClick={() => setIsAddMemberOpen(false)}
-                                className="text-slate-400 hover:text-slate-200 hover:bg-slate-800 p-2 rounded-lg transition-colors cursor-pointer"
+                                className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 p-2 rounded-lg transition-colors cursor-pointer"
                             >
                                 <X size={20} />
                             </button>
                         </div>
-                        <div className="p-4 border-b border-slate-800 bg-slate-950/40 shrink-0">
-                            <div className="flex items-center bg-slate-950 rounded-xl border border-slate-800 focus-within:border-[#10b981]/80 px-3 transition-colors">
-                                <Search size={18} className="text-slate-500 shrink-0" />
+                        <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 shrink-0">
+                            <div className="flex items-center bg-white dark:bg-slate-950 rounded-xl border border-slate-300 dark:border-slate-800 focus-within:border-emerald-500 px-3 transition-colors shadow-inner">
+                                <Search size={18} className="text-slate-400 shrink-0" />
                                 <input
                                     autoFocus
                                     placeholder="Search members by name or email..."
-                                    className="w-full bg-transparent px-3 py-3 outline-none text-xs sm:text-sm text-slate-200 placeholder:text-slate-600"
+                                    className="w-full bg-transparent px-3 py-2.5 outline-none text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                 />
                             </div>
                         </div>
-                        <div className="flex-1 overflow-y-auto p-2 space-y-1 divide-y divide-slate-800/30">
+                        <div className="flex-1 overflow-y-auto p-2 space-y-1 divide-y divide-slate-100 dark:divide-slate-800/30">
                             {filteredUsers.length === 0 ? (
                                 <div className="text-center py-8 text-xs sm:text-sm text-slate-500">
                                     No active users found.
@@ -498,14 +490,14 @@ const ChatApp = () => {
                                     <button
                                         key={u._id}
                                         onClick={() => handleAddMember(u.email)}
-                                        className="w-full p-3 hover:bg-slate-800/60 active:bg-slate-800/80 rounded-xl flex items-center justify-between transition-all group text-left cursor-pointer"
+                                        className="w-full p-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 active:bg-slate-100 dark:active:bg-slate-800/80 rounded-xl flex items-center justify-between transition-all group text-left cursor-pointer"
                                     >
                                         <div className="flex items-center gap-3 min-w-0">
-                                            <div className="w-9 h-9 rounded-full bg-[#10b981]/20 text-[#10b981] border border-[#10b981]/30 flex items-center justify-center text-xs font-bold shrink-0">
+                                            <div className="w-9 h-9 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center justify-center text-xs font-bold shrink-0">
                                                 {u.name?.charAt(0).toUpperCase()}
                                             </div>
                                             <div className="min-w-0">
-                                                <div className="text-xs sm:text-sm font-medium text-slate-200 group-hover:text-white truncate">
+                                                <div className="text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-200 group-hover:text-emerald-600 dark:group-hover:text-white truncate">
                                                     {u.name}
                                                 </div>
                                                 <div className="text-[11px] sm:text-xs text-slate-500 truncate">
@@ -513,7 +505,7 @@ const ChatApp = () => {
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="p-2 text-slate-400 group-hover:text-[#10b981] group-hover:bg-[#10b981]/10 rounded-lg transition-colors shrink-0">
+                                        <div className="p-2 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 group-hover:bg-emerald-500/10 rounded-lg transition-colors shrink-0">
                                             <UserPlus size={18} />
                                         </div>
                                     </button>
@@ -528,16 +520,7 @@ const ChatApp = () => {
             {showSidebarMobile && (
                 <div
                     onClick={() => setShowSidebarMobile(false)}
-                    className="
-                        fixed
-                        inset-0
-                        bg-black/60
-                        backdrop-blur-sm
-                        z-30
-                        lg:hidden
-                        transition-all
-                        duration-300
-                        "
+                    className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 lg:hidden transition-all duration-300"
                 />
             )}
 
@@ -551,8 +534,8 @@ const ChatApp = () => {
                     w-[260px]
                     md:w-[280px]
                     lg:w-72
-                    bg-[#171b23]
-                    border-r border-[rgba(220,151,80,0.14)]
+                    bg-white dark:bg-slate-900
+                    border-r border-slate-200 dark:border-slate-800
                     flex flex-col
                     shrink-0
                     lg:translate-x-0
@@ -566,21 +549,21 @@ const ChatApp = () => {
                     }
                 `}
             >
-                <div className="h-16 px-4 sm:px-5 border-b border-slate-800 flex items-center justify-between shrink-0 bg-slate-900/50">
+                <div className="h-16 px-4 sm:px-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0 bg-slate-50/70 dark:bg-slate-950/40">
                     <div className="flex items-center gap-2.5">
-                        <Users size={18} className="text-[#10b981]" />
-                        <span className="font-semibold text-xs tracking-wider uppercase text-slate-300">
+                        <Users size={18} className="text-emerald-600 dark:text-emerald-400" />
+                        <span className="font-bold text-xs tracking-wider uppercase text-slate-700 dark:text-slate-300">
                             Channel Members
                         </span>
                     </div>
                     <div className="flex items-center gap-2">
-                        <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700/50">
+                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700/50">
                             {selectedRoom?.members?.length || 0}
                         </span>
                         {/* Mobile close button for sidebar */}
                         <button
                             onClick={() => setShowSidebarMobile(false)}
-                            className="lg:hidden p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg"
+                            className="lg:hidden p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
                         >
                             <X size={18} />
                         </button>
@@ -593,7 +576,7 @@ const ChatApp = () => {
                         return (
                             <div
                                 key={member._id}
-                                className="flex items-center justify-between p-3 sm:p-2.5 rounded-xl hover:bg-slate-800/50 active:bg-slate-800/80 transition-colors group"
+                                className="flex items-center justify-between p-3 sm:p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 active:bg-slate-100 dark:active:bg-slate-800/80 transition-colors group"
                             >
                                 <div className="flex items-center gap-3 min-w-0">
                                     <div className="relative shrink-0">
@@ -602,28 +585,28 @@ const ChatApp = () => {
                                                 member.profilePhoto ||
                                                 `https://ui-avatars.com/api/?name=${encodeURIComponent(
                                                     member.name
-                                                )}&background=1e1b4b&color=818cf8`
+                                                )}&background=10b981&color=ffffff`
                                             }
                                             alt={member.name}
-                                            className="w-9 h-9 sm:w-8 sm:h-8 rounded-full object-cover border border-slate-700/60"
+                                            className="w-9 h-9 sm:w-8 sm:h-8 rounded-full object-cover border border-slate-200 dark:border-slate-700/60"
                                         />
                                         <div
-                                            className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ring-2 ring-slate-900 ${isOnline ? "bg-emerald-500" : "bg-slate-600"
+                                            className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ring-2 ring-white dark:ring-slate-900 ${isOnline ? "bg-emerald-500" : "bg-slate-400 dark:bg-slate-600"
                                                 }`}
                                         />
                                     </div>
                                     <div className="min-w-0">
-                                        <div className="text-xs sm:text-sm font-medium text-slate-200 truncate">
+                                        <div className="text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">
                                             {member.name}
                                             {(member.role === "admin" || member.role === "manager") && (
-                                                <div className="text-[11px] sm:text-[12px] font-small text-yellow-400 truncate">
+                                                <div className="text-[11px] sm:text-[12px] font-bold text-emerald-600 dark:text-emerald-400 truncate">
                                                     {member.role === "admin" ? "Admin" : "Manager"}
                                                 </div>
                                             )}
                                         </div>
 
                                         <div
-                                            className={`text-[10px] sm:text-[11px] ${isOnline ? "text-[#10b981]/90" : "text-slate-500"
+                                            className={`text-[10px] sm:text-[11px] font-medium ${isOnline ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400 dark:text-slate-500"
                                                 }`}
                                         >
                                             {isOnline ? "Online" : "Offline"}
@@ -635,7 +618,7 @@ const ChatApp = () => {
                                     <button
                                         onClick={() => setUserToDelete(member)}
                                         title="Remove from group"
-                                        className="opacity-100 lg:opacity-0 group-hover:opacity-100 p-2 sm:p-1.5 hover:bg-rose-500/10 text-slate-400 hover:text-rose-400 rounded-lg transition-all cursor-pointer"
+                                        className="opacity-100 lg:opacity-0 group-hover:opacity-100 p-2 sm:p-1.5 hover:bg-rose-50 dark:hover:bg-rose-500/10 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg transition-all cursor-pointer"
                                     >
                                         <Trash2 size={16} />
                                     </button>
@@ -647,14 +630,14 @@ const ChatApp = () => {
             </aside>
 
             {/* Main Chat Area */}
-            <main className="flex flex-col flex-1 h-full w-full bg-[#081225] relative min-w-0">
+            <main className="flex flex-col flex-1 h-full w-full bg-slate-50/50 dark:bg-[#070b14] relative min-w-0">
                 {!selectedRoom ? (
                     <div className="flex-1 flex flex-col justify-center items-center text-slate-500 gap-3 p-4">
                         <MessageSquareText
                             size={48}
-                            className="stroke-[1.5] text-slate-700 animate-pulse"
+                            className="stroke-[1.5] text-slate-400 dark:text-slate-600 animate-pulse"
                         />
-                        <p className="text-xs sm:text-sm font-medium text-center">Connecting to workspace...</p>
+                        <p className="text-xs sm:text-sm font-semibold text-center text-slate-600 dark:text-slate-400">Connecting to workspace...</p>
                     </div>
                 ) : (
                     <>
@@ -665,35 +648,33 @@ const ChatApp = () => {
                             top-0
                             z-20
                             h-16
-
                             border-b
-                            border-[rgba(220,151,80,0.14)]
-
+                            border-slate-200
+                            dark:border-slate-800
                             px-3
                             sm:px-4
                             lg:px-6
-
                             flex
                             justify-between
                             items-center
-
-                            bg-[#14181f]
+                            bg-white/90
+                            dark:bg-slate-900/90
                             backdrop-blur-xl
                             "
                         >
                             <div className="flex items-center gap-3 min-w-0 flex-1">
                                 <button
                                     onClick={() => setShowSidebarMobile(true)}
-                                    className="lg:hidden p-2 hover:bg-slate-800 active:bg-slate-800 rounded-xl text-slate-400 hover:text-slate-200 cursor-pointer shrink-0"
+                                    className="lg:hidden p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer shrink-0"
                                     title="Open Channel Members"
                                 >
                                     <Users size={20} />
                                 </button>
                                 <div className="min-w-0">
-                                    <h2 className="font-semibold text-sm sm:text-base text-slate-100 truncate">
+                                    <h2 className="font-bold text-sm sm:text-base text-slate-900 dark:text-slate-100 truncate">
                                         # {selectedRoom.name}
                                     </h2>
-                                    <div className="text-[11px] text-slate-500 truncate">
+                                    <div className="text-[11px] font-medium text-slate-500 truncate">
                                         {selectedRoom.members?.length || 0} participants
                                     </div>
                                 </div>
@@ -712,30 +693,24 @@ const ChatApp = () => {
                                     md:h-auto
                                     md:px-4
                                     md:py-2.5
-
-                                    bg-[#10b981]
-                                    hover:bg-[#e8ac74]
-                                    active:bg-[#b87a3d]
-
-                                    text-[#241608]
-                                    font-semibold
-
+                                    bg-emerald-600
+                                    hover:bg-emerald-700
+                                    active:bg-emerald-800
+                                    text-white
+                                    font-bold
+                                    text-xs
                                     rounded-xl
-
-                                    shadow-lg
-                                    shadow-[#10b981]/25
-
+                                    shadow-md
+                                    shadow-emerald-500/20
                                     transition-all
                                     duration-300
-                                    hover:scale-[1.03]
+                                    hover:scale-[1.02]
                                     active:scale-95
-
                                     shrink-0
                                     cursor-pointer
                                     "
                             >
-                                <UserPlus size={17} strokeWidth={2.3} />
-
+                                <UserPlus size={16} strokeWidth={2.3} />
                                 <span className="hidden md:inline">
                                     Add Member
                                 </span>
@@ -749,17 +724,18 @@ const ChatApp = () => {
                                 sticky
                                 top-16
                                 z-10
-                                bg-[#171b23]
+                                bg-white/95
+                                dark:bg-slate-900/95
                                 backdrop-blur-xl
                                 border-b
-                                border-[#10b981]/20
+                                border-emerald-500/20
                                 px-4
                                 py-2
                                 flex
                                 items-center
                                 justify-between
                                 gap-3
-                                shadow-md
+                                shadow-sm
                                 "
                             >
                                 <div
@@ -770,17 +746,17 @@ const ChatApp = () => {
                                     }
                                     className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer group"
                                 >
-                                    <div className="p-1.5 bg-[#10b981]/10 text-[#10b981] rounded-lg shrink-0">
+                                    <div className="p-1.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg shrink-0">
                                         <Pin size={15} className="rotate-45" />
                                     </div>
                                     <div className="min-w-0 flex-1">
                                         <div className="flex items-center gap-2">
-                                            <span className="text-[10px] font-bold text-[#10b981] uppercase tracking-wider">
+                                            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
                                                 Pinned ({pinnedMessages.length})
                                             </span>
                                         </div>
-                                        <div className="text-xs text-slate-300 truncate font-medium group-hover:text-white transition-colors">
-                                            <span className="text-slate-400 font-normal">
+                                        <div className="text-xs text-slate-800 dark:text-slate-200 truncate font-semibold group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                                            <span className="text-slate-500 dark:text-slate-400 font-normal">
                                                 {
                                                     pinnedMessages[
                                                         activePinnedIndex % pinnedMessages.length
@@ -799,14 +775,14 @@ const ChatApp = () => {
 
                                 <div className="flex items-center gap-1 shrink-0">
                                     {pinnedMessages.length > 1 && (
-                                        <div className="flex items-center border border-slate-800 rounded-lg bg-slate-950/50">
+                                        <div className="flex items-center border border-slate-200 dark:border-slate-800 rounded-lg bg-slate-50 dark:bg-slate-950/50">
                                             <button
                                                 onClick={() =>
                                                     setActivePinnedIndex((prev) =>
                                                         prev > 0 ? prev - 1 : pinnedMessages.length - 1
                                                     )
                                                 }
-                                                className="p-1.5 hover:bg-slate-800 text-slate-400 hover:text-slate-200 rounded-l-lg transition-colors cursor-pointer"
+                                                className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 rounded-l-lg transition-colors cursor-pointer"
                                             >
                                                 <ChevronUp size={14} />
                                             </button>
@@ -814,7 +790,7 @@ const ChatApp = () => {
                                                 onClick={() =>
                                                     setActivePinnedIndex((prev) => prev + 1)
                                                 }
-                                                className="p-1.5 hover:bg-slate-800 text-slate-400 hover:text-slate-200 rounded-r-lg transition-colors cursor-pointer"
+                                                className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 rounded-r-lg transition-colors cursor-pointer"
                                             >
                                                 <ChevronDown size={14} />
                                             </button>
@@ -829,7 +805,7 @@ const ChatApp = () => {
                                             )
                                         }
                                         title="Unpin message"
-                                        className="text-slate-500 hover:text-rose-400 p-1.5 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+                                        className="text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                                     >
                                         <X size={15} />
                                     </button>
@@ -842,26 +818,21 @@ const ChatApp = () => {
                             className="
                                 flex-1
                                 overflow-y-auto
-
                                 px-2
                                 sm:px-3
                                 md:px-4
                                 lg:px-5
-
                                 pt-2
                                 pb-3
                                 sm:pb-4
-
                                 space-y-3
                                 sm:space-y-4
-
-                                bg-[#081225]
                                 "
                         >
                             {displayMessages.length === 0 ? (
-                                <div className="h-full flex flex-col items-center justify-center text-slate-600 space-y-2 p-4">
+                                <div className="h-full flex flex-col items-center justify-center text-slate-500 space-y-2 p-4">
                                     <MessageSquareText size={32} />
-                                    <p className="text-xs text-center">
+                                    <p className="text-xs text-center font-medium">
                                         No messages yet. Start the conversation!
                                     </p>
                                 </div>
@@ -872,7 +843,7 @@ const ChatApp = () => {
                                     const previousDate =
                                         index > 0
                                             ? new Date(displayMessages[index - 1].createdAt).toDateString()
-                                            : null;
+                                             : null;
 
                                     const mine = msg.sender?._id === user?._id;
 
@@ -888,7 +859,7 @@ const ChatApp = () => {
                                             {/* Date Separator */}
                                             {currentDate !== previousDate && (
                                                 <div className="flex justify-center my-4">
-                                                    <span className="px-3 py-1 rounded-full bg-slate-800 text-slate-400 text-xs font-medium">
+                                                    <span className="px-3.5 py-1 rounded-full bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold shadow-xs">
                                                         {formatMessageDate(msg.createdAt)}
                                                     </span>
                                                 </div>
@@ -910,10 +881,10 @@ const ChatApp = () => {
                                                                     msg.sender?.profilePhoto ||
                                                                     `https://ui-avatars.com/api/?name=${encodeURIComponent(
                                                                         msg.sender?.name || "U"
-                                                                    )}&background=1e1b4b&color=818cf8`
+                                                                    )}&background=10b981&color=ffffff`
                                                                 }
                                                                 alt={msg.sender?.name}
-                                                                className="w-8 h-8 rounded-full object-cover"
+                                                                className="w-8 h-8 rounded-full object-cover shadow-xs border border-slate-200 dark:border-slate-800"
                                                             />
                                                         )}
                                                     </div>
@@ -921,13 +892,13 @@ const ChatApp = () => {
 
                                                 {/* Floating Toolbar */}
                                                 <div
-                                                    className={`absolute -top-3.5 z-20 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity bg-[#171b23] border border-[rgba(220,151,80,0.14)] rounded-lg p-1 flex items-center gap-1 shadow-lg ${mine ? "right-2" : "left-9"
+                                                    className={`absolute -top-3.5 z-20 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-1 flex items-center gap-1 shadow-md ${mine ? "right-2" : "left-9"
                                                         }`}
                                                 >
                                                     {user?.role !== "member" && (
                                                         <button
                                                             onClick={() => pinMessage(msg._id)}
-                                                            className="p-1 hover:bg-slate-800 text-slate-400 hover:text-[#10b981] rounded cursor-pointer"
+                                                            className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 rounded cursor-pointer"
                                                         >
                                                             <Pin size={13} className="rotate-45" />
                                                         </button>
@@ -937,14 +908,14 @@ const ChatApp = () => {
                                                         <>
                                                             <button
                                                                 onClick={() => handleEdit(msg)}
-                                                                className="p-1 hover:bg-[#1A2A4C] text-slate-400 hover:text-amber-400 rounded cursor-pointer"
+                                                                className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 hover:text-amber-600 dark:hover:text-amber-400 rounded cursor-pointer"
                                                             >
                                                                 <Edit2 size={13} />
                                                             </button>
 
                                                             <button
                                                                 onClick={() => setMsgToDelete(msg._id)}
-                                                                className="p-1 hover:bg-[#1A2A4C] text-slate-400 hover:text-rose-400 rounded cursor-pointer"
+                                                                className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 rounded cursor-pointer"
                                                             >
                                                                 <Trash2 size={13} />
                                                             </button>
@@ -955,31 +926,28 @@ const ChatApp = () => {
                                                 {/* Bubble */}
                                                 <div
                                                     className={`
-
                                                     max-w-[85%]
                                                     sm:max-w-[80%]
                                                     md:max-w-[72%]
                                                     xl:max-w-[65%]
-
                                                     rounded-2xl
                                                     p-3
                                                     sm:p-3.5
                                                     relative
                                                     transition-all
-
                                                     ${mine
-                                                            ? "bg-[#b87a3d] text-white rounded-br-xs shadow-md shadow-[#c4823f]/10"
-                                                            : "bg-[#1c212b] border border-[rgba(220,151,80,0.14)] text-slate-200 rounded-bl-xs"
+                                                            ? "bg-emerald-600 text-white rounded-br-xs shadow-md shadow-emerald-500/10"
+                                                            : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 rounded-bl-xs shadow-sm"
                                                         }
                                                 `}
                                                 >
 
                                                     {/* Pinned */}
                                                     {msg.pinned && (
-                                                        <div className="flex items-center gap-1 text-[10px] text-amber-400 font-medium mb-1">
+                                                        <div className={`flex items-center gap-1 text-[10px] font-bold mb-1 ${mine ? 'text-amber-200' : 'text-amber-500'}`}>
                                                             <Pin
                                                                 size={11}
-                                                                className="rotate-45 fill-amber-400"
+                                                                className="rotate-45 fill-current"
                                                             />
                                                             <span>Pinned</span>
                                                         </div>
@@ -987,7 +955,7 @@ const ChatApp = () => {
 
                                                     {/* Sender */}
                                                     {!mine && showAvatar && (
-                                                        <div className="text-xs font-semibold text-[#10b981] mb-1">
+                                                        <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mb-1">
                                                             {msg.sender?.name}
                                                         </div>
                                                     )}
@@ -1000,21 +968,21 @@ const ChatApp = () => {
                                                                 onChange={(e) =>
                                                                     setEditingText(e.target.value)
                                                                 }
-                                                                className="w-full bg-slate-950/80 border border-[#10b981]/50 rounded-lg p-2 text-xs text-white outline-none resize-none"
+                                                                className="w-full bg-slate-100 dark:bg-slate-950 border border-emerald-500 rounded-lg p-2 text-xs text-slate-900 dark:text-white outline-none resize-none"
                                                                 rows={2}
                                                             />
 
                                                             <div className="flex justify-end gap-1.5">
                                                                 <button
                                                                     onClick={() => setEditingId(null)}
-                                                                    className="px-2.5 py-1 text-[10px] bg-slate-800 text-slate-300 rounded-md"
+                                                                    className="px-2.5 py-1 text-[10px] bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-md font-semibold"
                                                                 >
                                                                     Cancel
                                                                 </button>
 
                                                                 <button
                                                                     onClick={saveEdit}
-                                                                    className="px-2.5 py-1 text-[10px] bg-[#10b981] text-white rounded-md"
+                                                                    className="px-2.5 py-1 text-[10px] bg-emerald-600 text-white rounded-md font-semibold"
                                                                 >
                                                                     Save
                                                                 </button>
@@ -1028,17 +996,17 @@ const ChatApp = () => {
 
                                                     {/* Time */}
                                                     <div
-                                                        className={`flex items-center justify-end gap-1 text-[11px] mt-2 ${mine
-                                                            ? "text-[#f6dcb8]/80"
-                                                            : "text-slate-500"
+                                                        className={`flex items-center justify-end gap-1 text-[11px] mt-2 font-medium ${mine
+                                                            ? "text-emerald-100"
+                                                            : "text-slate-400 dark:text-slate-500"
                                                             }`}
                                                     >
                                                         <span>{formatTime(msg.createdAt)}</span>
 
                                                         {mine && (
                                                             <CheckCheck
-                                                                size={13}
-                                                                className="text-[#10b981]"
+                                                                size={14}
+                                                                className="text-emerald-200"
                                                             />
                                                         )}
                                                     </div>
@@ -1053,37 +1021,37 @@ const ChatApp = () => {
 
                         {/* Typing indicator */}
                         {otherTypingUsers.length > 0 && (
-                            <div className="px-4 pb-1 text-[10px] sm:text-[11px] text-[#10b981] italic">
+                            <div className="px-4 pb-1 text-[10px] sm:text-[11px] text-emerald-600 dark:text-emerald-400 italic font-medium">
                                 {otherTypingUsers.join(", ")} typing...
                             </div>
                         )}
 
                         {/* Mention Suggestion Box */}
                         {showMentionBox && mentionSuggestions.length > 0 && (
-                            <div className="mx-2 sm:mx-4 mb-2 bg-[#171b23] border border-[rgba(220,151,80,0.14)] rounded-xl max-h-52 overflow-y-auto">
+                            <div className="mx-2 sm:mx-4 mb-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-h-52 overflow-y-auto shadow-xl">
                                 {mentionSuggestions.map((mentionUser) => (
                                     <button
                                         key={mentionUser._id}
                                         onClick={() => selectMention(mentionUser)}
-                                        className="w-full flex items-center gap-3 p-3 hover:bg-[#1A2A4C] text-left cursor-pointer"
+                                        className="w-full flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-800 text-left cursor-pointer transition-colors"
                                     >
                                         <img
                                             src={
                                                 mentionUser.profilePhoto ||
                                                 `https://ui-avatars.com/api/?name=${encodeURIComponent(
                                                     mentionUser.name
-                                                )}`
+                                                )}&background=10b981&color=ffffff`
                                             }
                                             alt={mentionUser.name}
                                             className="w-8 h-8 rounded-full"
                                         />
 
                                         <div>
-                                            <div className="text-sm text-white">
+                                            <div className="text-sm font-bold text-slate-800 dark:text-white">
                                                 {mentionUser.name}
                                             </div>
 
-                                            <div className="text-xs text-slate-400">
+                                            <div className="text-xs text-slate-500 dark:text-slate-400">
                                                 {mentionUser.email}
                                             </div>
                                         </div>
@@ -1101,10 +1069,12 @@ const ChatApp = () => {
                             px-2
                             py-2
                             sm:p-4
-                            bg-[#14181f]
+                            bg-white/90
+                            dark:bg-slate-900/90
                             backdrop-blur-xl
                             border-t
-                            border-[rgba(220,151,80,0.14)]
+                            border-slate-200
+                            dark:border-slate-800
                             pb-[max(8px,env(safe-area-inset-bottom))]
                             "
                         >
@@ -1112,17 +1082,14 @@ const ChatApp = () => {
                                 flex
                                 items-center
                                 gap-2
-                                bg-[#0F1A32]
+                                bg-slate-100 dark:bg-slate-950
                                 border
-                                border-[rgba(220,151,80,0.14)]
-                                focus-within:border-[#b87a3d]
+                                border-slate-200 dark:border-slate-800
+                                focus-within:border-emerald-500
                                 rounded-2xl
-
                                 px-2
-                                py-2
-
+                                py-1.5
                                 sm:p-2
-
                                 transition-all
                                 shadow-inner
                                 ">
@@ -1135,20 +1102,14 @@ const ChatApp = () => {
                                     className="
                                         flex-1
                                         bg-transparent
-
                                         px-2
                                         sm:px-3
-
                                         py-2
-
                                         text-[14px]
                                         sm:text-sm
-
-                                        text-slate-200
-
+                                        text-slate-900 dark:text-slate-100
                                         outline-none
-
-                                        placeholder:text-slate-600
+                                        placeholder:text-slate-400 dark:placeholder:text-slate-600
                                         "
                                 />
                                 <button
@@ -1157,26 +1118,19 @@ const ChatApp = () => {
                                     className="
                                         p-3
                                         sm:p-2.5
-
-                                        bg-[#10b981]
-                                        hover:bg-[#e8ac74]
-                                        active:bg-[#b87a3d]
-
-                                        disabled:bg-slate-800
-                                        disabled:text-slate-600
-
-                                        text-[#241608]
-
+                                        bg-emerald-600
+                                        hover:bg-emerald-700
+                                        active:bg-emerald-800
+                                        disabled:bg-slate-200 dark:disabled:bg-slate-800
+                                        disabled:text-slate-400 dark:disabled:text-slate-600
+                                        text-white
                                         rounded-xl
-
-                                        shadow-lg
-                                        shadow-[#10b981]/25
-
+                                        shadow-md
+                                        shadow-emerald-500/20
                                         transition-all
                                         duration-300
                                         hover:scale-105
                                         active:scale-95
-
                                         cursor-pointer
                                         shrink-0
                                     "

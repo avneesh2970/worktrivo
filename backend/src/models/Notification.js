@@ -26,7 +26,9 @@ const notificationSchema = new mongoose.Schema({
         "deadline",
         "overdue",
         "completed",
-        "update"
+        "update",
+        "report",
+        "announcement"
     ],
     required: true
 },

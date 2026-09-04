@@ -190,9 +190,14 @@ const KanbanBoard = ({ tasks, user, token, navigate, showToast, refreshTasks }) 
                         </p>
                       </div>
 
-                      <div className="flex items-center gap-1.5 mb-2">
+                      <div className="flex items-center gap-1.5 mb-2 flex-wrap">
                         <span className={`w-1.5 h-1.5 rounded-full ${priorityDot[task.priority] || 'bg-slate-400'}`} />
                         <span className="text-[10px] text-slate-500 dark:text-slate-400">{task.priority}</span>
+                        {task.verballyAssignedBy && (
+                          <span className="text-[9px] font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 px-1.5 py-0.5 rounded" title={`Verbally assigned by ${task.verballyAssignedBy.name}`}>
+                            🗣️ {task.verballyAssignedBy.name}
+                          </span>
+                        )}
                         {task.dependencies?.length > 0 && (
                           <span className="text-[10px] text-slate-400" title="Has dependencies">🔗</span>
                         )}

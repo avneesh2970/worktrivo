@@ -5,6 +5,7 @@ import { GoogleOAuthProvider } from '@react-oauth/google';
 
 import { AuthProvider } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
+import { ThemeProvider } from './context/ThemeContext';
 
 import App from './App';
 import './index.css';
@@ -15,11 +16,13 @@ createRoot(document.getElementById('root')).render(
       clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}
     >
       <BrowserRouter>
-        <AuthProvider>
-          <SocketProvider>
-            <App />
-          </SocketProvider>
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <SocketProvider>
+              <App />
+            </SocketProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </BrowserRouter>
     </GoogleOAuthProvider>
   </React.StrictMode>

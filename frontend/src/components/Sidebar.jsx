@@ -17,13 +17,18 @@ import {
   Settings,
   ClipboardCheck,
   X,
+  FileText,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { API_BASE, useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 import LogoImg from "../assets/logo.png";
 
 const Sidebar = ({ isOpen, toggleSidebar }) => {
   const { user, logout, token } = useAuth();
   const { socket } = useSocket();
+  const { theme, resolvedTheme, setTheme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   const [stats, setStats] = useState({
@@ -80,17 +85,27 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
   };
 
   const fetchPendingApprovalsCount = async () => {
-    if (user?.role !== "admin") return;
+    if (user?.role !== "admin" && user?.role !== "manager") return;
     try {
-      const res = await fetch(
-        `${API_BASE}/tasks?status=${encodeURIComponent(
-          "Completed (Pending Approval)"
-        )}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      if (!res.ok) return;
-      const data = await res.json();
-      setPendingApprovals(Array.isArray(data) ? data.length : 0);
+      const [tasksRes, reportsRes] = await Promise.all([
+        fetch(`${API_BASE}/tasks?status=${encodeURIComponent("Completed (Pending Approval)")}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }),
+        fetch(`${API_BASE}/daily-reports?status=Pending`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+      ]);
+
+      let totalPending = 0;
+      if (tasksRes.ok) {
+        const taskData = await tasksRes.json();
+        totalPending += Array.isArray(taskData) ? taskData.length : 0;
+      }
+      if (reportsRes.ok) {
+        const reportData = await reportsRes.json();
+        totalPending += Array.isArray(reportData) ? reportData.length : 0;
+      }
+      setPendingApprovals(totalPending);
     } catch (err) {
       console.error(err);
     }
@@ -103,7 +118,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
   }, [token]);
 
   useEffect(() => {
-    if (token && user?.role === "admin") {
+    if (token && (user?.role === "admin" || user?.role === "manager")) {
       fetchPendingApprovalsCount();
     }
   }, [token, user?.role]);
@@ -114,11 +129,13 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
     socket.on("taskUpdated", fetchSidebarStats);
     socket.on("taskUpdated", fetchPendingApprovalsCount);
     socket.on("projectUpdated", fetchPendingApprovalsCount);
+    socket.on("dailyReportUpdated", fetchPendingApprovalsCount);
 
     return () => {
       socket.off("taskUpdated", fetchSidebarStats);
       socket.off("taskUpdated", fetchPendingApprovalsCount);
       socket.off("projectUpdated", fetchPendingApprovalsCount);
+      socket.off("dailyReportUpdated", fetchPendingApprovalsCount);
     };
   }, [socket, user?.role]);
 
@@ -132,14 +149,15 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
     <aside
       className="
         flex h-full w-full flex-col
-        border-r border-slate-800/80
-        bg-slate-950/95
+        border-r border-slate-200/80 dark:border-slate-800/80
+        bg-white/95 dark:bg-slate-950/95
         backdrop-blur-xl
-        text-slate-200
+        text-slate-700 dark:text-slate-200
         p-4
         pb-10
         overflow-y-auto overscroll-contain
         shadow-2xl
+        transition-colors duration-200
         [&::-webkit-scrollbar]:hidden
         [-ms-overflow-style:none]
         [scrollbar-width:none]
@@ -148,34 +166,34 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
       {/* ================= TOP ================= */}
       <div className="flex-1 space-y-5">
         {/* ================= WORKSPACE HEADER ================= */}
-        <div className="rounded-xl border border-slate-800/80 bg-slate-900/60 p-3.5 shadow-sm">
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800/80 bg-slate-50 dark:bg-slate-900/60 p-3.5 shadow-sm">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#10b981]/10 border border-[#10b981]/20 p-1">
                 <img src={LogoImg} alt="WorkTrivo Logo" className="h-full w-full object-contain rounded-md" />
               </div>
               <div className="min-w-0 flex-1">
-                <h2 className="text-sm font-semibold tracking-wide text-slate-100 truncate">WorkTrivo</h2>
-                <p className="text-[11px] text-slate-400 truncate">Team Workspace</p>
+                <h2 className="text-sm font-semibold tracking-wide text-slate-800 dark:text-slate-100 truncate">WorkTrivo</h2>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">Team Workspace</p>
               </div>
             </div>
 
             {/* Mobile Close Drawer Button */}
             <button
               onClick={toggleSidebar}
-              className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800/60 hover:text-slate-100 lg:hidden focus:outline-none"
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800/60 hover:text-slate-800 dark:hover:text-slate-100 lg:hidden focus:outline-none"
               aria-label="Close sidebar"
             >
               <X size={20} />
             </button>
           </div>
 
-          <div className="mt-3 flex items-center justify-between rounded-lg bg-slate-950/50 px-3 py-1.5 border border-slate-800/50">
+          <div className="mt-3 flex items-center justify-between rounded-lg bg-white/80 dark:bg-slate-950/50 px-3 py-1.5 border border-slate-200/80 dark:border-slate-800/50">
             <div className="flex items-center gap-2">
               <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></div>
-              <span className="text-[11px] font-medium text-slate-400">Online</span>
+              <span className="text-[11px] font-medium text-slate-600 dark:text-slate-400">Online</span>
             </div>
-            <span className="text-[10px] font-mono text-slate-500">v1.0</span>
+            <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500">v1.0</span>
           </div>
         </div>
 
@@ -188,27 +206,28 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
           <input
             type="text"
             placeholder="Quick search..."
-            className="py-2.5 pl-10 pr-14 w-full rounded-xl border border-slate-800/80 bg-slate-900/40 text-xs text-slate-200 placeholder:text-slate-500 focus:border-[#10b981]/50 focus:bg-slate-900/80 transition-all outline-none"
+            className="py-2.5 pl-10 pr-14 w-full rounded-xl border border-slate-200 dark:border-slate-800/80 bg-slate-50 dark:bg-slate-900/40 text-xs text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-[#10b981]/50 focus:bg-white dark:focus:bg-slate-900/80 transition-all outline-none"
           />
-          <span className="hidden sm:inline-block absolute right-3 top-1/2 -translate-y-1/2 rounded bg-slate-800/60 px-1.5 py-0.5 font-mono text-[10px] text-slate-400 border border-slate-700/50">
+          <span className="hidden sm:inline-block absolute right-3 top-1/2 -translate-y-1/2 rounded bg-slate-200/60 dark:bg-slate-800/60 px-1.5 py-0.5 font-mono text-[10px] text-slate-500 dark:text-slate-400 border border-slate-300/50 dark:border-slate-700/50">
             ⌘K
           </span>
         </div>
 
         {/* ================= NAVIGATION ================= */}
         <div>
-          <p className="px-3 mb-2 text-[10px] font-medium uppercase tracking-wider text-slate-500">
+          <p className="px-3 mb-2 text-[10px] font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">
             Workspace
           </p>
 
           <nav className="flex flex-col gap-1">
             {[
               { to: "/", icon: LayoutDashboard, label: "Dashboard", badge: stats.dashboard, badgeBg: "bg-[#10b981]/15 text-[#10b981] border border-[#10b981]/30" },
+              { to: "/daily-reports", icon: FileText, label: "Daily Reports" },
               { to: "/chat", icon: MessageSquare, label: "Discussion" },
               { to: "/announcements", icon: Megaphone, label: "Announcements" },
               { to: "/profile", icon: UserCircle, label: "My Profile" },
               { to: "/groups", icon: FolderKanban, label: "Projects" },
-              { to: "/tasks", icon: CheckSquare, label: "Tasks", badge: stats.tasks, badgeBg: "bg-rose-500/20 text-rose-300 border border-rose-500/30" },
+              { to: "/tasks", icon: CheckSquare, label: "Tasks", badge: stats.tasks, badgeBg: "bg-rose-500/20 text-rose-600 dark:text-rose-300 border border-rose-500/30" },
             ].map((item) => {
               const Icon = item.icon;
               return (
@@ -219,8 +238,8 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                   className={({ isActive }) =>
                     `flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium transition-all duration-200 active:scale-[0.98] ${
                       isActive
-                        ? `bg-[#10b981]/15 text-[#10b981] border border-[#10b981]/30 shadow-sm`
-                        : `text-slate-400 hover:bg-slate-900/60 hover:text-slate-200`
+                        ? `bg-[#10b981]/15 text-[#10b981] font-semibold border border-[#10b981]/30 shadow-sm`
+                        : `text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900/60 hover:text-slate-900 dark:hover:text-slate-200`
                     }`
                   }
                 >
@@ -237,12 +256,12 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
               );
             })}
 
-            {/* Admin Section */}
-            {user?.role === "admin" && (
+            {/* Manager & Admin Management Section */}
+            {(user?.role === "admin" || user?.role === "manager") && (
               <>
-                <div className="my-2.5 border-t border-slate-800/80 mx-2" />
-                <p className="px-3 mb-2 text-[10px] font-medium uppercase tracking-wider text-slate-500">
-                  Admin
+                <div className="my-2.5 border-t border-slate-200 dark:border-slate-800/80 mx-2" />
+                <p className="px-3 mb-2 text-[10px] font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                  {user?.role === "admin" ? "Admin" : "Management"}
                 </p>
 
                 <NavLink
@@ -251,8 +270,8 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                   className={({ isActive }) =>
                     `flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium transition-all duration-200 active:scale-[0.98] ${
                       isActive
-                        ? `bg-[#10b981]/15 text-[#10b981] border border-[#10b981]/30 shadow-sm`
-                        : `text-slate-400 hover:bg-slate-900/60 hover:text-slate-200`
+                        ? `bg-[#10b981]/15 text-[#10b981] font-semibold border border-[#10b981]/30 shadow-sm`
+                        : `text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900/60 hover:text-slate-900 dark:hover:text-slate-200`
                     }`
                   }
                 >
@@ -267,35 +286,39 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                   </div>
                 </NavLink>
 
-                <NavLink
-                  to="/users"
-                  onClick={handleNavClick}
-                  className={({ isActive }) =>
-                    `flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium transition-all duration-200 active:scale-[0.98] ${
-                      isActive
-                        ? `bg-[#10b981]/15 text-[#10b981] border border-[#10b981]/30 shadow-sm`
-                        : `text-slate-400 hover:bg-slate-900/60 hover:text-slate-200`
-                    }`
-                  }
-                >
-                  <UsersRound size={18} className="shrink-0 opacity-80" />
-                  Manage Team
-                </NavLink>
+                {user?.role === "admin" && (
+                  <>
+                    <NavLink
+                      to="/users"
+                      onClick={handleNavClick}
+                      className={({ isActive }) =>
+                        `flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium transition-all duration-200 active:scale-[0.98] ${
+                          isActive
+                            ? `bg-[#10b981]/15 text-[#10b981] font-semibold border border-[#10b981]/30 shadow-sm`
+                            : `text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900/60 hover:text-slate-900 dark:hover:text-slate-200`
+                        }`
+                      }
+                    >
+                      <UsersRound size={18} className="shrink-0 opacity-80" />
+                      Manage Team
+                    </NavLink>
 
-                <NavLink
-                  to="/settings"
-                  onClick={handleNavClick}
-                  className={({ isActive }) =>
-                    `flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium transition-all duration-200 active:scale-[0.98] ${
-                      isActive
-                        ? `bg-[#10b981]/15 text-[#10b981] border border-[#10b981]/30 shadow-sm`
-                        : `text-slate-400 hover:bg-slate-900/60 hover:text-slate-200`
-                    }`
-                  }
-                >
-                  <Settings size={18} className="shrink-0 opacity-80" />
-                  Admin Settings
-                </NavLink>
+                    <NavLink
+                      to="/settings"
+                      onClick={handleNavClick}
+                      className={({ isActive }) =>
+                        `flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium transition-all duration-200 active:scale-[0.98] ${
+                          isActive
+                            ? `bg-[#10b981]/15 text-[#10b981] font-semibold border border-[#10b981]/30 shadow-sm`
+                            : `text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900/60 hover:text-slate-900 dark:hover:text-slate-200`
+                        }`
+                      }
+                    >
+                      <Settings size={18} className="shrink-0 opacity-80" />
+                      Admin Settings
+                    </NavLink>
+                  </>
+                )}
               </>
             )}
           </nav>
@@ -303,12 +326,12 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
       </div>
 
       {/* ================= BOTTOM ================= */}
-      <div className="mt-auto space-y-3 border-t border-slate-800/80 pt-3">
+      <div className="mt-auto space-y-3 border-t border-slate-200 dark:border-slate-800/80 pt-3">
         {/* Admin Trigger Button */}
         {user?.role === "admin" && (
           <button
             onClick={handleCronTrigger}
-            className="flex min-h-[40px] w-full items-center justify-center gap-2 rounded-xl border border-slate-800 bg-slate-900/40 py-2 text-xs font-medium text-slate-300 hover:bg-slate-800/60 hover:text-white transition-all active:scale-[0.98]"
+            className="flex min-h-[40px] w-full items-center justify-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white transition-all active:scale-[0.98]"
           >
             <Clock size={14} className="text-slate-400" />
             Run Due Check
@@ -316,8 +339,8 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
         )}
 
         {/* TODAY'S SUMMARY */}
-        <div className="rounded-xl border border-slate-800/80 bg-slate-900/40 p-3">
-          <h3 className="mb-2 text-xs font-medium text-slate-300">
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800/80 bg-slate-50 dark:bg-slate-900/40 p-3">
+          <h3 className="mb-2 text-xs font-semibold text-slate-700 dark:text-slate-300">
             Today's Summary
           </h3>
           <div className="space-y-0.5">
@@ -327,10 +350,10 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                 handleNavClick();
                 navigate("/tasks?status=Approved");
               }}
-              className="flex min-h-[36px] w-full items-center justify-between rounded-lg px-2 py-1 -mx-2 transition-colors hover:bg-slate-800/40 active:bg-slate-800/60"
+              className="flex min-h-[36px] w-full items-center justify-between rounded-lg px-2 py-1 -mx-2 transition-colors hover:bg-slate-200/50 dark:hover:bg-slate-800/40 active:bg-slate-200/80 dark:active:bg-slate-800/60"
             >
-              <span className="text-slate-400 text-xs">Completed</span>
-              <span className="text-emerald-400 font-mono text-xs font-semibold">{stats.completed}</span>
+              <span className="text-slate-500 dark:text-slate-400 text-xs">Completed</span>
+              <span className="text-emerald-600 dark:text-emerald-400 font-mono text-xs font-semibold">{stats.completed}</span>
             </button>
 
             <button
@@ -339,10 +362,10 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                 handleNavClick();
                 navigate("/tasks?status=pending");
               }}
-              className="flex min-h-[36px] w-full items-center justify-between rounded-lg px-2 py-1 -mx-2 transition-colors hover:bg-slate-800/40 active:bg-slate-800/60"
+              className="flex min-h-[36px] w-full items-center justify-between rounded-lg px-2 py-1 -mx-2 transition-colors hover:bg-slate-200/50 dark:hover:bg-slate-800/40 active:bg-slate-200/80 dark:active:bg-slate-800/60"
             >
-              <span className="text-slate-400 text-xs">Pending</span>
-              <span className="text-amber-400 font-mono text-xs font-semibold">{stats.pending}</span>
+              <span className="text-slate-500 dark:text-slate-400 text-xs">Pending</span>
+              <span className="text-amber-600 dark:text-amber-400 font-mono text-xs font-semibold">{stats.pending}</span>
             </button>
 
             <button
@@ -351,10 +374,10 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                 handleNavClick();
                 navigate("/tasks?status=Overdue");
               }}
-              className="flex min-h-[36px] w-full items-center justify-between rounded-lg px-2 py-1 -mx-2 transition-colors hover:bg-slate-800/40 active:bg-slate-800/60"
+              className="flex min-h-[36px] w-full items-center justify-between rounded-lg px-2 py-1 -mx-2 transition-colors hover:bg-slate-200/50 dark:hover:bg-slate-800/40 active:bg-slate-200/80 dark:active:bg-slate-800/60"
             >
-              <span className="text-slate-400 text-xs">Overdue</span>
-              <span className="text-rose-400 font-mono text-xs font-semibold">{stats.overdue}</span>
+              <span className="text-slate-500 dark:text-slate-400 text-xs">Overdue</span>
+              <span className="text-rose-600 dark:text-rose-400 font-mono text-xs font-semibold">{stats.overdue}</span>
             </button>
           </div>
         </div>
@@ -366,15 +389,15 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
             handleNavClick();
             navigate("/tasks?status=Approved");
           }}
-          className="w-full rounded-xl border border-slate-800/80 bg-slate-900/40 p-3 text-left transition-colors hover:bg-slate-800/40 active:scale-[0.98]"
+          className="w-full rounded-xl border border-slate-200 dark:border-slate-800/80 bg-slate-50 dark:bg-slate-900/40 p-3 text-left transition-colors hover:bg-slate-200/50 dark:hover:bg-slate-800/40 active:scale-[0.98]"
         >
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-medium text-slate-300">Productivity</span>
+            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Productivity</span>
             <span className="text-xs font-mono font-semibold text-[#10b981]">
               {stats.productivity}%
             </span>
           </div>
-          <div className="h-2 rounded-full bg-slate-950 overflow-hidden border border-slate-800/60">
+          <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-950 overflow-hidden border border-slate-200 dark:border-slate-800/60">
             <div
               className="h-full rounded-full bg-[#10b981] transition-all duration-500"
               style={{ width: `${stats.productivity}%` }}
@@ -388,14 +411,14 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
             handleNavClick();
             navigate("/profile");
           }}
-          className="group flex min-h-[48px] w-full items-center justify-between gap-2.5 rounded-xl border border-slate-800/80 bg-slate-900/40 p-2.5 transition-all duration-200 hover:border-slate-700 hover:bg-slate-800/50 active:scale-[0.98]"
+          className="group flex min-h-[48px] w-full items-center justify-between gap-2.5 rounded-xl border border-slate-200 dark:border-slate-800/80 bg-slate-50 dark:bg-slate-900/40 p-2.5 transition-all duration-200 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800/50 active:scale-[0.98]"
         >
           <div className="flex items-center gap-2.5 min-w-0">
             {profilePhotoUrl ? (
               <img
                 src={profilePhotoUrl}
                 alt={user?.name || "User"}
-                className="h-9 w-9 rounded-lg border border-slate-700 object-cover shrink-0"
+                className="h-9 w-9 rounded-lg border border-slate-200 dark:border-slate-700 object-cover shrink-0"
                 onError={(e) => {
                   e.target.style.display = "none";
                   if (e.target.nextSibling) {
@@ -406,7 +429,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
             ) : null}
 
             <div
-              className={`h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#10b981]/10 border border-[#10b981]/20 text-xs font-semibold text-[#10b981] ${
+              className={`h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#10b981]/15 dark:bg-[#10b981]/10 border border-[#10b981]/20 text-xs font-semibold text-[#10b981] ${
                 profilePhotoUrl ? "hidden" : "flex"
               }`}
             >
@@ -414,7 +437,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
             </div>
 
             <div className="min-w-0 flex-1 text-left leading-tight">
-              <h3 className="truncate text-xs font-semibold text-slate-200">
+              <h3 className="truncate text-xs font-semibold text-slate-800 dark:text-slate-200">
                 {user?.name}
               </h3>
               <p className="truncate text-[11px] text-[#10b981] mt-0.5">
@@ -425,18 +448,39 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
           </div>
           <ChevronRight
             size={16}
-            className="text-slate-500 transition-transform duration-200 group-hover:translate-x-0.5 shrink-0"
+            className="text-slate-400 dark:text-slate-500 transition-transform duration-200 group-hover:translate-x-0.5 shrink-0"
           />
         </button>
 
-        {/* LOGOUT */}
-        <button
-          onClick={logout}
-          className="flex min-h-[40px] w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-400 hover:bg-rose-500/10 hover:text-rose-400 transition-colors active:scale-[0.98]"
-        >
-          <LogOut size={16} className="opacity-80" />
-          Logout
-        </button>
+        {/* THEME TOGGLE & LOGOUT FOOTER */}
+        <div className="flex items-center gap-1.5 pt-1">
+          <button
+            onClick={toggleTheme}
+            title={`Switch to ${resolvedTheme === 'dark' ? 'Light' : 'Dark'} mode`}
+            className="flex-1 flex min-h-[38px] items-center justify-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 px-3 py-2 text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-200 transition-all active:scale-[0.98]"
+          >
+            {resolvedTheme === 'dark' ? (
+              <>
+                <Sun size={15} className="text-amber-400" />
+                <span>Light</span>
+              </>
+            ) : (
+              <>
+                <Moon size={15} className="text-indigo-500" />
+                <span>Dark</span>
+              </>
+            )}
+          </button>
+
+          <button
+            onClick={logout}
+            title="Log out"
+            className="flex min-h-[38px] items-center justify-center gap-1.5 rounded-xl border border-rose-200/40 dark:border-rose-900/20 bg-rose-50/50 dark:bg-rose-950/20 px-3 py-2 text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-100/70 dark:hover:bg-rose-900/30 transition-colors active:scale-[0.98]"
+          >
+            <LogOut size={15} className="opacity-90" />
+            <span className="hidden sm:inline">Logout</span>
+          </button>
+        </div>
       </div>
     </aside>
   );

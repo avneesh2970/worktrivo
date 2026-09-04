@@ -32,8 +32,7 @@ const Tasks = () => {
   const [assigneeFilter, setAssigneeFilter] = useState(''); // name or Employee ID
   const [sortBy, setSortBy] = useState('dueDate:asc');
 
-  // Sync filters with the URL every time it changes (not just on first
-  // mount) — lets Sidebar/Dashboard links update the list without a refresh.
+  // Sync filters with URL
   useEffect(() => {
     setStatusFilter(searchParams.get('status') || '');
     setDateFilter(searchParams.get('dueDate') || '');
@@ -64,6 +63,7 @@ const Tasks = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
   const [usersList, setUsersList] = useState([]);
+  const [supervisorsList, setSupervisorsList] = useState([]);
   const [modalMode, setModalMode] = useState('create'); // 'create' | 'edit'
   const [currentTaskId, setCurrentTaskId] = useState(null);
 
@@ -83,6 +83,7 @@ const Tasks = () => {
   const [formChecklist, setFormChecklist] = useState([]);
   const [formChecklistInput, setFormChecklistInput] = useState('');
   const [formDependencies, setFormDependencies] = useState([]);
+  const [formVerballyAssignedBy, setFormVerballyAssignedBy] = useState('');
   const [formError, setFormError] = useState('');
   const [formSubmitting, setFormSubmitting] = useState(false);
 
@@ -91,7 +92,7 @@ const Tasks = () => {
   const [deleteTaskId, setDeleteTaskId] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  // Lightweight built-in toast (no external dependency required)
+  // Lightweight built-in toast
   const [toastMsg, setToastMsg] = useState(null);
   useEffect(() => {
     if (!toastMsg) return;
@@ -116,9 +117,6 @@ const Tasks = () => {
       const data = await res.json();
 
       let taskList = Array.isArray(data) ? data : [];
-
-      // Hide Approved tasks initially when no status filter is selected.
-      // Approved tasks will only be shown when the status filter 'Approved' or an explicit filter is selected.
       if (!statusFilter) {
         taskList = taskList.filter((t) => t.status !== 'Approved');
       }
@@ -144,18 +142,31 @@ const Tasks = () => {
     }
   };
 
+  const fetchSupervisors = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/users/my-supervisors`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setSupervisorsList(data);
+      }
+    } catch (err) {
+      console.error('Error fetching supervisors:', err);
+    }
+  };
+
   useEffect(() => {
     fetchTasks();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, statusFilter, priorityFilter, dateFilter, assigneeFilter, sortBy]);
 
   useEffect(() => {
-    // FIX: previous condition was `user && user.role === 'admin' || 'manager'`
-    // which always evaluated truthy due to operator precedence.
-    if (user && (user.role === 'admin' || user.role === 'manager')) {
+    if (user && token) {
       fetchUsers();
+      fetchSupervisors();
     }
-  }, [user]);
+  }, [user, token]);
 
   const resetForm = () => {
     setFormTitle('');
@@ -166,6 +177,7 @@ const Tasks = () => {
     setFormDueDate('');
     setFormEstimatedHours(0);
     setFormAssignedTo([]);
+    setFormVerballyAssignedBy('');
     setFormAttachment('');
     setFormAttachmentsList([]);
     setFormTags([]);
@@ -179,12 +191,16 @@ const Tasks = () => {
   const openCreateModal = () => {
     resetForm();
     setModalMode('create');
+    if (user?.role === 'member') {
+      setFormAssignedTo([user._id]);
+      const initialSupervisor = user?.manager
+        ? (typeof user.manager === 'object' ? user.manager._id : user.manager)
+        : (supervisorsList.length === 1 ? supervisorsList[0]._id : '');
+      setFormVerballyAssignedBy(initialSupervisor || '');
+    }
     setIsModalOpen(true);
   };
 
-  // Called by VoiceTaskModal once the transcript has been parsed on the backend.
-  // Pre-fills the normal create-task form so the person can review/edit
-  // before actually submitting — matches the "confirm before it's pushed" flow.
   const handleVoiceParsed = (parsed) => {
     resetForm();
     setModalMode('create');
@@ -226,6 +242,7 @@ const Tasks = () => {
     const formattedDate = new Date(task.dueDate).toISOString().slice(0, 16);
     setFormDueDate(formattedDate);
     setFormAssignedTo(task.assignedTo.map(u => u._id));
+    setFormVerballyAssignedBy(task.verballyAssignedBy?._id || task.verballyAssignedBy || '');
     setFormAttachmentsList(task.attachments || []);
     setFormAttachment('');
     setFormError('');
@@ -283,7 +300,15 @@ const Tasks = () => {
 
     if (!formTitle.trim()) return setFormError('Title is required');
     if (!formDueDate) return setFormError('Due date is required');
-    if (formAssignedTo.length === 0) return setFormError('Please assign at least one team member');
+
+    const isMember = user?.role === 'member';
+    if (isMember && !formVerballyAssignedBy) {
+      return setFormError('Please select the Manager or Admin who verbally assigned this task to you.');
+    }
+
+    if (!isMember && formAssignedTo.length === 0) {
+      return setFormError('Please assign at least one team member');
+    }
 
     const payload = {
       title: formTitle.trim(),
@@ -293,7 +318,8 @@ const Tasks = () => {
       startDate: formStartDate ? new Date(formStartDate).toISOString() : null,
       dueDate: new Date(formDueDate).toISOString(),
       estimatedHours: Number(formEstimatedHours),
-      assignedTo: formAssignedTo,
+      assignedTo: isMember ? [user._id] : formAssignedTo,
+      verballyAssignedBy: formVerballyAssignedBy || null,
       attachments: formAttachmentsList,
       tags: formTags,
       checklist: formChecklist,
@@ -318,7 +344,11 @@ const Tasks = () => {
       if (res.ok) {
         setIsModalOpen(false);
         await fetchTasks();
-        setToastMsg(modalMode === 'create' ? 'Task created successfully!' : 'Task updated successfully!');
+        setToastMsg(
+          modalMode === 'create'
+            ? (isMember ? 'Self-task created and supervisor notified!' : 'Task created successfully!')
+            : 'Task updated successfully!'
+        );
       } else {
         setFormError(data.error || 'Operation failed');
       }
@@ -355,7 +385,7 @@ const Tasks = () => {
     }
   };
 
-  // ---------- Bulk assignment ----------
+  // Bulk assignment
   const toggleTaskSelected = (taskId, e) => {
     e.stopPropagation();
     setSelectedTaskIds((prev) =>
@@ -395,7 +425,7 @@ const Tasks = () => {
     }
   };
 
-  // ---------- Bulk create ----------
+  // Bulk create
   const addBulkTaskRow = () => {
     setBulkCreateTasks(prev => [
       ...prev,
@@ -472,20 +502,20 @@ const Tasks = () => {
 
   const getStatusBadge = (status) => {
     const statusMap = {
-      'To Do': 'bg-blue-500/20 text-blue-300 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700',
-      'In Progress': 'bg-[#10b981] text-yellow-300 border-blue-200 dark:bg-blue-950/50 dark:text-blue-400 dark:border-blue-800',
+      'To Do': 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700',
+      'In Progress': 'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/50 dark:text-sky-400 dark:border-sky-800',
       'In Review': 'bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/50 dark:text-violet-400 dark:border-violet-800',
       'Blocked': 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/50 dark:text-orange-400 dark:border-orange-800',
-      'Completed (Pending Approval)': 'bg-green-500/20 text-green-300 border-amber-200 dark:bg-amber-950/50 dark:text-amber-400 dark:border-amber-800',
-      'Approved': 'bg-red-500/20 text-red-300 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-400 dark:border-emerald-800',
+      'Completed (Pending Approval)': 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-400 dark:border-amber-800',
+      'Approved': 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-400 dark:border-emerald-800',
       'Rejected': 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/50 dark:text-rose-400 dark:border-rose-800',
-      'Overdue': 'bg-red-100 text-red-800 border-red-300 dark:bg-red-950 dark:text-red-300 dark:border-red-800'
+      'Overdue': 'bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-950 dark:text-rose-300 dark:border-rose-800'
     };
 
-    const colorClass = statusMap[status] || 'bg-slate-100 text-slate-700 border-slate-300';
+    const colorClass = statusMap[status] || 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300';
 
     return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${colorClass}`}>
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${colorClass}`}>
         {status}
       </span>
     );
@@ -493,14 +523,14 @@ const Tasks = () => {
 
   const getPriorityBadge = (priority) => {
     const priorityMap = {
-      Low: 'bg-green-500/20 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400',
-      Medium: 'bg-cyan-500/20 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400',
-      High: 'bg-orange-500/20 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400',
-      Urgent: 'bg-red-500/20 text-red-700 dark:bg-red-950/60 dark:text-red-400'
+      Low: 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800/50',
+      Medium: 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800/50',
+      High: 'bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-800/50',
+      Urgent: 'bg-rose-100 text-rose-800 border border-rose-300 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-700'
     };
 
     return (
-      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${priorityMap[priority] || ''}`}>
+      <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold ${priorityMap[priority] || ''}`}>
         {priority} Priority
       </span>
     );
@@ -510,77 +540,85 @@ const Tasks = () => {
   const validBulkCount = bulkCreateTasks.filter(t => t.title.trim() && t.dueDate).length;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0B1120] via-[#111827] to-[#1E1B4B] text-white p-4 sm:p-6 lg:p-8">
+    <div className="space-y-6 text-slate-800 dark:text-slate-100">
 
       {/* Inline toast */}
       {toastMsg && (
-        <div className="fixed bottom-6 right-6 z-[200] flex items-center gap-2 px-4 py-3 rounded-lg bg-[#1e2640] backdrop-blur-xl text-slate-100 shadow-xl border border-[#10b981]/30 text-sm font-medium transition-all animate-in fade-in slide-in-from-bottom-4">
+        <div className="fixed bottom-6 right-6 z-[200] flex items-center gap-2 px-4 py-3 rounded-xl bg-slate-900 text-white dark:bg-slate-800 dark:text-slate-100 shadow-xl border border-slate-700 text-sm font-medium transition-all animate-in fade-in slide-in-from-bottom-4">
           <CheckCircle2 size={16} className="text-[#10b981]" />
           {toastMsg}
         </div>
       )}
 
       {/* Header Row */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-100">
+          <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
             Workflow <span className="text-[#10b981]">Tasks</span>
           </h2>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-slate-600 dark:text-slate-400 font-medium mt-0.5">
             Search, filter, and track tasks across team members.
           </p>
         </div>
-        {canManage && (
-          <div className="flex items-center gap-2">
+        {canManage ? (
+          <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => setIsVoiceModalOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#1e2640] border border-slate-700/60 hover:bg-slate-800 text-slate-200 text-sm font-medium rounded-xl shadow-xs transition-all focus:outline-none focus:ring-2 focus:ring-[#10b981]/50"
+              className="inline-flex items-center gap-2 px-3.5 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs sm:text-sm font-semibold rounded-xl shadow-xs transition-all cursor-pointer"
             >
-              <Mic size={18} className="text-[#10b981]" />
+              <Mic size={16} className="text-[#10b981]" />
               <span>Voice Task</span>
             </button>
             <button
               onClick={() => { resetBulkCreate(); setIsBulkCreateOpen(true); }}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#1e2640] border border-slate-700/60 hover:bg-slate-800 text-slate-200 text-sm font-medium rounded-xl shadow-xs transition-all focus:outline-none focus:ring-2 focus:ring-[#10b981]/50"
+              className="inline-flex items-center gap-2 px-3.5 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs sm:text-sm font-semibold rounded-xl shadow-xs transition-all cursor-pointer"
             >
-              <UserPlus size={18} className="text-[#10b981]" />
+              <UserPlus size={16} className="text-[#10b981]" />
               <span>Bulk Create</span>
             </button>
             <button
               onClick={openCreateModal}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#10b981] hover:bg-[#10b981]/80 text-[#1e2640] text-sm font-bold rounded-xl shadow-lg transition-all focus:outline-none focus:ring-2 focus:ring-[#10b981]/50 active:scale-95"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-[#10b981] hover:bg-[#059669] text-slate-950 text-xs sm:text-sm font-bold rounded-xl shadow-md shadow-[#10b981]/20 transition-all active:scale-95 cursor-pointer"
             >
-              <Plus size={18} />
+              <Plus size={16} />
               <span>Create Task</span>
             </button>
           </div>
+        ) : (
+          <button
+            onClick={openCreateModal}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#10b981] hover:bg-[#059669] text-slate-950 text-sm font-bold rounded-xl shadow-md shadow-[#10b981]/20 transition-all active:scale-95 cursor-pointer"
+          >
+            <Plus size={18} />
+            <span>Create Self Task</span>
+          </button>
         )}
       </div>
 
       {/* Filter and View Bar */}
-      <div className="bg-[#1e2640] border border-slate-700/60 rounded-xl p-4 shadow-sm mb-6 space-y-4">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm space-y-4">
         {/* Row 1: Search + Assignee Filter */}
         <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1 w-full mb-3 sm:mb-0">
-            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <div className="relative flex-1 w-full">
+            <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
             <input
               type="text"
               placeholder="Search by task title or description..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 text-slate-100 placeholder:text-slate-500 text-sm bg-slate-900/60 border border-slate-700/60 rounded-lg outline-none focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981]/50 transition-colors"
+              className="w-full pl-10 pr-4 py-2 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 text-xs sm:text-sm bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-[#10b981] transition-colors"
             />
           </div>
 
           {canManage && (
             <div className="relative flex-1 w-full">
-              <UserPlus size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <UserPlus size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
               <input
                 type="text"
                 placeholder="Filter by team member name or Employee ID..."
                 value={assigneeFilter}
                 onChange={(e) => setAssigneeFilter(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 text-slate-100 placeholder:text-slate-500 text-sm bg-slate-900/60 border border-slate-700/60 rounded-lg outline-none focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981]/50 transition-colors"
+                className="w-full pl-10 pr-4 py-2 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 text-xs sm:text-sm bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-[#10b981] transition-colors"
               />
             </div>
           )}
@@ -588,123 +626,123 @@ const Tasks = () => {
 
         {/* Row 2: View Switcher */}
         <div className="flex justify-end">
-          <div className="flex items-center bg-slate-900/60 p-1 rounded-lg border border-slate-700/60 overflow-x-auto">
+          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 overflow-x-auto">
             <button
               onClick={() => setViewMode('grid')}
-              className={`p-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 ${viewMode === 'grid'
-                ? 'bg-[#10b981] text-[#1e2640] font-bold shadow-xs'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+              className={`p-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer ${viewMode === 'grid'
+                ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               title="Grid View"
             >
-              <LayoutGrid size={16} />
+              <LayoutGrid size={15} />
               <span className="hidden sm:inline">Grid</span>
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`p-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 ${viewMode === 'list'
-                ? 'bg-[#10b981] text-[#1e2640] font-bold shadow-xs'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+              className={`p-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer ${viewMode === 'list'
+                ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               title="List View"
             >
-              <List size={16} />
+              <List size={15} />
               <span className="hidden sm:inline">List</span>
             </button>
             <button
               onClick={() => setViewMode('kanban')}
-              className={`p-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 ${viewMode === 'kanban'
-                ? 'bg-[#10b981] text-[#1e2640] font-bold shadow-xs'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+              className={`p-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer ${viewMode === 'kanban'
+                ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               title="Kanban Board"
             >
-              <KanbanSquare size={16} />
+              <KanbanSquare size={15} />
               <span className="hidden sm:inline">Kanban</span>
             </button>
             <button
               onClick={() => setViewMode('calendar')}
-              className={`p-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 ${viewMode === 'calendar'
-                ? 'bg-[#10b981] text-[#1e2640] font-bold shadow-xs'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+              className={`p-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer ${viewMode === 'calendar'
+                ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               title="Calendar View"
             >
-              <CalendarDays size={16} />
+              <CalendarDays size={15} />
               <span className="hidden sm:inline">Calendar</span>
             </button>
             <button
               onClick={() => setViewMode('gantt')}
-              className={`p-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 ${viewMode === 'gantt'
-                ? 'bg-[#10b981] text-[#1e2640] font-bold shadow-xs'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+              className={`p-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer ${viewMode === 'gantt'
+                ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               title="Gantt / Timeline View"
             >
-              <GanttChartSquare size={16} />
+              <GanttChartSquare size={15} />
               <span className="hidden sm:inline">Gantt</span>
             </button>
           </div>
         </div>
 
         {/* Filters Controls */}
-        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-700/60">
-          <div className="flex items-center gap-2 bg-slate-900/60 border border-slate-700/60 rounded-lg px-3 py-1.5">
+        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5">
             <Filter size={14} className="text-slate-400" />
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="bg-transparent text-xs font-medium text-slate-200 outline-none cursor-pointer"
+              className="bg-transparent text-xs font-semibold text-slate-700 dark:text-slate-200 outline-none cursor-pointer"
             >
-              <option value="" className="bg-[#1e2640] text-slate-100">All Statuses</option>
-              <option value="To Do" className="bg-[#1e2640] text-slate-100">To Do</option>
-              <option value="In Progress" className="bg-[#1e2640] text-slate-100">In Progress</option>
-              <option value="In Review" className="bg-[#1e2640] text-slate-100">In Review</option>
-              <option value="Blocked" className="bg-[#1e2640] text-slate-100">Blocked</option>
-              <option value="Completed (Pending Approval)" className="bg-[#1e2640] text-slate-100">Pending Approval</option>
-              <option value="Approved" className="bg-[#1e2640] text-slate-100">Approved</option>
-              <option value="Rejected" className="bg-[#1e2640] text-slate-100">Rejected</option>
-              <option value="Overdue" className="bg-[#1e2640] text-slate-100">Overdue</option>
+              <option value="" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">All Statuses</option>
+              <option value="To Do" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">To Do</option>
+              <option value="In Progress" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">In Progress</option>
+              <option value="In Review" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">In Review</option>
+              <option value="Blocked" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Blocked</option>
+              <option value="Completed (Pending Approval)" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Pending Approval</option>
+              <option value="Approved" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Approved</option>
+              <option value="Rejected" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Rejected</option>
+              <option value="Overdue" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Overdue</option>
             </select>
           </div>
 
-          <div className="bg-slate-900/60 border border-slate-700/60 rounded-lg px-3 py-1.5">
+          <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5">
             <select
               value={priorityFilter}
               onChange={(e) => setPriorityFilter(e.target.value)}
-              className="bg-transparent text-xs font-medium text-slate-200 outline-none cursor-pointer"
+              className="bg-transparent text-xs font-semibold text-slate-700 dark:text-slate-200 outline-none cursor-pointer"
             >
-              <option value="" className="bg-[#1e2640] text-slate-100">All Priorities</option>
-              <option value="Low" className="bg-[#1e2640] text-slate-100">Low</option>
-              <option value="Medium" className="bg-[#1e2640] text-slate-100">Medium</option>
-              <option value="High" className="bg-[#1e2640] text-slate-100">High</option>
-              <option value="Urgent" className="bg-[#1e2640] text-slate-100">Urgent</option>
+              <option value="" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">All Priorities</option>
+              <option value="Low" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Low</option>
+              <option value="Medium" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Medium</option>
+              <option value="High" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">High</option>
+              <option value="Urgent" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Urgent</option>
             </select>
           </div>
 
-          <div className="bg-slate-900/60 border border-slate-700/60 rounded-lg px-3 py-1.5">
+          <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5">
             <select
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}
-              className="bg-transparent text-xs font-medium text-slate-200 outline-none cursor-pointer"
+              className="bg-transparent text-xs font-semibold text-slate-700 dark:text-slate-200 outline-none cursor-pointer"
             >
-              <option value="" className="bg-[#1e2640] text-slate-100">All Dates</option>
-              <option value="today" className="bg-[#1e2640] text-slate-100">Due Today</option>
-              <option value="upcoming" className="bg-[#1e2640] text-slate-100">Upcoming</option>
-              <option value="overdue" className="bg-[#1e2640] text-slate-100">Overdue Only</option>
+              <option value="" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">All Dates</option>
+              <option value="today" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Due Today</option>
+              <option value="upcoming" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Upcoming</option>
+              <option value="overdue" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Overdue Only</option>
             </select>
           </div>
 
-          <div className="bg-slate-900/60 border border-slate-700/60 rounded-lg px-3 py-1.5">
+          <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5">
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="bg-transparent text-xs font-medium text-slate-200 outline-none cursor-pointer"
+              className="bg-transparent text-xs font-semibold text-slate-700 dark:text-slate-200 outline-none cursor-pointer"
             >
-              <option value="dueDate:asc" className="bg-[#1e2640] text-slate-100">Due Date: Soonest</option>
-              <option value="dueDate:desc" className="bg-[#1e2640] text-slate-100">Due Date: Farthest</option>
-              <option value="priority:desc" className="bg-[#1e2640] text-slate-100">Priority: High to Low</option>
-              <option value="createdAt:desc" className="bg-[#1e2640] text-slate-100">Created Date: Newest</option>
+              <option value="dueDate:asc" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Due Date: Soonest</option>
+              <option value="dueDate:desc" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Due Date: Farthest</option>
+              <option value="priority:desc" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Priority: High to Low</option>
+              <option value="createdAt:desc" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Created Date: Newest</option>
             </select>
           </div>
 
@@ -717,7 +755,7 @@ const Tasks = () => {
               setAssigneeFilter('');
               setSortBy('dueDate:asc');
             }}
-            className="p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition-colors ml-auto"
+            className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors ml-auto cursor-pointer"
             title="Reset Filters"
           >
             <RefreshCw size={14} />
@@ -725,23 +763,22 @@ const Tasks = () => {
         </div>
       </div>
 
-
       {/* Bulk Assign Action Bar */}
       {canManage && selectedTaskIds.length > 0 && (
-        <div className="flex items-center justify-between gap-3 bg-[#1e2640] border border-[#10b981]/30 rounded-xl px-4 py-2.5 mb-4 shadow-lg">
-          <span className="text-sm font-medium text-slate-200">
+        <div className="flex items-center justify-between gap-3 bg-white dark:bg-slate-900 border border-[#10b981]/40 rounded-2xl px-4 py-3 shadow-md">
+          <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
             <span className="text-[#10b981] font-bold">{selectedTaskIds.length}</span> task{selectedTaskIds.length > 1 ? 's' : ''} selected
           </span>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setIsBulkAssignOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#10b981] hover:bg-[#10b981]/80 text-[#1e2640] text-xs font-bold rounded-lg shadow-sm transition-all active:scale-95"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#10b981] hover:bg-[#059669] text-slate-950 text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer"
             >
               <UserPlus size={14} /> Assign to Member
             </button>
             <button
               onClick={clearSelection}
-              className="px-3 py-1.5 text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition-colors"
+              className="px-3 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
             >
               Clear
             </button>
@@ -751,14 +788,14 @@ const Tasks = () => {
 
       {/* Task Content */}
       {loading ? (
-        <div className="flex justify-center items-center py-24">
-          <div className="w-8 h-8 border-4 border-[#10b981] border-t-transparent rounded-full animate-spin"></div>
+        <div className="flex justify-center items-center py-24 bg-white dark:bg-slate-900/40 rounded-2xl border border-slate-200 dark:border-slate-800">
+          <Loader2 className="w-8 h-8 text-[#10b981] animate-spin" />
         </div>
       ) : tasks.length === 0 ? (
-        <div className="flex flex-col items-center justify-center p-12 bg-[#1e2640] border border-slate-700/60 rounded-xl text-center shadow-sm">
-          <AlertCircle size={48} className="text-slate-500 mb-3" />
-          <h3 className="text-lg font-semibold text-slate-100">No Tasks Found</h3>
-          <p className="text-sm text-slate-400 mt-1">
+        <div className="flex flex-col items-center justify-center p-12 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-center shadow-sm">
+          <AlertCircle size={44} className="text-slate-400 dark:text-slate-600 mb-3" />
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white">No Tasks Found</h3>
+          <p className="text-sm text-slate-600 dark:text-slate-400 font-medium mt-1">
             Try adjusting your search criteria or clear filters.
           </p>
         </div>
@@ -786,8 +823,9 @@ const Tasks = () => {
               <div
                 key={task._id}
                 onClick={() => navigate(`/tasks/${task._id}`)}
-                className={`group relative bg-[#1e2640] border border-slate-700/60 hover:border-[#10b981] rounded-2xl p-5 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-200 cursor-pointer flex flex-col justify-between overflow-hidden ${isOverdue ? 'border-l-4 border-l-rose-500' : 'border-l-4 border-l-[#10b981]'
-                  }`}
+                className={`group relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-[#10b981] rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col justify-between overflow-hidden ${
+                  isOverdue ? 'border-l-4 border-l-rose-500' : 'border-l-4 border-l-[#10b981]'
+                }`}
               >
                 <div>
                   <div className="flex items-center gap-1.5 mb-2 min-w-0">
@@ -804,7 +842,7 @@ const Tasks = () => {
                         )}
                       </button>
                     )}
-                    <span className="text-[11px] font-semibold text-[#10b981] truncate uppercase tracking-wide">
+                    <span className="text-[11px] font-bold text-[#10b981] truncate uppercase tracking-wider">
                       {task.assignedTo?.length > 0
                         ? task.assignedTo.map((u) => u.name).join(', ')
                         : 'Unassigned'}
@@ -812,28 +850,30 @@ const Tasks = () => {
                   </div>
 
                   <div className="flex items-start justify-between gap-3 mb-3">
-                    <h3 className="font-semibold text-base text-slate-100 group-hover:text-[#10b981] transition-colors line-clamp-1">
+                    <h3 className="font-bold text-base text-slate-900 dark:text-white group-hover:text-[#10b981] transition-colors line-clamp-1">
                       {task.title}
                     </h3>
-                    {canManage && (
+                    {(canManage || (task.isSelfCreated && task.createdBy?._id === user?._id && task.status !== 'Approved')) && (
                       <div
-                        className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900/80 backdrop-blur-xs p-0.5 rounded-lg"
+                        className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <button
                           onClick={(e) => openEditModal(task, e)}
-                          className="p-1.5 text-slate-400 hover:text-[#10b981] rounded-md hover:bg-slate-800 transition-colors shadow-xs"
+                          className="p-1.5 text-slate-500 hover:text-[#10b981] rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
                           title="Edit Task"
                         >
                           <Edit2 size={13} />
                         </button>
-                        <button
-                          onClick={(e) => confirmDelete(task._id, e)}
-                          className="p-1.5 text-slate-400 hover:text-rose-500 rounded-md hover:bg-slate-800 transition-colors shadow-xs"
-                          title="Delete Task"
-                        >
-                          <Trash2 size={13} />
-                        </button>
+                        {canManage && (
+                          <button
+                            onClick={(e) => confirmDelete(task._id, e)}
+                            className="p-1.5 text-slate-500 hover:text-rose-600 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                            title="Delete Task"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -841,6 +881,11 @@ const Tasks = () => {
                   <div className="flex flex-wrap items-center gap-2 mb-3">
                     {getStatusBadge(task.status)}
                     {getPriorityBadge(task.priority)}
+                    {task.verballyAssignedBy && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-[11px] font-semibold">
+                        <span>🗣️ Verbal: {task.verballyAssignedBy.name}</span>
+                      </span>
+                    )}
                   </div>
 
                   {task.tags?.length > 0 && (
@@ -848,7 +893,7 @@ const Tasks = () => {
                       {task.tags.map((tag, i) => (
                         <span
                           key={i}
-                          className="px-2.5 py-0.5 rounded-md bg-slate-900/60 text-slate-300 border border-slate-700/40 text-[11px] font-medium"
+                          className="px-2.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-[11px] font-medium"
                         >
                           #{tag}
                         </span>
@@ -856,16 +901,16 @@ const Tasks = () => {
                     </div>
                   )}
 
-                  <p className="text-xs text-slate-400 line-clamp-2 mb-5 leading-relaxed">
+                  <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 mb-5 leading-relaxed font-normal">
                     {task.description || 'No description provided.'}
                   </p>
                 </div>
 
-                <div className="pt-3.5 border-t border-slate-700/60 flex items-center justify-between mt-auto">
+                <div className="pt-3.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between mt-auto">
                   <div
-                    className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-md ${isOverdue
-                      ? 'bg-rose-950/50 text-rose-400 border border-rose-800/50 font-semibold animate-pulse'
-                      : 'bg-slate-900/60 text-slate-300 border border-slate-700/50 font-medium'
+                    className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg ${isOverdue
+                      ? 'bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/50 dark:text-rose-400 dark:border-rose-800/50 font-semibold animate-pulse'
+                      : 'bg-slate-50 text-slate-700 border border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 font-medium'
                       }`}
                   >
                     <Calendar size={13} />
@@ -877,7 +922,7 @@ const Tasks = () => {
                       {task.assignedTo.slice(0, 3).map((u) => (
                         <div
                           key={u._id}
-                          className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-[#10b981] text-[#1e2640] text-[11px] font-bold border-2 border-[#1e2640] shadow-md"
+                          className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-[#10b981] text-slate-950 text-[11px] font-bold border-2 border-white dark:border-slate-900 shadow-xs"
                           title={`${u.name} (${u.email})`}
                         >
                           {u.name.charAt(0).toUpperCase()}
@@ -885,7 +930,7 @@ const Tasks = () => {
                       ))}
                     </div>
                     {task.assignedTo.length > 3 && (
-                      <span className="ml-1.5 text-[10px] font-semibold text-slate-400 bg-slate-900/80 px-1.5 py-0.5 rounded-full border border-slate-700/60">
+                      <span className="ml-1.5 text-[10px] font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded-full border border-slate-200 dark:border-slate-700">
                         +{task.assignedTo.length - 3}
                       </span>
                     )}
@@ -897,11 +942,11 @@ const Tasks = () => {
         </div>
       ) : (
         /* LIST VIEW */
-        <div className="bg-[#1e2640] border border-slate-700/60 rounded-xl overflow-hidden shadow-sm">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-slate-700/60 bg-slate-900/60 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                   {canManage && <th className="py-3.5 px-4 w-8"></th>}
                   <th className="py-3.5 px-4">Task</th>
                   <th className="py-3.5 px-4">Assigned To</th>
@@ -912,36 +957,43 @@ const Tasks = () => {
                   {canManage && <th className="py-3.5 px-4 text-right">Actions</th>}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-700/60 text-xs sm:text-sm">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-xs sm:text-sm">
                 {tasks.map((task) => (
                   <tr
                     key={task._id}
                     onClick={() => navigate(`/tasks/${task._id}`)}
-                    className="hover:bg-slate-900/40 transition-colors cursor-pointer group"
+                    className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors cursor-pointer group"
                   >
                     {canManage && (
                       <td className="py-3.5 px-4" onClick={(e) => toggleTaskSelected(task._id, e)}>
                         {selectedTaskIds.includes(task._id) ? (
                           <CheckSquare size={16} className="text-[#10b981]" />
                         ) : (
-                          <Square size={16} className="text-slate-500" />
+                          <Square size={16} className="text-slate-400" />
                         )}
                       </td>
                     )}
                     <td className="py-3.5 px-4 max-w-xs">
-                      <p className="font-semibold text-slate-100 group-hover:text-[#10b981] transition-colors truncate">
+                      <p className="font-bold text-slate-900 dark:text-white group-hover:text-[#10b981] transition-colors truncate">
                         {task.title}
                       </p>
-                      <p className="text-xs text-slate-400 truncate mt-0.5">{task.description}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        {task.verballyAssignedBy && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-amber-500/15 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-[10px] font-semibold">
+                            🗣️ Verbal: {task.verballyAssignedBy.name}
+                          </span>
+                        )}
+                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{task.description}</p>
+                      </div>
                     </td>
-                    <td className="py-3.5 px-4 whitespace-nowrap text-xs font-semibold text-[#10b981]">
+                    <td className="py-3.5 px-4 whitespace-nowrap text-xs font-bold text-[#10b981]">
                       {task.assignedTo?.length > 0
                         ? task.assignedTo.map((u) => u.name).join(', ')
                         : 'Unassigned'}
                     </td>
                     <td className="py-3.5 px-4 whitespace-nowrap">{getStatusBadge(task.status)}</td>
                     <td className="py-3.5 px-4 whitespace-nowrap">{getPriorityBadge(task.priority)}</td>
-                    <td className="py-3.5 px-4 whitespace-nowrap text-xs text-slate-400">
+                    <td className="py-3.5 px-4 whitespace-nowrap text-xs text-slate-600 dark:text-slate-400 font-medium">
                       {new Date(task.dueDate).toLocaleDateString()}
                     </td>
                     <td className="py-3.5 px-4 whitespace-nowrap">
@@ -949,7 +1001,7 @@ const Tasks = () => {
                         {task.assignedTo.map((u) => (
                           <div
                             key={u._id}
-                            className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#10b981] text-[#1e2640] text-[10px] font-bold border-2 border-[#1e2640]"
+                            className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#10b981] text-slate-950 text-[10px] font-bold border-2 border-white dark:border-slate-900"
                             title={u.name}
                           >
                             {u.name.charAt(0).toUpperCase()}
@@ -957,21 +1009,25 @@ const Tasks = () => {
                         ))}
                       </div>
                     </td>
-                    {canManage && (
+                    {(canManage || (task.isSelfCreated && task.createdBy?._id === user?._id && task.status !== 'Approved')) && (
                       <td className="py-3.5 px-4 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                         <div className="inline-flex items-center gap-1">
                           <button
                             onClick={(e) => openEditModal(task, e)}
-                            className="p-1.5 text-slate-400 hover:text-[#10b981] rounded-md hover:bg-slate-800 transition-colors"
+                            className="p-1.5 text-slate-500 hover:text-[#10b981] rounded-md hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                            title="Edit Task"
                           >
                             <Edit2 size={14} />
                           </button>
-                          <button
-                            onClick={(e) => confirmDelete(task._id, e)}
-                            className="p-1.5 text-slate-400 hover:text-rose-500 rounded-md hover:bg-slate-800 transition-colors"
-                          >
-                            <Trash2 size={14} />
-                          </button>
+                          {canManage && (
+                            <button
+                              onClick={(e) => confirmDelete(task._id, e)}
+                              className="p-1.5 text-slate-500 hover:text-rose-600 rounded-md hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                              title="Delete Task"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
                         </div>
                       </td>
                     )}
@@ -983,28 +1039,30 @@ const Tasks = () => {
         </div>
       )}
 
-      {/* CREATE / EDIT MODAL (Dark Theme Only) */}
+      {/* CREATE / EDIT MODAL */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-4xl lg:max-w-5xl w-full p-6 shadow-xl my-8 max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 rounded-3xl max-w-4xl lg:max-w-5xl w-full p-6 shadow-2xl my-8 max-h-[90vh] flex flex-col">
             {/* Modal Header */}
-            <div className="flex items-center justify-between pb-4 border-b border-slate-800 shrink-0">
-              <h3 className="text-lg font-bold text-slate-100">
-                {modalMode === 'create' ? 'Create New Task' : 'Edit Task Details'}
+            <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800 shrink-0">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                {modalMode === 'create'
+                  ? (user?.role === 'member' ? 'Create Self Task (Verbal Assignment)' : 'Create New Task')
+                  : (user?.role === 'member' ? 'Edit Self Task Details' : 'Edit Task Details')}
               </h3>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="p-1 text-slate-400 hover:text-slate-200 rounded-lg transition-colors"
+                className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                 aria-label="Close modal"
               >
-                <X size={18} />
+                <X size={20} />
               </button>
             </div>
 
             {/* Error Alert */}
             {formError && (
-              <div className="mt-4 p-3 rounded-lg bg-rose-950/40 border border-rose-800 text-rose-400 text-xs flex items-center gap-2 shrink-0">
+              <div className="mt-4 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-400 text-xs flex items-center gap-2 shrink-0 font-medium">
                 <AlertCircle size={16} />
                 <span>{formError}</span>
               </div>
@@ -1018,12 +1076,12 @@ const Tasks = () => {
                   {/* Left Column */}
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                         Task Title *
                       </label>
                       <input
                         type="text"
-                        className="w-full px-3 py-2 text-sm bg-slate-800/50 border border-slate-700 text-slate-100 placeholder:text-slate-500 rounded-lg outline-none focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20 transition-all"
+                        className="w-full px-3.5 py-2.5 text-sm bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-xl outline-none focus:border-[#10b981] transition-all"
                         value={formTitle}
                         onChange={(e) => setFormTitle(e.target.value)}
                         placeholder="e.g., Update Landing Page Header"
@@ -1032,12 +1090,12 @@ const Tasks = () => {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                         Description
                       </label>
                       <textarea
                         rows={4}
-                        className="w-full px-3 py-2 text-sm bg-slate-800/50 border border-slate-700 text-slate-100 placeholder:text-slate-500 rounded-lg outline-none focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20 transition-all resize-none"
+                        className="w-full px-3.5 py-2.5 text-sm bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-xl outline-none focus:border-[#10b981] transition-all resize-none"
                         value={formDesc}
                         onChange={(e) => setFormDesc(e.target.value)}
                         placeholder="Provide scope, targets, and notes..."
@@ -1046,11 +1104,11 @@ const Tasks = () => {
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-xs font-semibold text-slate-300 mb-1">
+                        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                           Priority
                         </label>
                         <select
-                          className="w-full px-3 py-2 text-sm bg-slate-800/50 border border-slate-700 text-slate-100 rounded-lg outline-none focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20"
+                          className="w-full px-3.5 py-2.5 text-sm bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl outline-none focus:border-[#10b981]"
                           value={formPriority}
                           onChange={(e) => setFormPriority(e.target.value)}
                         >
@@ -1062,11 +1120,11 @@ const Tasks = () => {
                       </div>
 
                       <div>
-                        <label className="block text-xs font-semibold text-slate-300 mb-1">
+                        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                           Status
                         </label>
                         <select
-                          className="w-full px-3 py-2 text-sm bg-slate-800/50 border border-slate-700 text-slate-100 rounded-lg outline-none focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20"
+                          className="w-full px-3.5 py-2.5 text-sm bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl outline-none focus:border-[#10b981]"
                           value={formStatus}
                           onChange={(e) => setFormStatus(e.target.value)}
                         >
@@ -1080,24 +1138,24 @@ const Tasks = () => {
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-xs font-semibold text-slate-300 mb-1">
+                        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                           Start Date
                         </label>
                         <input
                           type="datetime-local"
-                          className="w-full px-3 py-2 text-sm bg-slate-800/50 border border-slate-700 text-slate-100 rounded-lg outline-none focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20 color-scheme-dark"
+                          className="w-full px-3.5 py-2.5 text-sm bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl outline-none focus:border-[#10b981]"
                           value={formStartDate}
                           onChange={(e) => setFormStartDate(e.target.value)}
                         />
                       </div>
 
                       <div>
-                        <label className="block text-xs font-semibold text-slate-300 mb-1">
+                        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                           Due Date & Time *
                         </label>
                         <input
                           type="datetime-local"
-                          className="w-full px-3 py-2 text-sm bg-slate-800/50 border border-slate-700 text-slate-100 rounded-lg outline-none focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20 color-scheme-dark"
+                          className="w-full px-3.5 py-2.5 text-sm bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl outline-none focus:border-[#10b981]"
                           value={formDueDate}
                           onChange={(e) => setFormDueDate(e.target.value)}
                           required
@@ -1106,14 +1164,14 @@ const Tasks = () => {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                         Estimated Hours
                       </label>
                       <input
                         type="number"
                         min="0"
                         step="0.5"
-                        className="w-full px-3 py-2 text-sm bg-slate-800/50 border border-slate-700 text-slate-100 rounded-lg outline-none focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20"
+                        className="w-full px-3.5 py-2.5 text-sm bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl outline-none focus:border-[#10b981]"
                         value={formEstimatedHours}
                         onChange={(e) => setFormEstimatedHours(e.target.value)}
                       />
@@ -1122,50 +1180,126 @@ const Tasks = () => {
 
                   {/* Right Column */}
                   <div className="space-y-4 flex flex-col justify-between">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
-                        Assign Team Members *
-                      </label>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto p-1.5 border border-slate-700 rounded-lg bg-slate-800/20">
-                        {usersList.map((member) => {
-                          const isSelected = formAssignedTo.includes(member._id);
-                          return (
-                            <div
-                              key={member._id}
-                              onClick={() => toggleAssignee(member._id)}
-                              className={`flex items-center gap-2 p-2 rounded-md border cursor-pointer transition-all ${isSelected
-                                ? 'bg-[#10b981]/20 border-[#10b981]'
-                                : 'border-slate-700 hover:bg-slate-800'
-                                }`}
-                            >
-                              <div
-                                className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${isSelected
-                                  ? 'bg-[#10b981] text-white'
-                                  : 'bg-slate-700 text-slate-300'
-                                  }`}
-                              >
-                                {member.name.charAt(0).toUpperCase()}
-                              </div>
-                              <div className="overflow-hidden">
-                                <p className="text-xs font-semibold text-slate-200 truncate">
-                                  {member.name}
-                                </p>
-                                <p className="text-[10px] text-slate-400 truncate">{member.email}</p>
-                              </div>
+                    {user?.role === 'member' ? (
+                      <div className="space-y-4">
+                        {/* Member Self-Assignee Display */}
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                            Assigned To (Self Task)
+                          </label>
+                          <div className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700">
+                            <div className="w-9 h-9 rounded-full bg-[#10b981]/20 border border-[#10b981]/40 text-[#10b981] flex items-center justify-center font-bold text-xs shrink-0">
+                              {user?.name?.charAt(0).toUpperCase()}
                             </div>
-                          );
-                        })}
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{user?.name} (You)</p>
+                              <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{user?.email} • {user?.department || 'General'}</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Mandatory Verbally Assigned By selector for Members */}
+                        <div>
+                          <label className="block text-xs font-semibold text-amber-600 dark:text-amber-400 mb-1 flex items-center justify-between">
+                            <span>Verbally Assigned By (Manager / Admin) *</span>
+                            <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold uppercase tracking-wider">Required</span>
+                          </label>
+                          <select
+                            value={formVerballyAssignedBy}
+                            onChange={(e) => setFormVerballyAssignedBy(e.target.value)}
+                            required
+                            className="w-full px-3.5 py-2.5 text-sm bg-slate-50 dark:bg-slate-950 border border-amber-500/50 text-slate-900 dark:text-white rounded-xl outline-none focus:border-amber-500"
+                          >
+                            <option value="" className="bg-white dark:bg-slate-900 text-slate-500">
+                              Select Manager or Admin who assigned this...
+                            </option>
+                            {(supervisorsList.length > 0
+                              ? supervisorsList
+                              : usersList.filter((u) => ['admin', 'manager'].includes(u.role))
+                            ).map((mgr) => (
+                              <option key={mgr._id} value={mgr._id} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                                {mgr.name} ({mgr.role === 'admin' ? 'Administrator' : 'Manager'}{mgr.department ? ` - ${mgr.department}` : ''})
+                              </option>
+                            ))}
+                          </select>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1.5 font-medium">
+                            {supervisorsList.length > 0 && supervisorsList.some((s) => s.role === 'manager')
+                              ? 'Assigned Manager(s) for your department/profile.'
+                              : 'No direct manager assigned — system Administrators are displayed.'}
+                          </p>
+                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                            Assign Team Members *
+                          </label>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto p-1.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-950">
+                            {usersList.map((member) => {
+                              const isSelected = formAssignedTo.includes(member._id);
+                              return (
+                                <div
+                                  key={member._id}
+                                  onClick={() => toggleAssignee(member._id)}
+                                  className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-all ${isSelected
+                                    ? 'bg-[#10b981]/15 border-[#10b981]'
+                                    : 'border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-900'
+                                    }`}
+                                >
+                                  <div
+                                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${isSelected
+                                      ? 'bg-[#10b981] text-slate-950'
+                                      : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                                      }`}
+                                  >
+                                    {member.name.charAt(0).toUpperCase()}
+                                  </div>
+                                  <div className="overflow-hidden">
+                                    <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                                      {member.name}
+                                    </p>
+                                    <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{member.email}</p>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                            <span>Verbally Assigned By (Optional)</span>
+                            <span className="text-[10px] text-slate-500">Optional</span>
+                          </label>
+                          <select
+                            value={formVerballyAssignedBy}
+                            onChange={(e) => setFormVerballyAssignedBy(e.target.value)}
+                            className="w-full px-3.5 py-2.5 text-sm bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl outline-none focus:border-[#10b981]"
+                          >
+                            <option value="" className="bg-white dark:bg-slate-900 text-slate-500">
+                              None / Direct assignment
+                            </option>
+                            {usersList
+                              .filter((u) => ['admin', 'manager'].includes(u.role))
+                              .map((mgr) => (
+                                <option key={mgr._id} value={mgr._id} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                                  {mgr.name} ({mgr.role === 'admin' ? 'Administrator' : 'Manager'}{mgr.department ? ` - ${mgr.department}` : ''})
+                                </option>
+                              ))}
+                          </select>
+                        </div>
+                      </div>
+                    )}
 
                     <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                         Attachments (URLs)
                       </label>
                       <div className="flex gap-2">
                         <input
                           type="url"
-                          className="flex-1 px-3 py-2 text-sm bg-slate-800/50 border border-slate-700 text-slate-100 placeholder:text-slate-500 rounded-lg outline-none focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20"
+                          className="flex-1 px-3.5 py-2.5 text-sm bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-xl outline-none focus:border-[#10b981]"
                           placeholder="https://..."
                           value={formAttachment}
                           onChange={(e) => setFormAttachment(e.target.value)}
@@ -1173,7 +1307,7 @@ const Tasks = () => {
                         <button
                           type="button"
                           onClick={handleAddAttachment}
-                          className="px-3 py-2 text-xs font-medium bg-slate-700 text-slate-200 hover:bg-slate-600 rounded-lg transition-colors"
+                          className="px-4 py-2.5 text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-colors cursor-pointer"
                         >
                           Add
                         </button>
@@ -1184,14 +1318,14 @@ const Tasks = () => {
                           {formAttachmentsList.map((url, index) => (
                             <span
                               key={index}
-                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-800 border border-slate-700 text-xs text-slate-300"
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-300 font-medium"
                             >
                               <Paperclip size={12} />
                               <span className="max-w-[150px] truncate">{url}</span>
                               <button
                                 type="button"
                                 onClick={() => handleRemoveAttachment(index)}
-                                className="hover:text-rose-400 font-bold ml-1 transition-colors"
+                                className="hover:text-rose-600 font-bold ml-1 transition-colors cursor-pointer"
                               >
                                 ×
                               </button>
@@ -1202,7 +1336,7 @@ const Tasks = () => {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                         Tags
                       </label>
                       <div className="flex gap-2">
@@ -1211,12 +1345,12 @@ const Tasks = () => {
                           value={formTagInput}
                           placeholder="e.g., frontend"
                           onChange={(e) => setFormTagInput(e.target.value)}
-                          className="flex-1 px-3 py-2 text-sm bg-slate-800/50 border border-slate-700 text-slate-100 placeholder:text-slate-500 rounded-lg outline-none focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20"
+                          className="flex-1 px-3.5 py-2.5 text-sm bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-xl outline-none focus:border-[#10b981]"
                         />
                         <button
                           type="button"
                           onClick={handleAddTag}
-                          className="px-3 py-2 text-xs font-medium bg-slate-700 text-slate-200 hover:bg-slate-600 rounded-lg transition-colors"
+                          className="px-4 py-2.5 text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-colors cursor-pointer"
                         >
                           Add
                         </button>
@@ -1227,13 +1361,13 @@ const Tasks = () => {
                           {formTags.map((tag, index) => (
                             <span
                               key={index}
-                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-950/50 border border-indigo-800 text-indigo-300 text-xs"
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 text-xs font-semibold"
                             >
-                              {tag}
+                              #{tag}
                               <button
                                 type="button"
                                 onClick={() => handleRemoveTag(index)}
-                                className="hover:text-rose-400 font-bold transition-colors"
+                                className="hover:text-rose-600 font-bold transition-colors cursor-pointer"
                               >
                                 ×
                               </button>
@@ -1246,9 +1380,9 @@ const Tasks = () => {
                 </div>
 
                 {/* Subtasks & Dependencies */}
-                <div className="space-y-6 pt-2 border-t border-slate-800">
+                <div className="space-y-6 pt-4 border-t border-slate-200 dark:border-slate-800">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                       Subtasks / Checklist
                     </label>
                     <div className="flex gap-2">
@@ -1257,12 +1391,12 @@ const Tasks = () => {
                         value={formChecklistInput}
                         onChange={(e) => setFormChecklistInput(e.target.value)}
                         placeholder="e.g., Write unit tests"
-                        className="flex-1 px-3 py-2 text-sm bg-slate-800/50 border border-slate-700 text-slate-100 placeholder:text-slate-500 rounded-lg outline-none focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20"
+                        className="flex-1 px-3.5 py-2.5 text-sm bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-xl outline-none focus:border-[#10b981]"
                       />
                       <button
                         type="button"
                         onClick={addChecklistItem}
-                        className="px-3 py-2 text-xs font-medium bg-slate-700 text-slate-200 hover:bg-slate-600 rounded-lg transition-colors"
+                        className="px-4 py-2.5 text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-colors cursor-pointer"
                       >
                         Add
                       </button>
@@ -1273,23 +1407,23 @@ const Tasks = () => {
                         {formChecklist.map((item, index) => (
                           <div
                             key={index}
-                            className="flex items-center justify-between rounded-lg border border-slate-700 p-2 text-xs bg-slate-800/30"
+                            className="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-700 p-2 text-xs bg-slate-50 dark:bg-slate-800/30"
                           >
-                            <label className="flex items-center gap-2 cursor-pointer">
+                            <label className="flex items-center gap-2 cursor-pointer font-medium">
                               <input
                                 type="checkbox"
                                 checked={item.completed}
                                 onChange={() => toggleChecklistItem(index)}
-                                className="rounded border-slate-600 bg-slate-800 text-[#10b981] focus:ring-[#10b981]"
+                                className="rounded border-slate-300 text-[#10b981] focus:ring-[#10b981]"
                               />
-                              <span className={item.completed ? 'line-through text-slate-500' : 'text-slate-300'}>
+                              <span className={item.completed ? 'line-through text-slate-400' : 'text-slate-700 dark:text-slate-300'}>
                                 {item.title}
                               </span>
                             </label>
                             <button
                               type="button"
                               onClick={() => removeChecklistItem(index)}
-                              className="text-rose-400 hover:text-rose-300 font-bold transition-colors"
+                              className="text-rose-500 hover:text-rose-700 font-bold transition-colors cursor-pointer"
                             >
                               ×
                             </button>
@@ -1300,7 +1434,7 @@ const Tasks = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                       Task Dependencies (must be completed first)
                     </label>
                     <select
@@ -1310,7 +1444,7 @@ const Tasks = () => {
                         const values = [...e.target.selectedOptions].map((option) => option.value);
                         setFormDependencies(values);
                       }}
-                      className="w-full rounded-lg border border-slate-700 p-2 text-sm bg-slate-800/50 text-slate-100 outline-none focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20 max-h-32"
+                      className="w-full rounded-xl border border-slate-200 dark:border-slate-700 p-2 text-sm bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white outline-none focus:border-[#10b981] max-h-32"
                     >
                       {allTasks
                         .filter((task) => task._id !== currentTaskId)
@@ -1320,7 +1454,7 @@ const Tasks = () => {
                           </option>
                         ))}
                     </select>
-                    <p className="text-[10px] text-slate-400 mt-1">
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 font-medium">
                       Hold Ctrl (Cmd on Mac) to select multiple tasks.
                     </p>
                   </div>
@@ -1328,18 +1462,18 @@ const Tasks = () => {
               </div>
 
               {/* Modal Footer Actions */}
-              <div className="pt-4 mt-6 border-t border-slate-800 flex justify-end gap-3 shrink-0">
+              <div className="pt-4 mt-6 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-3 shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-800 rounded-lg transition-colors"
+                  className="px-4 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={formSubmitting}
-                  className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold bg-[#10b981] hover:bg-[#059669] disabled:opacity-50 text-white rounded-lg transition-colors shadow-sm cursor-pointer"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-bold bg-[#10b981] hover:bg-[#059669] disabled:opacity-50 text-slate-950 rounded-xl transition-colors shadow-md shadow-[#10b981]/20 cursor-pointer"
                 >
                   {formSubmitting ? (
                     <>
@@ -1356,32 +1490,22 @@ const Tasks = () => {
         </div>
       )}
 
-
-
-
-
-
-
-
-
-
-
-      {/* DELETE CONFIRMATION DIALOG (Dark Theme Only) */}
+      {/* DELETE CONFIRMATION DIALOG */}
       {isDeleteConfirmOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-sm w-full p-6 text-center shadow-xl">
-            <div className="w-12 h-12 rounded-full bg-rose-950/50 text-rose-500 border border-rose-800/50 flex items-center justify-center mx-auto mb-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-sm w-full p-6 text-center shadow-2xl">
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-500 border border-rose-200 dark:border-rose-800/50 flex items-center justify-center mx-auto mb-4">
               <Trash2 size={24} />
             </div>
-            <h3 className="text-base font-bold text-slate-100">Delete Task</h3>
-            <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">Delete Task</h3>
+            <p className="text-xs text-slate-600 dark:text-slate-400 mt-2 leading-relaxed font-medium">
               Are you sure you want to permanently delete this task? This action cannot be undone.
             </p>
             <div className="flex justify-center gap-3 mt-6">
               <button
                 type="button"
                 onClick={() => setIsDeleteConfirmOpen(false)}
-                className="px-4 py-2 text-xs font-semibold text-slate-300 bg-slate-800 hover:bg-slate-700/80 rounded-lg transition-colors border border-slate-700/50"
+                className="px-4 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-colors cursor-pointer"
               >
                 Cancel
               </button>
@@ -1389,7 +1513,7 @@ const Tasks = () => {
                 type="button"
                 onClick={handleDeleteTask}
                 disabled={deleteLoading}
-                className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white rounded-lg transition-colors shadow-sm cursor-pointer"
+                className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-bold bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white rounded-xl transition-colors shadow-md shadow-rose-600/20 cursor-pointer"
               >
                 {deleteLoading ? (
                   <>
@@ -1405,30 +1529,30 @@ const Tasks = () => {
         </div>
       )}
 
-      {/* BULK ASSIGN MODAL (Dark Theme Only) */}
+      {/* BULK ASSIGN MODAL */}
       {isBulkAssignOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-sm w-full p-6 shadow-xl">
-            <div className="w-12 h-12 rounded-full bg-indigo-950/50 text-indigo-400 border border-indigo-800/50 flex items-center justify-center mx-auto mb-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-sm w-full p-6 shadow-2xl text-slate-800 dark:text-slate-100">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800/50 flex items-center justify-center mx-auto mb-4">
               <UserPlus size={24} />
             </div>
-            <h3 className="text-base font-bold text-slate-100 text-center">
+            <h3 className="text-base font-bold text-slate-900 dark:text-white text-center">
               Assign {selectedTaskIds.length} Task{selectedTaskIds.length > 1 ? 's' : ''}
             </h3>
-            <p className="text-xs text-slate-400 mt-2 text-center leading-relaxed">
+            <p className="text-xs text-slate-600 dark:text-slate-400 mt-2 text-center leading-relaxed font-medium">
               Choose a team member to assign to all selected tasks at once.
             </p>
 
             <select
               value={bulkAssignUserId}
               onChange={(e) => setBulkAssignUserId(e.target.value)}
-              className="w-full mt-4 px-3 py-2 text-sm bg-slate-800/50 border border-slate-700 text-slate-100 rounded-lg outline-none focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20"
+              className="w-full mt-4 px-3.5 py-2.5 text-sm bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl outline-none focus:border-[#10b981]"
             >
-              <option value="" className="bg-slate-900 text-slate-400">
+              <option value="" className="bg-white dark:bg-slate-900 text-slate-500">
                 Select a team member...
               </option>
               {usersList.map((u) => (
-                <option key={u._id} value={u._id} className="bg-slate-900 text-slate-100">
+                <option key={u._id} value={u._id} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
                   {u.name}{u.employeeId ? ` (${u.employeeId})` : ''}
                 </option>
               ))}
@@ -1441,7 +1565,7 @@ const Tasks = () => {
                   setIsBulkAssignOpen(false);
                   setBulkAssignUserId('');
                 }}
-                className="px-4 py-2 text-xs font-semibold text-slate-300 bg-slate-800 hover:bg-slate-700/80 rounded-lg transition-colors border border-slate-700/50"
+                className="px-4 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-colors cursor-pointer"
               >
                 Cancel
               </button>
@@ -1449,7 +1573,7 @@ const Tasks = () => {
                 type="button"
                 onClick={handleBulkAssign}
                 disabled={!bulkAssignUserId || bulkAssignLoading}
-                className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold bg-[#10b981] hover:bg-[#059669] disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-colors shadow-sm cursor-pointer"
+                className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-bold bg-[#10b981] hover:bg-[#059669] disabled:opacity-50 text-slate-950 rounded-xl transition-colors shadow-md shadow-[#10b981]/20 cursor-pointer"
               >
                 {bulkAssignLoading ? (
                   <>
@@ -1465,26 +1589,26 @@ const Tasks = () => {
         </div>
       )}
 
-      {/* BULK CREATE MODAL (Dark Theme Only) */}
+      {/* BULK CREATE MODAL */}
       {isBulkCreateOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-2xl w-full p-6 shadow-xl my-8 max-h-[90vh] flex flex-col">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-800 shrink-0">
-              <h3 className="text-lg font-bold text-slate-100">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-2xl w-full p-6 shadow-2xl my-8 max-h-[90vh] flex flex-col text-slate-800 dark:text-slate-100">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800 shrink-0">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">
                 Create Multiple Tasks for One Employee
               </h3>
               <button
                 type="button"
                 onClick={() => { setIsBulkCreateOpen(false); resetBulkCreate(); }}
-                className="p-1 text-slate-400 hover:text-slate-200 rounded-lg transition-colors"
+                className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                 aria-label="Close modal"
               >
-                <X size={18} />
+                <X size={20} />
               </button>
             </div>
 
             {bulkCreateError && (
-              <div className="mt-4 p-3 rounded-lg bg-rose-950/40 border border-rose-800 text-rose-400 text-xs flex items-center gap-2 shrink-0">
+              <div className="mt-4 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-400 text-xs flex items-center gap-2 shrink-0 font-medium">
                 <AlertCircle size={16} />
                 <span>{bulkCreateError}</span>
               </div>
@@ -1492,19 +1616,19 @@ const Tasks = () => {
 
             <div className="mt-4 flex-1 overflow-y-auto pr-1 space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Select Employee *
                 </label>
                 <select
                   value={bulkCreateEmployeeId}
                   onChange={(e) => setBulkCreateEmployeeId(e.target.value)}
-                  className="w-full px-3 py-2 text-sm bg-slate-800/50 border border-slate-700 text-slate-100 rounded-lg outline-none focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20"
+                  className="w-full px-3.5 py-2.5 text-sm bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl outline-none focus:border-[#10b981]"
                 >
-                  <option value="" className="bg-slate-900 text-slate-400">
+                  <option value="" className="bg-white dark:bg-slate-900 text-slate-500">
                     Select a team member...
                   </option>
                   {usersList.map((u) => (
-                    <option key={u._id} value={u._id} className="bg-slate-900 text-slate-100">
+                    <option key={u._id} value={u._id} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
                       {u.name}{u.employeeId ? ` (${u.employeeId})` : ''}
                     </option>
                   ))}
@@ -1512,12 +1636,12 @@ const Tasks = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-2">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">
                   Tasks
                 </label>
                 <div className="space-y-3">
                   {bulkCreateTasks.map((row, index) => (
-                    <div key={index} className="flex flex-col gap-2 p-3 border border-slate-700/80 rounded-lg bg-slate-800/30">
+                    <div key={index} className="flex flex-col gap-2 p-3 border border-slate-200 dark:border-slate-700 rounded-2xl bg-slate-50 dark:bg-slate-950">
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1.2fr_auto] gap-2 items-center">
                         <input
                           type="text"
@@ -1526,7 +1650,7 @@ const Tasks = () => {
                           onChange={(e) =>
                             updateBulkTaskRow(index, "title", e.target.value)
                           }
-                          className="w-full min-w-0 px-3 py-2 text-sm bg-slate-800/80 border border-slate-700 text-slate-100 placeholder:text-slate-500 rounded-lg outline-none focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20"
+                          className="w-full min-w-0 px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-xl outline-none focus:border-[#10b981]"
                         />
 
                         <select
@@ -1534,7 +1658,7 @@ const Tasks = () => {
                           onChange={(e) =>
                             updateBulkTaskRow(index, "priority", e.target.value)
                           }
-                          className="w-full min-w-0 px-3 py-2 text-sm bg-slate-800/80 border border-slate-700 text-slate-100 rounded-lg outline-none focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20"
+                          className="w-full min-w-0 px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl outline-none focus:border-[#10b981]"
                         >
                           <option value="Low">Low</option>
                           <option value="Medium">Medium</option>
@@ -1548,7 +1672,7 @@ const Tasks = () => {
                           onChange={(e) =>
                             updateBulkTaskRow(index, "status", e.target.value)
                           }
-                          className="w-full min-w-0 px-3 py-2 text-sm bg-slate-800/80 border border-slate-700 text-slate-100 rounded-lg outline-none focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20"
+                          className="w-full min-w-0 px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl outline-none focus:border-[#10b981]"
                         >
                           <option value="To Do">To Do</option>
                           <option value="In Progress">In Progress</option>
@@ -1566,14 +1690,14 @@ const Tasks = () => {
                           onChange={(e) =>
                             updateBulkTaskRow(index, "dueDate", e.target.value)
                           }
-                          className="w-full min-w-0 px-3 py-2 text-sm bg-slate-800/80 border border-slate-700 text-slate-100 rounded-lg outline-none focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20 color-scheme-dark"
+                          className="w-full min-w-0 px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl outline-none focus:border-[#10b981]"
                         />
 
                         {bulkCreateTasks.length > 1 && (
                           <button
                             type="button"
                             onClick={() => removeBulkTaskRow(index)}
-                            className="justify-self-end sm:justify-self-center p-2 text-slate-400 hover:text-rose-400 rounded-lg hover:bg-rose-950/40 transition-colors"
+                            className="justify-self-end sm:justify-self-center p-2 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                             aria-label="Remove task row"
                           >
                             <Trash2 size={16} />
@@ -1586,7 +1710,7 @@ const Tasks = () => {
                         onChange={(e) => updateBulkTaskRow(index, 'description', e.target.value)}
                         placeholder="Task description..."
                         rows={2}
-                        className="w-full px-3 py-2 text-slate-100 placeholder:text-slate-500 text-sm bg-slate-800/50 border border-slate-700 rounded-lg outline-none focus:border-[#10b981]/60 focus:ring-2 focus:ring-[#10b981]/20 resize-none"
+                        className="w-full px-3 py-2 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-[#10b981] resize-none"
                       />
                     </div>
                   ))}
@@ -1595,18 +1719,18 @@ const Tasks = () => {
                 <button
                   type="button"
                   onClick={addBulkTaskRow}
-                  className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-indigo-400 hover:bg-indigo-950/40 border border-indigo-800/50 rounded-lg transition-colors"
+                  className="mt-3 inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/50 rounded-xl transition-colors cursor-pointer"
                 >
                   <Plus size={14} /> Add Another Task
                 </button>
               </div>
             </div>
 
-            <div className="pt-4 mt-4 border-t border-slate-800 flex justify-end gap-3 shrink-0">
+            <div className="pt-4 mt-4 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-3 shrink-0">
               <button
                 type="button"
                 onClick={() => { setIsBulkCreateOpen(false); resetBulkCreate(); }}
-                className="px-4 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-800 rounded-lg transition-colors"
+                className="px-4 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
               >
                 Cancel
               </button>
@@ -1614,7 +1738,7 @@ const Tasks = () => {
                 type="button"
                 onClick={handleBulkCreateSubmit}
                 disabled={bulkCreateLoading}
-                className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold bg-[#10b981] hover:bg-[#059669] disabled:opacity-50 text-white rounded-lg transition-colors shadow-sm cursor-pointer"
+                className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-bold bg-[#10b981] hover:bg-[#059669] disabled:opacity-50 text-slate-950 rounded-xl transition-colors shadow-md shadow-[#10b981]/20 cursor-pointer"
               >
                 {bulkCreateLoading ? (
                   <>
@@ -1629,8 +1753,6 @@ const Tasks = () => {
           </div>
         </div>
       )}
-
-
 
       <VoiceTaskModal
         open={isVoiceModalOpen}

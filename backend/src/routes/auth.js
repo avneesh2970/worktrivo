@@ -315,6 +315,10 @@ router.get('/me', authenticate, async (req, res) => {
       dob: req.user.dob,
       gender: req.user.gender,
       department: req.user.department,
+      assignedDepartment: req.user.assignedDepartment,
+      assignedDepartments: req.user.assignedDepartments,
+      assignedMembers: req.user.assignedMembers,
+      manager: req.user.manager,
       workLocation: req.user.workLocation,
       designationRole: req.user.designationRole
     }
