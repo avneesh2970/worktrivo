@@ -84,6 +84,7 @@ const Tasks = () => {
   const [formChecklistInput, setFormChecklistInput] = useState('');
   const [formDependencies, setFormDependencies] = useState([]);
   const [formVerballyAssignedBy, setFormVerballyAssignedBy] = useState('');
+  const [formIsSelfTask, setFormIsSelfTask] = useState(false);
   const [formError, setFormError] = useState('');
   const [formSubmitting, setFormSubmitting] = useState(false);
 
@@ -178,6 +179,7 @@ const Tasks = () => {
     setFormEstimatedHours(0);
     setFormAssignedTo([]);
     setFormVerballyAssignedBy('');
+    setFormIsSelfTask(false);
     setFormAttachment('');
     setFormAttachmentsList([]);
     setFormTags([]);
@@ -188,15 +190,21 @@ const Tasks = () => {
     setFormError('');
   };
 
-  const openCreateModal = () => {
+  const openCreateModal = (isSelf = false) => {
     resetForm();
     setModalMode('create');
-    if (user?.role === 'member') {
+    const isMember = user?.role === 'member';
+    if (isMember || isSelf === true) {
+      setFormIsSelfTask(true);
       setFormAssignedTo([user._id]);
       const initialSupervisor = user?.manager
         ? (typeof user.manager === 'object' ? user.manager._id : user.manager)
         : (supervisorsList.length === 1 ? supervisorsList[0]._id : '');
       setFormVerballyAssignedBy(initialSupervisor || '');
+    } else {
+      setFormIsSelfTask(false);
+      setFormAssignedTo([]);
+      setFormVerballyAssignedBy('');
     }
     setIsModalOpen(true);
   };
@@ -241,7 +249,9 @@ const Tasks = () => {
 
     const formattedDate = new Date(task.dueDate).toISOString().slice(0, 16);
     setFormDueDate(formattedDate);
-    setFormAssignedTo(task.assignedTo.map(u => u._id));
+    setFormAssignedTo(task.assignedTo.map(u => (u._id || u)));
+    const isSelf = task.isSelfCreated || (task.assignedTo?.length === 1 && (task.assignedTo[0]._id || task.assignedTo[0]) === user?._id && task.verballyAssignedBy);
+    setFormIsSelfTask(Boolean(isSelf));
     setFormVerballyAssignedBy(task.verballyAssignedBy?._id || task.verballyAssignedBy || '');
     setFormAttachmentsList(task.attachments || []);
     setFormAttachment('');
@@ -302,11 +312,13 @@ const Tasks = () => {
     if (!formDueDate) return setFormError('Due date is required');
 
     const isMember = user?.role === 'member';
-    if (isMember && !formVerballyAssignedBy) {
+    const isSelf = isMember || formIsSelfTask;
+
+    if (isSelf && !formVerballyAssignedBy) {
       return setFormError('Please select the Manager or Admin who verbally assigned this task to you.');
     }
 
-    if (!isMember && formAssignedTo.length === 0) {
+    if (!isSelf && formAssignedTo.length === 0) {
       return setFormError('Please assign at least one team member');
     }
 
@@ -318,7 +330,8 @@ const Tasks = () => {
       startDate: formStartDate ? new Date(formStartDate).toISOString() : null,
       dueDate: new Date(formDueDate).toISOString(),
       estimatedHours: Number(formEstimatedHours),
-      assignedTo: isMember ? [user._id] : formAssignedTo,
+      assignedTo: isSelf ? [user._id] : formAssignedTo,
+      isSelfCreated: isSelf,
       verballyAssignedBy: formVerballyAssignedBy || null,
       attachments: formAttachmentsList,
       tags: formTags,
@@ -346,7 +359,7 @@ const Tasks = () => {
         await fetchTasks();
         setToastMsg(
           modalMode === 'create'
-            ? (isMember ? 'Self-task created and supervisor notified!' : 'Task created successfully!')
+            ? (isSelf ? 'Self-task created and supervisor notified!' : 'Task created successfully!')
             : 'Task updated successfully!'
         );
       } else {
@@ -577,7 +590,14 @@ const Tasks = () => {
               <span>Bulk Create</span>
             </button>
             <button
-              onClick={openCreateModal}
+              onClick={() => openCreateModal(true)}
+              className="inline-flex items-center gap-2 px-3.5 py-2 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 text-xs sm:text-sm font-bold rounded-xl shadow-xs transition-all cursor-pointer"
+              title="Create a self-assigned task with verbal assignment"
+            >
+              <span>🗣️ Self Task</span>
+            </button>
+            <button
+              onClick={() => openCreateModal(false)}
               className="inline-flex items-center gap-2 px-4 py-2 bg-[#10b981] hover:bg-[#059669] text-slate-950 text-xs sm:text-sm font-bold rounded-xl shadow-md shadow-[#10b981]/20 transition-all active:scale-95 cursor-pointer"
             >
               <Plus size={16} />
@@ -586,7 +606,7 @@ const Tasks = () => {
           </div>
         ) : (
           <button
-            onClick={openCreateModal}
+            onClick={() => openCreateModal(true)}
             className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#10b981] hover:bg-[#059669] text-slate-950 text-sm font-bold rounded-xl shadow-md shadow-[#10b981]/20 transition-all active:scale-95 cursor-pointer"
           >
             <Plus size={18} />
@@ -1180,9 +1200,49 @@ const Tasks = () => {
 
                   {/* Right Column */}
                   <div className="space-y-4 flex flex-col justify-between">
-                    {user?.role === 'member' ? (
+                    {/* For Managers / Admins: Toggle between Team Assignment and Self-Task */}
+                    {user?.role !== 'member' && (
+                      <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl mb-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFormIsSelfTask(false);
+                            setFormAssignedTo([]);
+                          }}
+                          className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                            !formIsSelfTask
+                              ? 'bg-white dark:bg-slate-900 text-[#10b981] shadow-xs'
+                              : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                          }`}
+                        >
+                          👥 Assign to Team
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFormIsSelfTask(true);
+                            setFormAssignedTo([user._id]);
+                            if (!formVerballyAssignedBy) {
+                              const initialSupervisor = user?.manager
+                                ? (typeof user.manager === 'object' ? user.manager._id : user.manager)
+                                : (supervisorsList.length === 1 ? supervisorsList[0]._id : '');
+                              setFormVerballyAssignedBy(initialSupervisor || '');
+                            }
+                          }}
+                          className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                            formIsSelfTask
+                              ? 'bg-white dark:bg-slate-900 text-amber-600 dark:text-amber-400 shadow-xs'
+                              : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                          }`}
+                        >
+                          🗣️ Self-Task (Verbal)
+                        </button>
+                      </div>
+                    )}
+
+                    {user?.role === 'member' || formIsSelfTask ? (
                       <div className="space-y-4">
-                        {/* Member Self-Assignee Display */}
+                        {/* Self-Assignee Display */}
                         <div>
                           <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                             Assigned To (Self Task)
@@ -1198,7 +1258,7 @@ const Tasks = () => {
                           </div>
                         </div>
 
-                        {/* Mandatory Verbally Assigned By selector for Members */}
+                        {/* Mandatory Verbally Assigned By selector */}
                         <div>
                           <label className="block text-xs font-semibold text-amber-600 dark:text-amber-400 mb-1 flex items-center justify-between">
                             <span>Verbally Assigned By (Manager / Admin) *</span>
@@ -1257,7 +1317,7 @@ const Tasks = () => {
                                   </div>
                                   <div className="overflow-hidden">
                                     <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                                      {member.name}
+                                      {member.name} {member._id === user?._id ? '(You)' : ''}
                                     </p>
                                     <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{member.email}</p>
                                   </div>

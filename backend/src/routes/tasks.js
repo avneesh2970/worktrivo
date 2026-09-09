@@ -89,6 +89,13 @@ router.get('/', async (req, res) => {
         { assignedTo: { $in: teamUserIds } },
         { createdBy: req.user._id }
       ];
+    } else {
+      // General task view for managers: only tasks assigned to team/themselves or created/verbally assigned by them
+      query.$or = [
+        { assignedTo: { $in: teamUserIds } },
+        { createdBy: req.user._id },
+        { verballyAssignedBy: req.user._id }
+      ];
     }
   } else if (assignedTo) {
     query.assignedTo = assignedTo;
@@ -221,6 +228,7 @@ router.post('/', requireRole(['admin', 'manager', 'member']), async (req, res) =
     dueDate,
     estimatedHours,
     assignedTo,
+    isSelfCreated,
     verballyAssignedBy,
     attachments,
     tags,
@@ -240,11 +248,16 @@ router.post('/', requireRole(['admin', 'manager', 'member']), async (req, res) =
     }
 
     const isMember = req.user.role === 'member';
+    const isSelfTask =
+      isMember ||
+      isSelfCreated === true ||
+      (Array.isArray(assignedTo) && assignedTo.length === 1 && assignedTo[0].toString() === req.user._id.toString() && Boolean(verballyAssignedBy));
+
     let targetAssignees = [];
     let verbalAssignerDoc = null;
 
-    if (isMember) {
-      // Employees must choose the Manager or Admin who verbally assigned the task
+    if (isSelfTask) {
+      // Self-tasks (by Member or Manager) must specify the Manager or Admin who verbally assigned the task
       if (!verballyAssignedBy) {
         return res.status(400).json({
           error: 'Please select the Manager or Admin who verbally assigned this task to you.'
@@ -258,13 +271,24 @@ router.post('/', requireRole(['admin', 'manager', 'member']), async (req, res) =
         });
       }
 
-      // Member self-task is assigned directly to the member
       targetAssignees = [req.user._id];
     } else {
-      // Admin or Manager creating task
+      // Admin or Manager creating task for team members
       if (!assignedTo || !assignedTo.length) {
         return res.status(400).json({ error: 'At least one assignee is required.' });
       }
+
+      // If manager is assigning to team members, ensure they are in their managed team
+      if (req.user.role === 'manager') {
+        const fullManager = await User.findById(req.user._id);
+        const managedIds = await getManagedUserIds(fullManager);
+        const teamUserIds = [...managedIds.map(id => id.toString()), req.user._id.toString()];
+        const hasInvalidAssignee = assignedTo.some(uid => !teamUserIds.includes(uid.toString()));
+        if (hasInvalidAssignee) {
+          return res.status(403).json({ error: 'Managers can only assign tasks to their assigned team members.' });
+        }
+      }
+
       targetAssignees = assignedTo;
 
       if (verballyAssignedBy) {
@@ -272,8 +296,8 @@ router.post('/', requireRole(['admin', 'manager', 'member']), async (req, res) =
       }
     }
 
-    const activityAction = isMember
-      ? `Self-Task Created (Verbal assignment by ${verbalAssignerDoc?.name || 'Manager'})`
+    const activityAction = isSelfTask
+      ? `Self-Task Created (Verbal assignment by ${verbalAssignerDoc?.name || 'Supervisor'})`
       : 'Task Created';
 
     const task = new Task({
@@ -285,7 +309,7 @@ router.post('/', requireRole(['admin', 'manager', 'member']), async (req, res) =
       dueDate,
       estimatedHours: estimatedHours || 0,
       assignedTo: targetAssignees,
-      isSelfCreated: isMember,
+      isSelfCreated: isSelfTask,
       verballyAssignedBy: verbalAssignerDoc ? verbalAssignerDoc._id : null,
       group: group || null,
       attachments: attachments || [],
@@ -315,7 +339,7 @@ router.post('/', requireRole(['admin', 'manager', 'member']), async (req, res) =
     await checkReminders();
 
     // 1. If Self-Task: notify the verbal assigner (Manager/Admin)
-    if (isMember && verbalAssignerDoc) {
+    if (isSelfTask && verbalAssignerDoc) {
       const supervisorNotif = new Notification({
         userId: verbalAssignerDoc._id,
         message: `${req.user.name} logged a self-assigned task: "${task.title}" (verbally assigned by you).`,

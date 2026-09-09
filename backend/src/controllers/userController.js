@@ -4,7 +4,7 @@ const transporter = require('../utils/nodemailer');
 const csv = require('csv-parser');
 const { Readable } = require('stream'); // Core Node.js module
 const { v4: uuidv4 } = require("uuid");
-const { getSupervisorsForUser } = require('../utils/managerHelper');
+const { getSupervisorsForUser, getManagedUserIds } = require('../utils/managerHelper');
 
 // --- SELF PROFILE CONTROLLERS ---
 
@@ -182,8 +182,18 @@ exports.getMySupervisors = async (req, res) => {
 
 exports.getUsers = async (req, res) => {
   try {
-    if (req.user.role === 'admin' || req.user.role === 'manager') {
+    if (req.user.role === 'admin') {
       const users = await User.find()
+        .populate('assignedMembers', '_id name email role department employeeId profilePhoto designationRole')
+        .populate('manager', '_id name email role profilePhoto designationRole department')
+        .sort({ name: 1 });
+      res.json(users);
+    } else if (req.user.role === 'manager') {
+      const fullManager = await User.findById(req.user._id);
+      const managedIds = await getManagedUserIds(fullManager);
+      const teamUserIds = [...managedIds, req.user._id];
+
+      const users = await User.find({ _id: { $in: teamUserIds }, active: true })
         .populate('assignedMembers', '_id name email role department employeeId profilePhoto designationRole')
         .populate('manager', '_id name email role profilePhoto designationRole department')
         .sort({ name: 1 });
