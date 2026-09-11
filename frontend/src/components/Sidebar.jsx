@@ -126,16 +126,26 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
   useEffect(() => {
     if (!socket) return;
     
-    socket.on("taskUpdated", fetchSidebarStats);
-    socket.on("taskUpdated", fetchPendingApprovalsCount);
-    socket.on("projectUpdated", fetchPendingApprovalsCount);
-    socket.on("dailyReportUpdated", fetchPendingApprovalsCount);
+    let debounceTimer = null;
+    const debouncedRefresh = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        fetchSidebarStats();
+        if (user?.role === "admin" || user?.role === "manager") {
+          fetchPendingApprovalsCount();
+        }
+      }, 300);
+    };
+
+    socket.on("taskUpdated", debouncedRefresh);
+    socket.on("projectUpdated", debouncedRefresh);
+    socket.on("dailyReportUpdated", debouncedRefresh);
 
     return () => {
-      socket.off("taskUpdated", fetchSidebarStats);
-      socket.off("taskUpdated", fetchPendingApprovalsCount);
-      socket.off("projectUpdated", fetchPendingApprovalsCount);
-      socket.off("dailyReportUpdated", fetchPendingApprovalsCount);
+      if (debounceTimer) clearTimeout(debounceTimer);
+      socket.off("taskUpdated", debouncedRefresh);
+      socket.off("projectUpdated", debouncedRefresh);
+      socket.off("dailyReportUpdated", debouncedRefresh);
     };
   }, [socket, user?.role]);
 

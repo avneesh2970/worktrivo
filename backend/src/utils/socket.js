@@ -71,9 +71,13 @@ const init = (server) => {
         const room = await ChatRoom.findById(roomId);
         if (!room) return;
 
-        const allowed = room.members.some(
-          (member) => member.toString() === userId.toString()
-        );
+        // Admin can join any room; otherwise user must be a member or creator
+        const allowed =
+          role === "admin" ||
+          room.members.some(
+            (member) => member.toString() === userId.toString()
+          ) ||
+          (room.createdBy && room.createdBy.toString() === userId.toString());
 
         if (!allowed) return;
 
@@ -101,6 +105,17 @@ const init = (server) => {
     // Send Message
     socket.on("send_message", async (data) => {
       try {
+        const room = await ChatRoom.findById(data.chatRoom);
+        if (!room) return;
+
+        // Block messages if community is pending approval
+        if (room.type === "group" && room.approvalStatus === "Pending") {
+          socket.emit("error_message", {
+            message: "Cannot send message. This community is awaiting Admin approval.",
+          });
+          return;
+        }
+
         // Sanitize and unique mention IDs
         const rawMentions = Array.isArray(data.mentions) ? data.mentions : [];
         const uniqueMentions = Array.from(new Set(rawMentions.map((id) => id.toString())));
@@ -115,7 +130,7 @@ const init = (server) => {
         });
 
         // Populate fields for real-time frontend consumption
-        await message.populate("sender", "name profilePhoto role");
+        await message.populate("sender", "name profilePhoto role designationRole department");
         await message.populate("mentions", "name email");
         if (message.replyTo) {
           await message.populate("replyTo");
@@ -190,27 +205,12 @@ const init = (server) => {
       }
     });
 
-    // Delete message
-    socket.on("delete_message", async ({ messageId }) => {
-      try {
-        const message = await Message.findByIdAndUpdate(
-          messageId,
-          {
-            deleted: true,
-            deletedAt: new Date(),
-          },
-          { new: true }
-        );
-
-        if (!message) return;
-
-        io.to(message.chatRoom.toString()).emit("message_deleted", { messageId });
-      } catch (err) {
-        console.error("Error deleting message:", err);
-      }
+    // Delete message (Disabled as per policy)
+    socket.on("delete_message", async () => {
+      socket.emit("error", { message: "Deleting messages is not permitted." });
     });
 
-    // Edit message (Updates text & mentions)
+    // Edit message (Updates text & mentions - allowed within 5 minutes only)
     socket.on("edit_message", async ({ messageId, text, mentions = [] }) => {
       try {
         const message = await Message.findById(messageId);
@@ -219,6 +219,14 @@ const init = (server) => {
 
         // Author check
         if (message.sender.toString() !== userId.toString()) {
+          return;
+        }
+
+        // 5-minute edit window check
+        const EDIT_WINDOW_MS = 5 * 60 * 1000;
+        const messageAge = Date.now() - new Date(message.createdAt).getTime();
+        if (messageAge > EDIT_WINDOW_MS) {
+          socket.emit("error", { message: "Messages can only be edited within 5 minutes of sending." });
           return;
         }
 

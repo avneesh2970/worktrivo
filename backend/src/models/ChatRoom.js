@@ -16,7 +16,7 @@ const chatRoomSchema = new mongoose.Schema(
 
     type: {
       type: String,
-      enum: ["global", "group"],
+      enum: ["global", "group", "direct"],
       default: "group",
     },
 
@@ -45,6 +45,23 @@ const chatRoomSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
+    },
+
+    approvalStatus: {
+      type: String,
+      enum: ["Pending", "Approved", "Rejected"],
+      default: "Approved",
+    },
+
+    approvedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+
+    approvedAt: {
+      type: Date,
+      default: null,
     },
 
     lastMessage: {

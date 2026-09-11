@@ -1,5 +1,7 @@
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
+const Task = require('../models/Task');
+const DailyReport = require('../models/DailyReport');
 const transporter = require('../utils/nodemailer');
 const csv = require('csv-parser');
 const { Readable } = require('stream'); // Core Node.js module
@@ -466,5 +468,129 @@ exports.toggleNotificationMute = async (req, res) => {
       success: false,
       message: "Server Error",
     });
+  }
+};
+
+// --- CANDIDATE / EMPLOYEE 360 OVERVIEW CONTROLLER ---
+exports.getUserOverview = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { date, startDate, endDate } = req.query;
+
+    // Permissions check
+    if (req.user.role === 'member' && req.user._id.toString() !== id.toString()) {
+      return res.status(403).json({ error: 'Access denied. You can only view your own profile.' });
+    }
+
+    if (req.user.role === 'manager' && req.user._id.toString() !== id.toString()) {
+      const fullManager = await User.findById(req.user._id);
+      const managedIds = await getManagedUserIds(fullManager);
+      const allowedIds = [...managedIds.map(m => m.toString()), req.user._id.toString()];
+      if (!allowedIds.includes(id.toString())) {
+        return res.status(403).json({ error: 'Access denied. User is not in your managed department or team.' });
+      }
+    }
+
+    const targetUser = await User.findById(id)
+      .select('-passwordHash -resetOtp -resetOtpExpiryAt')
+      .populate('manager', '_id name email role profilePhoto designationRole department')
+      .populate('assignedMembers', '_id name email role profilePhoto designationRole department');
+
+    if (!targetUser) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
+    // 1. Fetch Assigned Tasks
+    const tasks = await Task.find({ assignedTo: id })
+      .populate('createdBy', '_id name email role')
+      .populate('verballyAssignedBy', '_id name email role')
+      .populate('group', '_id name')
+      .sort({ updatedAt: -1 });
+
+    const totalTasks = tasks.length;
+    const completedTasks = tasks.filter(t => t.status === 'Completed' || t.status === 'Approved').length;
+    const inProgressTasks = tasks.filter(t => t.status === 'In Progress').length;
+    const pendingTasks = tasks.filter(t => ['To Do', 'Pending', 'In Review', 'Completed (Pending Approval)'].includes(t.status)).length;
+    const overdueTasks = tasks.filter(t => t.dueDate && new Date(t.dueDate) < new Date() && !['Completed', 'Approved'].includes(t.status)).length;
+
+    // 2. Fetch Daily Reports (support optional duration filter)
+    const reportQuery = { user: id };
+    const now = new Date();
+    if (date === 'today') {
+      const s = new Date(now); s.setHours(0,0,0,0);
+      const e = new Date(now); e.setHours(23,59,59,999);
+      reportQuery.reportDate = { $gte: s, $lte: e };
+    } else if (date === 'yesterday') {
+      const s = new Date(now); s.setDate(s.getDate() - 1); s.setHours(0,0,0,0);
+      const e = new Date(now); e.setDate(e.getDate() - 1); e.setHours(23,59,59,999);
+      reportQuery.reportDate = { $gte: s, $lte: e };
+    } else if (date === 'this-week' || date === 'weekly') {
+      const s = new Date(now);
+      const day = s.getDay();
+      const diff = (day === 0 ? -6 : 1) - day;
+      s.setDate(s.getDate() + diff);
+      s.setHours(0,0,0,0);
+      const e = new Date(s);
+      e.setDate(e.getDate() + 6);
+      e.setHours(23,59,59,999);
+      reportQuery.reportDate = { $gte: s, $lte: e };
+    } else if (date === 'last-week') {
+      const s = new Date(now);
+      const day = s.getDay();
+      const diff = (day === 0 ? -6 : 1) - day - 7;
+      s.setDate(s.getDate() + diff);
+      s.setHours(0,0,0,0);
+      const e = new Date(s);
+      e.setDate(e.getDate() + 6);
+      e.setHours(23,59,59,999);
+      reportQuery.reportDate = { $gte: s, $lte: e };
+    } else if (date === 'this-month' || date === 'monthly') {
+      const s = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+      const e = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+      reportQuery.reportDate = { $gte: s, $lte: e };
+    } else if (date === 'last-month') {
+      const s = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
+      const e = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+      reportQuery.reportDate = { $gte: s, $lte: e };
+    } else if (startDate || endDate) {
+      reportQuery.reportDate = {};
+      if (startDate) { const s = new Date(startDate); s.setHours(0,0,0,0); reportQuery.reportDate.$gte = s; }
+      if (endDate) { const e = new Date(endDate); e.setHours(23,59,59,999); reportQuery.reportDate.$lte = e; }
+    }
+
+    const reports = await DailyReport.find(reportQuery)
+      .populate('reviewedBy', '_id name email role')
+      .sort({ reportDate: -1 });
+
+    const totalHours = reports.reduce((sum, r) => sum + (Number(r.totalHours) || 8), 0);
+    const approvedReports = reports.filter(r => r.status === 'Approved').length;
+    const pendingReports = reports.filter(r => r.status === 'Pending').length;
+    const rejectedReports = reports.filter(r => r.status === 'Rejected').length;
+    const blockersCount = reports.filter(r => r.blockers && r.blockers.trim()).length;
+
+    res.json({
+      success: true,
+      user: targetUser,
+      tasks: {
+        total: totalTasks,
+        completed: completedTasks,
+        inProgress: inProgressTasks,
+        pending: pendingTasks,
+        overdue: overdueTasks,
+        list: tasks
+      },
+      reports: {
+        total: reports.length,
+        totalHours,
+        approved: approvedReports,
+        pending: pendingReports,
+        rejected: rejectedReports,
+        blockers: blockersCount,
+        list: reports
+      }
+    });
+  } catch (err) {
+    console.error('getUserOverview error:', err);
+    res.status(500).json({ error: err.message });
   }
 };

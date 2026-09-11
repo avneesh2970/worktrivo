@@ -5,6 +5,9 @@ const {
   getChatRooms,
   getMessages,
   createRoom,
+  createOrGetDirectRoom,
+  approveRoom,
+  rejectRoom,
   sendMessage,
   addMember,
   removeMember,
@@ -19,11 +22,14 @@ const {
   sendMessageWithMentions
 } = require("../controllers/chatController");
 
-const { authenticate } = require("../middleware/auth");
+const { authenticate, requireRole } = require("../middleware/auth");
 
 // Chat Rooms
 router.get("/rooms", authenticate, getChatRooms);
 router.post("/rooms", authenticate, createRoom);
+router.post("/direct", authenticate, createOrGetDirectRoom);
+router.patch("/rooms/:roomId/approve", authenticate, requireRole(["admin"]), approveRoom);
+router.patch("/rooms/:roomId/reject", authenticate, requireRole(["admin"]), rejectRoom);
 
 // Messages
 router.get("/:roomId/messages", authenticate, getMessages);

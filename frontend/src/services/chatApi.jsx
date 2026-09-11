@@ -71,6 +71,15 @@ export const useChatApi = () => {
     createRoom: async (data) =>
       (await apiClient.post("/chat/rooms", data)).data,
 
+    getOrCreateDirectRoom: async (targetUserId) =>
+      (await apiClient.post("/chat/direct", { targetUserId })).data,
+
+    approveRoom: async (roomId) =>
+      (await apiClient.patch(`/chat/rooms/${roomId}/approve`)).data,
+
+    rejectRoom: async (roomId) =>
+      (await apiClient.patch(`/chat/rooms/${roomId}/reject`)).data,
+
     // ---------------- Messages ----------------
     getMessages: async (roomId) =>
       (await apiClient.get(`/chat/${roomId}/messages`)).data,

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth, API_BASE } from '../context/AuthContext';
 import {
   Plus,
@@ -64,6 +65,7 @@ const UserAvatar = ({ targetUser }) => {
 
 const Users = () => {
   const { user, token } = useAuth();
+  const navigate = useNavigate();
   const fileInputRef = useRef(null);
 
   const [users, setUsers] = useState([]);
@@ -450,10 +452,14 @@ const Users = () => {
                   >
                     {/* User Profile Photo & Details */}
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-3.5">
+                      <div
+                        onClick={() => navigate(`/profile?userId=${u._id}`)}
+                        className="flex items-center gap-3.5 cursor-pointer group"
+                        title={`View ${u.name}'s Profile`}
+                      >
                         <UserAvatar targetUser={u} />
                         <div>
-                          <div className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                          <div className="font-bold text-slate-900 dark:text-white flex items-center gap-2 group-hover:text-[#10b981] transition-colors">
                             <span>{u.name}</span>
                             {u._id === user._id && (
                               <span className="text-[10px] font-bold text-[#10b981] bg-[#10b981]/10 border border-[#10b981]/30 px-2 py-0.5 rounded-full">

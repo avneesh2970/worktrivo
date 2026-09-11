@@ -144,6 +144,12 @@ const userSchema = new mongoose.Schema(
 );
 
 
+// Fast lookups for role-based permissions and team queries
+userSchema.index({ role: 1, active: 1 });
+userSchema.index({ department: 1 });
+userSchema.index({ manager: 1 });
+userSchema.index({ active: 1 });
+
 userSchema.set('toJSON', {
   transform: (doc, ret) => {
     delete ret.passwordHash;
@@ -154,4 +160,4 @@ userSchema.set('toJSON', {
   }
 });
 
-module.exports = mongoose.model('User', userSchema);
+module.exports = mongoose.model('User', userSchema);

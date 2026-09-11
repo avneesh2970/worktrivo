@@ -5,25 +5,150 @@ const Notification = require('../models/Notification');
 const { authenticate, requireRole } = require('../middleware/auth');
 const { getManagedUserIds, isUserManagedBy } = require('../utils/managerHelper');
 const { sendInAppNotification, getIo } = require('../utils/socket');
-const sendEmail = require('../utils/sendEmail');
+const { sendEmailAsync } = require('../utils/sendEmail');
 
 const router = express.Router();
 router.use(authenticate);
 
 // ==========================================
-// GET /api/daily-reports/stats - Summary counts
+// DURATION PARSER HELPER
+// ==========================================
+const parseDuration = (date, startDate, endDate) => {
+  if (!date && !startDate && !endDate) return null;
+
+  const now = new Date();
+
+  if (date === 'today') {
+    const start = new Date(now);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(now);
+    end.setHours(23, 59, 59, 999);
+    return { $gte: start, $lte: end, label: 'Today' };
+  }
+
+  if (date === 'yesterday') {
+    const start = new Date(now);
+    start.setDate(start.getDate() - 1);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(now);
+    end.setDate(end.getDate() - 1);
+    end.setHours(23, 59, 59, 999);
+    return { $gte: start, $lte: end, label: 'Yesterday' };
+  }
+
+  if (date === 'this-week' || date === 'weekly') {
+    // Current week: Monday to Sunday
+    const start = new Date(now);
+    const day = start.getDay();
+    const diffToMonday = (day === 0 ? -6 : 1) - day;
+    start.setDate(start.getDate() + diffToMonday);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(start);
+    end.setDate(end.getDate() + 6);
+    end.setHours(23, 59, 59, 999);
+    return { $gte: start, $lte: end, label: 'This Week' };
+  }
+
+  if (date === 'last-week') {
+    const start = new Date(now);
+    const day = start.getDay();
+    const diffToMonday = (day === 0 ? -6 : 1) - day - 7;
+    start.setDate(start.getDate() + diffToMonday);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(start);
+    end.setDate(end.getDate() + 6);
+    end.setHours(23, 59, 59, 999);
+    return { $gte: start, $lte: end, label: 'Last Week' };
+  }
+
+  if (date === 'last-7-days') {
+    const start = new Date(now);
+    start.setDate(start.getDate() - 6);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(now);
+    end.setHours(23, 59, 59, 999);
+    return { $gte: start, $lte: end, label: 'Last 7 Days' };
+  }
+
+  if (date === 'this-month' || date === 'monthly') {
+    const start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    return { $gte: start, $lte: end, label: 'This Month' };
+  }
+
+  if (date === 'last-month') {
+    const start = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
+    const end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+    return { $gte: start, $lte: end, label: 'Last Month' };
+  }
+
+  if (date === 'last-30-days') {
+    const start = new Date(now);
+    start.setDate(start.getDate() - 29);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(now);
+    end.setHours(23, 59, 59, 999);
+    return { $gte: start, $lte: end, label: 'Last 30 Days' };
+  }
+
+  if (startDate || endDate) {
+    const result = {};
+    if (startDate) {
+      const s = new Date(startDate);
+      s.setHours(0, 0, 0, 0);
+      result.$gte = s;
+    }
+    if (endDate) {
+      const e = new Date(endDate);
+      e.setHours(23, 59, 59, 999);
+      result.$lte = e;
+    }
+    result.label = `Custom (${startDate || 'Start'} - ${endDate || 'Now'})`;
+    return result;
+  }
+
+  // Exact date string (YYYY-MM-DD)
+  const target = new Date(date);
+  if (!isNaN(target.getTime())) {
+    const start = new Date(target);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(target);
+    end.setHours(23, 59, 59, 999);
+    return { $gte: start, $lte: end, label: target.toDateString() };
+  }
+
+  return null;
+};
+
+// ==========================================
+// GET /api/daily-reports/stats - Summary counts with duration filter
 // ==========================================
 router.get('/stats', async (req, res) => {
   try {
     const userRole = req.user.role;
+    const { date, startDate, endDate, department, userId } = req.query;
     let userFilter = {};
 
     if (userRole === 'member') {
-      userFilter = { user: req.user._id };
+      userFilter.user = req.user._id;
     } else if (userRole === 'manager') {
       const fullManager = await User.findById(req.user._id);
       const managedIds = await getManagedUserIds(fullManager);
-      userFilter = { user: { $in: [...managedIds, req.user._id] } };
+      const allowedUserIds = [...managedIds, req.user._id];
+      userFilter.user = userId ? userId : { $in: allowedUserIds };
+    } else if (userRole === 'admin' && userId) {
+      userFilter.user = userId;
+    }
+
+    if (department && department.trim() && department !== 'all') {
+      userFilter.department = { $regex: new RegExp(`^${department.trim()}$`, 'i') };
+    }
+
+    const durationFilter = parseDuration(date, startDate, endDate);
+    if (durationFilter) {
+      userFilter.reportDate = { $gte: durationFilter.$gte, $lte: durationFilter.$lte };
     }
 
     const allReports = await DailyReport.find(userFilter);
@@ -41,15 +166,119 @@ router.get('/stats', async (req, res) => {
       return d >= todayStart && d <= todayEnd;
     }).length;
 
+    const totalHours = allReports.reduce((sum, r) => sum + (Number(r.totalHours) || 8), 0);
+    const totalBlockers = allReports.filter(r => r.blockers && r.blockers.trim()).length;
+    const uniqueSubmitters = new Set(allReports.map(r => r.user.toString())).size;
+
     res.json({
       total: allReports.length,
       pending,
       approved,
       rejected,
-      submittedToday
+      submittedToday,
+      totalHours,
+      totalBlockers,
+      submitterCount: uniqueSubmitters,
+      durationLabel: durationFilter?.label || 'All Time',
     });
   } catch (err) {
     console.error('GET /api/daily-reports/stats error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ==========================================
+// GET /api/daily-reports/summary - Team summary grouped by member for selected duration
+// ==========================================
+router.get('/summary', async (req, res) => {
+  try {
+    const { date, startDate, endDate, department, userId } = req.query;
+    const userRole = req.user.role;
+    const query = {};
+
+    if (userRole === 'member') {
+      query.user = req.user._id;
+    } else if (userRole === 'manager') {
+      const fullManager = await User.findById(req.user._id);
+      const managedIds = await getManagedUserIds(fullManager);
+      const allowedUserIds = [...managedIds, req.user._id];
+      query.user = userId ? userId : { $in: allowedUserIds };
+    } else if (userRole === 'admin' && userId) {
+      query.user = userId;
+    }
+
+    const durationFilter = parseDuration(date, startDate, endDate);
+    if (durationFilter) {
+      query.reportDate = { $gte: durationFilter.$gte, $lte: durationFilter.$lte };
+    }
+
+    if (department && department.trim() && department !== 'all') {
+      query.department = { $regex: new RegExp(`^${department.trim()}$`, 'i') };
+    }
+
+    const reports = await DailyReport.find(query)
+      .populate('user', '_id name email role profilePhoto designationRole department employeeId')
+      .populate('reviewedBy', '_id name email role')
+      .sort({ reportDate: -1 });
+
+    const memberMap = new Map();
+
+    reports.forEach((report) => {
+      const u = report.user;
+      if (!u) return;
+      const uId = u._id.toString();
+
+      if (!memberMap.has(uId)) {
+        memberMap.set(uId, {
+          user: u,
+          reportsCount: 0,
+          totalHours: 0,
+          approved: 0,
+          pending: 0,
+          rejected: 0,
+          blockersCount: 0,
+          reports: [],
+        });
+      }
+
+      const item = memberMap.get(uId);
+      item.reportsCount += 1;
+      item.totalHours += Number(report.totalHours) || 8;
+      if (report.status === 'Approved') item.approved += 1;
+      else if (report.status === 'Pending') item.pending += 1;
+      else if (report.status === 'Rejected') item.rejected += 1;
+      if (report.blockers && report.blockers.trim()) item.blockersCount += 1;
+
+      item.reports.push({
+        _id: report._id,
+        reportDate: report.reportDate,
+        totalHours: report.totalHours,
+        status: report.status,
+        todayWork: report.todayWork,
+        tomorrowPlan: report.tomorrowPlan,
+        blockers: report.blockers,
+        tasksCompleted: report.tasksCompleted,
+      });
+    });
+
+    const membersSummary = Array.from(memberMap.values()).sort(
+      (a, b) => b.totalHours - a.totalHours
+    );
+
+    const totalHoursAll = membersSummary.reduce((sum, m) => sum + m.totalHours, 0);
+
+    res.json({
+      success: true,
+      duration: durationFilter?.label || 'All Time',
+      startDate: durationFilter?.$gte || null,
+      endDate: durationFilter?.$lte || null,
+      totalReports: reports.length,
+      totalHours: totalHoursAll,
+      activeMembersCount: membersSummary.length,
+      members: membersSummary,
+    });
+  } catch (err) {
+    console.error('GET /api/daily-reports/summary error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -71,7 +300,6 @@ router.get('/', async (req, res) => {
       const allowedUserIds = [...managedIds, req.user._id];
 
       if (userId) {
-        // If specific user is requested, ensure they are in allowed list
         const isAllowed = allowedUserIds.some(id => id.toString() === userId.toString());
         if (!isAllowed) {
           return res.status(403).json({ error: 'Forbidden. User is not in your assigned team or department.' });
@@ -90,49 +318,14 @@ router.get('/', async (req, res) => {
     }
 
     // 3. Department filter
-    if (department && department.trim()) {
+    if (department && department.trim() && department !== 'all') {
       query.department = { $regex: new RegExp(`^${department.trim()}$`, 'i') };
     }
 
-    // 4. Date filtering
-    if (date) {
-      if (date === 'today') {
-        const start = new Date();
-        start.setHours(0, 0, 0, 0);
-        const end = new Date();
-        end.setHours(23, 59, 59, 999);
-        query.reportDate = { $gte: start, $lte: end };
-      } else if (date === 'yesterday') {
-        const start = new Date();
-        start.setDate(start.getDate() - 1);
-        start.setHours(0, 0, 0, 0);
-        const end = new Date();
-        end.setDate(end.getDate() - 1);
-        end.setHours(23, 59, 59, 999);
-        query.reportDate = { $gte: start, $lte: end };
-      } else {
-        // Exact date string (YYYY-MM-DD)
-        const target = new Date(date);
-        if (!isNaN(target.getTime())) {
-          const start = new Date(target);
-          start.setHours(0, 0, 0, 0);
-          const end = new Date(target);
-          end.setHours(23, 59, 59, 999);
-          query.reportDate = { $gte: start, $lte: end };
-        }
-      }
-    } else if (startDate || endDate) {
-      query.reportDate = {};
-      if (startDate) {
-        const s = new Date(startDate);
-        s.setHours(0, 0, 0, 0);
-        query.reportDate.$gte = s;
-      }
-      if (endDate) {
-        const e = new Date(endDate);
-        e.setHours(23, 59, 59, 999);
-        query.reportDate.$lte = e;
-      }
+    // 4. Date filtering using duration parser
+    const durationFilter = parseDuration(date, startDate, endDate);
+    if (durationFilter) {
+      query.reportDate = { $gte: durationFilter.$gte, $lte: durationFilter.$lte };
     }
 
     // 5. Search filtering (searches in todayWork, tomorrowPlan, blockers)
@@ -429,39 +622,37 @@ router.patch('/:id/status', async (req, res) => {
       message: `Your daily report for ${new Date(report.reportDate).toLocaleDateString()} has been ${status.toLowerCase()}.${feedback ? ` Feedback: "${feedback.trim()}"` : ''}`,
       type: 'report'
     });
-    await notification.save();
+    notification.save().catch(e => console.error('Notification save error:', e.message));
     sendInAppNotification(report.user, notification);
 
-    const submitter = await User.findById(report.user);
-    if (submitter?.email) {
-      try {
-        await sendEmail(
-          submitter.email,
-          `Daily Report ${status} - WorkTrivo`,
-          `<h2>Hello ${submitter.name},</h2>
-           <p>Your daily report for <strong>${new Date(report.reportDate).toLocaleDateString()}</strong> has been <strong>${status}</strong> by ${req.user.name}.</p>
-           ${feedback ? `<p><strong>Feedback / Notes:</strong> ${feedback}</p>` : ''}
-           ${status === 'Rejected' ? '<p>You can now edit and resubmit your report on WorkTrivo.</p>' : ''}
-           <p>Please log in to WorkTrivo to view details.</p>`
-        );
-      } catch (emailErr) {
-        console.error('Failed to send email notification:', emailErr.message);
-      }
+    // Populate the report for immediate JSON response
+    await report.populate([
+      { path: 'user', select: '_id name email role profilePhoto designationRole department employeeId' },
+      { path: 'reviewedBy', select: '_id name email role' }
+    ]);
+
+    // Send email asynchronously in background so client response is instant
+    if (report.user?.email) {
+      sendEmailAsync(
+        report.user.email,
+        `Daily Report ${status} - WorkTrivo`,
+        `<h2>Hello ${report.user.name},</h2>
+         <p>Your daily report for <strong>${new Date(report.reportDate).toLocaleDateString()}</strong> has been <strong>${status}</strong> by ${req.user.name}.</p>
+         ${feedback ? `<p><strong>Feedback / Notes:</strong> ${feedback}</p>` : ''}
+         ${status === 'Rejected' ? '<p>You can now edit and resubmit your report on WorkTrivo.</p>' : ''}
+         <p>Please log in to WorkTrivo to view details.</p>`
+      );
     }
 
     // Sockets
     const io = getIo();
     if (io) {
       io.to('admins').emit('dailyReportUpdated');
-      io.to(report.user.toString()).emit('dailyReportUpdated');
+      io.to(report.user._id ? report.user._id.toString() : report.user.toString()).emit('dailyReportUpdated');
       io.to(req.user._id.toString()).emit('dailyReportUpdated');
     }
 
-    const populated = await DailyReport.findById(report._id)
-      .populate('user', '_id name email role profilePhoto designationRole department employeeId')
-      .populate('reviewedBy', '_id name email role');
-
-    res.json({ message: `Daily report ${status.toLowerCase()} successfully.`, report: populated });
+    res.json({ message: `Daily report ${status.toLowerCase()} successfully.`, report });
   } catch (err) {
     console.error('PATCH /api/daily-reports/:id/status error:', err);
     res.status(500).json({ error: err.message });

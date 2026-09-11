@@ -65,9 +65,9 @@ app.get("/", (req, res) => {
 });
 
 // ===============================
-// Health Check
+// Health Check (/health and /api/health)
 // ===============================
-app.get("/health", (req, res) => {
+app.get(["/health", "/api/health"], (req, res) => {
   res.status(200).json({
     status: "OK",
     database:
@@ -77,6 +77,35 @@ app.get("/health", (req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
+
+// ===============================
+// Auto Keep-Alive (Prevents Render Free Tier from sleeping)
+// ===============================
+const startKeepAlive = () => {
+  const targetUrl =
+    process.env.RENDER_EXTERNAL_URL ||
+    process.env.SERVER_URL ||
+    process.env.KEEP_ALIVE_URL;
+
+  if (!targetUrl) return;
+
+  const pingUrl = `${targetUrl.replace(/\/$/, "")}/health`;
+  const PING_INTERVAL = 14 * 60 * 1000; // 14 minutes (Render idle timeout is 15 mins)
+
+  const httpModule = pingUrl.startsWith("https") ? require("https") : require("http");
+
+  setInterval(() => {
+    httpModule
+      .get(pingUrl, (res) => {
+        console.log(`[Keep-Alive] Pinged ${pingUrl} - Status: ${res.statusCode}`);
+      })
+      .on("error", (err) => {
+        console.warn(`[Keep-Alive] Ping failed:`, err.message);
+      });
+  }, PING_INTERVAL);
+
+  console.log(`⏱️ Auto Keep-Alive active: pinging ${pingUrl} every 14 minutes`);
+};
 
 // ===============================
 // API Routes
@@ -120,6 +149,9 @@ const startServer = async () => {
 
     // Start Reminder Scheduler
     startScheduler();
+
+    // Start Auto Keep-Alive (for Render / cloud deployments)
+    startKeepAlive();
 
     server.on('error', (err) => {
       if (err.code === 'EADDRINUSE') {

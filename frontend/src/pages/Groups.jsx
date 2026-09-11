@@ -140,7 +140,7 @@ const Groups = () => {
           </p>
         </div>
 
-        {user?.role === "admin" && (
+        {(user?.role === "admin" || user?.role === "manager") && (
           <button
             onClick={() => setShowModal(true)}
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#10b981] hover:bg-[#059669] text-slate-950 px-5 py-2.5 text-sm font-bold shadow-md shadow-[#10b981]/20 transition-all active:scale-95 cursor-pointer"
@@ -195,7 +195,7 @@ const Groups = () => {
               ? "No projects matched your search query. Try typing something else."
               : "Get started by creating your first project workspace."}
           </p>
-          {!searchQuery && user?.role === "admin" && (
+          {!searchQuery && (user?.role === "admin" || user?.role === "manager") && (
             <button
               onClick={() => setShowModal(true)}
               className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#10b981]/15 border border-[#10b981]/30 px-4 py-2 text-xs font-bold text-[#10b981] hover:bg-[#10b981]/25 transition-all cursor-pointer"
@@ -219,10 +219,22 @@ const Groups = () => {
                     {group.name}
                   </h2>
 
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 shrink-0">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                    Active
-                  </span>
+                  {group.approvalStatus === "Pending" ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 shrink-0">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                      Pending Approval
+                    </span>
+                  ) : group.approvalStatus === "Rejected" ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 shrink-0">
+                      <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                      Rejected
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 shrink-0">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                      Active
+                    </span>
+                  )}
                 </div>
 
                 <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 line-clamp-2 mb-6 leading-relaxed font-normal">
@@ -257,9 +269,9 @@ const Groups = () => {
             className="relative w-full max-w-lg rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-2xl text-slate-800 dark:text-slate-100"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-xl font-bold text-slate-900 dark:text-white">Create New Project</h2>
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white">Create New Project / Community</h2>
                 <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 font-medium">Set up a collaborative workspace for your team.</p>
               </div>
               <button
@@ -269,6 +281,13 @@ const Groups = () => {
                 <X size={20} />
               </button>
             </div>
+
+            {user?.role === "manager" && (
+              <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-xl text-xs text-amber-800 dark:text-amber-300 font-medium flex items-center gap-2">
+                <span>⏳</span>
+                <span>Note: Communities created by Managers will be submitted to Admin for approval before becoming active.</span>
+              </div>
+            )}
 
             <form onSubmit={createProject} className="space-y-4">
               <div>

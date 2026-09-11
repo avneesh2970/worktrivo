@@ -152,14 +152,21 @@ googleCalendarEvents: [{
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   eventId: { type: String }
 }],
-deadlineReminderSent: {
-  type: Boolean,
-  default: false
-},
-
-activityLogs: [activitySchema]
+  deadlineReminderSent: {
+    type: Boolean,
+    default: false
+  }
 }, {
   timestamps: true
 });
 
+// Indexes for ultra-fast queries & filtering
+taskSchema.index({ assignedTo: 1, status: 1 });
+taskSchema.index({ status: 1, dueDate: 1 });
+taskSchema.index({ createdBy: 1 });
+taskSchema.index({ verballyAssignedBy: 1 });
+taskSchema.index({ createdAt: -1 });
+taskSchema.index({ group: 1 });
+
 module.exports = mongoose.model('Task', taskSchema);
+

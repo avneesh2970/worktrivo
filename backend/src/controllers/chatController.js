@@ -6,14 +6,63 @@ const { getIo } = require("../utils/socket");
 const getChatRooms = async (req, res) => {
   try {
     const userId = req.user._id;
+    const userRole = req.user.role;
 
-    const rooms = await ChatRoom.find({
-      members: userId,
-      isActive: true,
-    })
-      .populate("members", "name email profilePhoto role")
-      .populate("admins", "name email profilePhoto")
-      .populate("lastMessage")
+    // Ensure default general workspace exists if no rooms exist
+    const totalRooms = await ChatRoom.countDocuments({ isActive: true });
+    if (totalRooms === 0) {
+      const allUsers = await User.find({ active: true }).select("_id");
+      const userIds = allUsers.map((u) => u._id);
+      await ChatRoom.create({
+        name: "General Workspace",
+        description: "Official company-wide discussion and announcements.",
+        type: "global",
+        members: userIds,
+        admins: [userId],
+        createdBy: userId,
+        approvalStatus: "Approved",
+        approvedBy: userId,
+        approvedAt: new Date(),
+      });
+    }
+
+    let filter = { isActive: true };
+
+    if (userRole === "admin") {
+      // Admin can see EVERY chat (direct chats, communities, and global)
+      filter = { isActive: true };
+    } else if (userRole === "manager") {
+      // Manager sees: global, direct with them, approved groups with them, OR groups they created (even if pending)
+      filter = {
+        isActive: true,
+        $or: [
+          { type: "global" },
+          { type: "direct", members: userId },
+          { type: "group", members: userId, approvalStatus: "Approved" },
+          { type: "group", createdBy: userId },
+        ],
+      };
+    } else {
+      // Regular members see: global, direct with them, and approved groups with them
+      filter = {
+        isActive: true,
+        $or: [
+          { type: "global" },
+          { type: "direct", members: userId },
+          { type: "group", members: userId, approvalStatus: "Approved" },
+        ],
+      };
+    }
+
+    const rooms = await ChatRoom.find(filter)
+      .populate("members", "name email profilePhoto role designationRole department")
+      .populate("admins", "name email profilePhoto role")
+      .populate("createdBy", "name email profilePhoto role")
+      .populate("approvedBy", "name email")
+      .populate({
+        path: "lastMessage",
+        populate: { path: "sender", select: "name profilePhoto role" },
+      })
       .sort({ updatedAt: -1 });
 
     res.status(200).json({
@@ -21,8 +70,7 @@ const getChatRooms = async (req, res) => {
       data: rooms,
     });
   } catch (error) {
-    console.error(error);
-
+    console.error("Get Chat Rooms Error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to fetch chat rooms.",
@@ -30,34 +78,296 @@ const getChatRooms = async (req, res) => {
   }
 };
 
-// Create new room
-const createRoom = async (req, res) => {
+// Create or get 1-on-1 direct chat room between any two users
+const createOrGetDirectRoom = async (req, res) => {
   try {
-    const { name, description, members, type, group } = req.body;
+    const userId = req.user._id;
+    const { targetUserId } = req.body;
 
-    
+    if (!targetUserId) {
+      return res.status(400).json({
+        success: false,
+        message: "targetUserId is required.",
+      });
+    }
 
-    const room = await ChatRoom.create({
-      name,
-      description,
-      type: type || "group",
-      group: group || null,
-      members,
-      admins: [req.user._id],
-      createdBy: req.user._id
-    });
+    if (userId.toString() === targetUserId.toString()) {
+      return res.status(400).json({
+        success: false,
+        message: "You cannot start a direct chat with yourself.",
+      });
+    }
 
-    res.status(201).json({
+    const targetUser = await User.findById(targetUserId);
+    if (!targetUser) {
+      return res.status(404).json({
+        success: false,
+        message: "Target user not found.",
+      });
+    }
+
+    // Check if direct room already exists
+    let room = await ChatRoom.findOne({
+      type: "direct",
+      isActive: true,
+      members: { $all: [userId, targetUserId], $size: 2 },
+    })
+      .populate("members", "name email profilePhoto role designationRole department")
+      .populate("admins", "name email profilePhoto role")
+      .populate("createdBy", "name email profilePhoto role")
+      .populate({
+        path: "lastMessage",
+        populate: { path: "sender", select: "name profilePhoto role" },
+      });
+
+    if (!room) {
+      room = await ChatRoom.create({
+        name: `${req.user.name} & ${targetUser.name}`,
+        type: "direct",
+        members: [userId, targetUserId],
+        admins: [userId, targetUserId],
+        createdBy: userId,
+        approvalStatus: "Approved",
+      });
+
+      room = await ChatRoom.findById(room._id)
+        .populate("members", "name email profilePhoto role designationRole department")
+        .populate("admins", "name email profilePhoto role")
+        .populate("createdBy", "name email profilePhoto role")
+        .populate({
+          path: "lastMessage",
+          populate: { path: "sender", select: "name profilePhoto role" },
+        });
+
+      const io = getIo();
+      if (io) {
+        io.to(targetUserId.toString()).emit("chat_room_created", room);
+        io.to("admins").emit("chat_room_created", room);
+      }
+    }
+
+    res.status(200).json({
       success: true,
-      message: "Chat room created successfully.",
       data: room,
     });
   } catch (error) {
-    console.error(error);
-
+    console.error("Direct Room Error:", error);
     res.status(500).json({
       success: false,
-      message: "Failed to create chat room.",
+      message: "Failed to initialize direct chat.",
+    });
+  }
+};
+
+// Create new community / group room
+const createRoom = async (req, res) => {
+  try {
+    const { name, description, members = [], type, group } = req.body;
+    const userRole = req.user.role;
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Community name is required.",
+      });
+    }
+
+    // Role check: Only admin and manager can create communities
+    if (userRole === "member") {
+      return res.status(403).json({
+        success: false,
+        message: "Members are not authorized to create communities. Only Admins and Managers can create communities.",
+      });
+    }
+
+    const isAdmin = userRole === "admin";
+    const approvalStatus = isAdmin ? "Approved" : "Pending";
+    const approvedBy = isAdmin ? req.user._id : null;
+    const approvedAt = isAdmin ? new Date() : null;
+
+    // Ensure creator is in members
+    const memberSet = new Set((Array.isArray(members) ? members : []).map((id) => id.toString()));
+    memberSet.add(req.user._id.toString());
+    const finalMembers = Array.from(memberSet);
+
+    const room = await ChatRoom.create({
+      name: name.trim(),
+      description: (description || "").trim(),
+      type: type || "group",
+      group: group || null,
+      members: finalMembers,
+      admins: [req.user._id],
+      createdBy: req.user._id,
+      approvalStatus,
+      approvedBy,
+      approvedAt,
+    });
+
+    const populatedRoom = await ChatRoom.findById(room._id)
+      .populate("members", "name email profilePhoto role designationRole department")
+      .populate("admins", "name email profilePhoto role")
+      .populate("createdBy", "name email profilePhoto role")
+      .populate("approvedBy", "name email");
+
+    const io = getIo();
+    if (io) {
+      if (isAdmin) {
+        finalMembers.forEach((memberId) => {
+          io.to(memberId.toString()).emit("chat_room_created", populatedRoom);
+        });
+        io.to("admins").emit("chat_room_created", populatedRoom);
+      } else {
+        io.to(req.user._id.toString()).emit("chat_room_created", populatedRoom);
+        io.to("admins").emit("community_pending_approval", populatedRoom);
+        io.to("admins").emit("chat_room_created", populatedRoom);
+      }
+    }
+
+    res.status(201).json({
+      success: true,
+      message: isAdmin
+        ? "Community created and active successfully."
+        : "Community created successfully. It will become active once approved by an Admin.",
+      data: populatedRoom,
+    });
+  } catch (error) {
+    console.error("Create Room Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to create community.",
+    });
+  }
+};
+
+// Approve Community (Admin only)
+const approveRoom = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+
+    const room = await ChatRoom.findById(roomId);
+    if (!room) {
+      return res.status(404).json({
+        success: false,
+        message: "Community not found.",
+      });
+    }
+
+    room.approvalStatus = "Approved";
+    room.approvedBy = req.user._id;
+    room.approvedAt = new Date();
+    await room.save();
+
+    if (room.group) {
+      const Group = require("../models/Group");
+      await Group.findByIdAndUpdate(room.group, {
+        approvalStatus: "Approved",
+        approvedBy: req.user._id,
+        approvedAt: new Date(),
+      });
+    }
+
+    const populatedRoom = await ChatRoom.findById(room._id)
+      .populate("members", "name email profilePhoto role designationRole department")
+      .populate("admins", "name email profilePhoto role")
+      .populate("createdBy", "name email profilePhoto role")
+      .populate("approvedBy", "name email");
+
+    const io = getIo();
+    if (io) {
+      populatedRoom.members.forEach((m) => {
+        io.to(m._id.toString()).emit("room_approved", populatedRoom);
+        io.to(m._id.toString()).emit("chat_room_created", populatedRoom);
+      });
+      io.to("admins").emit("room_approved", populatedRoom);
+    }
+
+    try {
+      const Notification = require("../models/Notification");
+      const notification = await Notification.create({
+        userId: room.createdBy,
+        message: `Your community "${room.name}" has been approved by ${req.user.name} and is now active!`,
+        type: "chat",
+      });
+      const { sendInAppNotification } = require("../utils/socket");
+      await sendInAppNotification(room.createdBy, notification);
+    } catch (notifErr) {
+      console.error("Notification send error:", notifErr.message);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Community approved successfully.",
+      data: populatedRoom,
+    });
+  } catch (error) {
+    console.error("Approve Room Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to approve community.",
+    });
+  }
+};
+
+// Reject Community (Admin only)
+const rejectRoom = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+
+    const room = await ChatRoom.findById(roomId);
+    if (!room) {
+      return res.status(404).json({
+        success: false,
+        message: "Community not found.",
+      });
+    }
+
+    room.approvalStatus = "Rejected";
+    room.approvedBy = req.user._id;
+    room.approvedAt = new Date();
+    await room.save();
+
+    if (room.group) {
+      const Group = require("../models/Group");
+      await Group.findByIdAndUpdate(room.group, {
+        approvalStatus: "Rejected",
+        approvedBy: req.user._id,
+        approvedAt: new Date(),
+      });
+    }
+
+    const populatedRoom = await ChatRoom.findById(room._id)
+      .populate("members", "name email profilePhoto role designationRole department")
+      .populate("createdBy", "name email profilePhoto role");
+
+    const io = getIo();
+    if (io) {
+      io.to(room.createdBy.toString()).emit("room_rejected", populatedRoom);
+      io.to("admins").emit("room_rejected", populatedRoom);
+    }
+
+    try {
+      const Notification = require("../models/Notification");
+      const notification = await Notification.create({
+        userId: room.createdBy,
+        message: `Your community "${room.name}" was rejected by ${req.user.name}.`,
+        type: "chat",
+      });
+      const { sendInAppNotification } = require("../utils/socket");
+      await sendInAppNotification(room.createdBy, notification);
+    } catch (notifErr) {
+      console.error("Notification send error:", notifErr.message);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Community rejected.",
+      data: populatedRoom,
+    });
+  } catch (error) {
+    console.error("Reject Room Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to reject community.",
     });
   }
 };
@@ -66,12 +376,41 @@ const createRoom = async (req, res) => {
 const getMessages = async (req, res) => {
   try {
     const { roomId } = req.params;
+    const userId = req.user._id;
+    const userRole = req.user.role;
+
+    const room = await ChatRoom.findById(roomId);
+    if (!room) {
+      return res.status(404).json({
+        success: false,
+        message: "Chat room not found.",
+      });
+    }
+
+    const isMember = room.members.some((m) => m.toString() === userId.toString());
+    const isCreator = room.createdBy && room.createdBy.toString() === userId.toString();
+
+    // Admin can see messages of ANY chat. Other users must be in members or creator
+    if (userRole !== "admin" && !isMember && !isCreator) {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied to this chat room.",
+      });
+    }
+
+    // If community is pending, non-admin non-creator cannot view
+    if (room.type === "group" && room.approvalStatus === "Pending" && userRole !== "admin" && !isCreator) {
+      return res.status(403).json({
+        success: false,
+        message: "This community is awaiting Admin approval.",
+      });
+    }
 
     const messages = await Message.find({
       chatRoom: roomId,
       deleted: false,
     })
-      .populate("sender", "name profilePhoto role")
+      .populate("sender", "name profilePhoto role designationRole department")
       .populate("mentions", "name")
       .populate("replyTo")
       .sort({ createdAt: 1 });
@@ -81,8 +420,7 @@ const getMessages = async (req, res) => {
       data: messages,
     });
   } catch (error) {
-    console.error(error);
-
+    console.error("Get Messages Error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to fetch messages.",
@@ -100,6 +438,21 @@ const sendMessage = async (req, res) => {
       mentions,
       replyTo,
     } = req.body;
+
+    const room = await ChatRoom.findById(chatRoom);
+    if (!room) {
+      return res.status(404).json({
+        success: false,
+        message: "Chat room not found.",
+      });
+    }
+
+    if (room.type === "group" && room.approvalStatus === "Pending") {
+      return res.status(403).json({
+        success: false,
+        message: "Cannot send messages. This community is awaiting Admin approval.",
+      });
+    }
 
     const message = await Message.create({
       chatRoom,
@@ -301,6 +654,16 @@ const editMessage = async (req, res) => {
       });
     }
 
+    // Enforce 5-minute edit window
+    const EDIT_WINDOW_MS = 5 * 60 * 1000;
+    const messageAge = Date.now() - new Date(message.createdAt).getTime();
+    if (messageAge > EDIT_WINDOW_MS) {
+      return res.status(400).json({
+        success: false,
+        message: "Messages can only be edited within 5 minutes of sending.",
+      });
+    }
+
     message.text = text.trim();
     message.edited = true;
     message.editedAt = new Date();
@@ -322,53 +685,12 @@ const editMessage = async (req, res) => {
   }
 };
 
-// Delete Message
+// Delete Message (Disabled as per policy)
 const deleteMessage = async (req, res) => {
-  try {
-    const { messageId } = req.params;
-
-    const message = await Message.findById(messageId);
-
-    if (!message) {
-      return res.status(404).json({
-        success: false,
-        message: "Message not found.",
-      });
-    }
-
-    // Check ownership
-    if (!message.sender.equals(req.user._id)) {
-      return res.status(403).json({
-        success: false,
-        message: "You are not authorized to delete this message.",
-      });
-    }
-
-    // Prevent deleting twice
-    if (message.deleted) {
-      return res.status(400).json({
-        success: false,
-        message: "Message is already deleted.",
-      });
-    }
-
-    message.deleted = true;
-    message.deletedAt = new Date();
-
-    await message.save();
-
-    return res.status(200).json({
-      success: true,
-      message: "Message deleted successfully.",
-    });
-  } catch (error) {
-    console.error("Delete Message Error:", error);
-
-    return res.status(500).json({
-      success: false,
-      message: "Failed to delete message.",
-    });
-  }
+  return res.status(403).json({
+    success: false,
+    message: "Deleting messages is not permitted.",
+  });
 };
 
 // Pin message
@@ -551,34 +873,18 @@ const getRoomMentions = async (req, res) => {
 // Search members in a room or globally for @mention suggestions
 const searchMentionUsers = async (req, res) => {
   try {
-    // 1. Read roomId and query from req.body (with fallback to req.query if needed)
     const roomId = req.body.roomId || req.query.roomId;
-    const query = req.body.query || req.query.query;
+    const query = req.body.query || req.query.query || "";
 
-    // 2. Validate roomId
-    if (!roomId) {
-      return res.status(400).json({
-        success: false,
-        message: "roomId is required to search mention users.",
-      });
+    let searchQuery = { active: true };
+
+    if (roomId && roomId !== "all") {
+      const room = await ChatRoom.findById(roomId).select("members");
+      if (room && room.members?.length > 0) {
+        searchQuery._id = { $in: room.members };
+      }
     }
 
-    // 3. Find room and fetch member IDs
-    const room = await ChatRoom.findById(roomId).select("members");
-
-    if (!room) {
-      return res.status(404).json({
-        success: false,
-        message: "Chat room not found.",
-      });
-    }
-
-    // Build Mongoose search query restricted ONLY to room members
-    const searchQuery = {
-      _id: { $in: room.members },
-    };
-
-    // 4. Filter by search string (name or email) if query text is provided
     if (query && query.trim()) {
       searchQuery.$or = [
         { name: { $regex: query.trim(), $options: "i" } },
@@ -586,9 +892,8 @@ const searchMentionUsers = async (req, res) => {
       ];
     }
 
-    // 5. Fetch up to 10 matching members
     const users = await User.find(searchQuery)
-      .select("_id name email profilePhoto role")
+      .select("_id name email profilePhoto role designationRole")
       .limit(10);
 
     return res.status(200).json({
@@ -617,6 +922,21 @@ const sendMessageWithMentions = async (req, res) => {
       });
     }
 
+    const room = await ChatRoom.findById(chatRoom);
+    if (!room) {
+      return res.status(404).json({
+        success: false,
+        message: "Chat room not found.",
+      });
+    }
+
+    if (room.type === "group" && room.approvalStatus === "Pending") {
+      return res.status(403).json({
+        success: false,
+        message: "Cannot send messages. This community is awaiting Admin approval.",
+      });
+    }
+
     // Sanitize and deduplicate mentions array
     const rawMentions = Array.isArray(mentions) ? mentions : [];
     const uniqueMentions = Array.from(
@@ -640,7 +960,7 @@ const sendMessageWithMentions = async (req, res) => {
 
     // 3. Fully populate response
     const populatedMessage = await Message.findById(message._id)
-      .populate("sender", "name profilePhoto role")
+      .populate("sender", "name profilePhoto role designationRole department")
       .populate("mentions", "name email profilePhoto role")
       .populate({
         path: "replyTo",
@@ -683,6 +1003,9 @@ module.exports = {
   getUserMentions,
   getChatRooms,
   createRoom,
+  createOrGetDirectRoom,
+  approveRoom,
+  rejectRoom,
   getMessages,
   sendMessage,
   addMember,
@@ -693,5 +1016,5 @@ module.exports = {
   pinMessage,
   unpinMessage,
   sendMessageWithMentions,
-  searchMentionUsers
+  searchMentionUsers,
 };

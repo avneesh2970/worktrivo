@@ -10,7 +10,7 @@ const { checkReminders } = require('../utils/reminders');
 const Group = require("../models/Group");
 const { parseVoiceTranscript } = require('../utils/voiceParser');
 const { upsertTaskEvent, deleteTaskEvent } = require('../utils/googleCalendar');
-const sendEmail = require('../utils/sendEmail');
+const { sendEmail, sendEmailAsync } = require('../utils/sendEmail');
 const {
   sendInAppNotification,
   sendTaskUpdate,
@@ -152,7 +152,8 @@ router.get('/', async (req, res) => {
       .populate('verballyAssignedBy', '_id name email role profilePhoto department designationRole')
       .populate('approvedBy', '_id name email role')
       .populate("dependencies", "title status")
-      .sort(sortOptions);
+      .sort(sortOptions)
+      .lean();
     res.json(tasks);
   } catch (err) {
     console.error("GET /api/tasks ERROR:", err);
@@ -163,7 +164,12 @@ router.get('/', async (req, res) => {
 // GET /api/tasks/audit/logs
 router.get('/audit/logs', requireRole(['admin', 'manager']), async (req, res) => {
   try {
-    const logs = await AuditLog.find().populate('userId', '_id name role').populate('taskId', '_id title').sort({ createdAt: -1 }).limit(15);
+    const logs = await AuditLog.find()
+      .populate('userId', '_id name role')
+      .populate('taskId', '_id title')
+      .sort({ createdAt: -1 })
+      .limit(15)
+      .lean();
     res.json(logs);
   } catch (err) {
     res.status(500).json({ error: 'Internal Server Error' });
@@ -176,17 +182,27 @@ router.get("/sidebar-stats", async (req, res) => {
     const query = {};
     if (req.user.role === "member") {
       query.assignedTo = req.user._id;
+    } else if (req.user.role === "manager") {
+      const fullManager = await User.findById(req.user._id).select('assignedMembers assignedDepartment assignedDepartments');
+      const managedIds = await getManagedUserIds(fullManager);
+      const teamUserIds = [...managedIds, req.user._id];
+      query.$or = [
+        { assignedTo: { $in: teamUserIds } },
+        { createdBy: req.user._id },
+        { verballyAssignedBy: req.user._id }
+      ];
     }
 
-    const tasks = await Task.find(query);
+    const [total, completed, overdue] = await Promise.all([
+      Task.countDocuments(query),
+      Task.countDocuments({ ...query, status: "Approved" }),
+      Task.countDocuments({ ...query, status: "Overdue" })
+    ]);
 
-    const completed = tasks.filter(task => task.status === "Approved").length;
-    const overdue = tasks.filter(task => task.status === "Overdue").length;
-    const pending = tasks.length - completed - overdue;
+    const pending = Math.max(0, total - completed - overdue);
+    const productivity = total > 0 ? Math.round((completed / total) * 100) : 0;
 
-    const productivity = tasks.length > 0 ? Math.round((completed / tasks.length) * 100) : 0;
-
-    res.json({ total: tasks.length, completed, pending, overdue, productivity });
+    res.json({ total, completed, pending, overdue, productivity });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -335,8 +351,8 @@ router.post('/', requireRole(['admin', 'manager', 'member']), async (req, res) =
       }
     }
 
-    await logAction({ taskId: task._id, userId: req.user._id, action: 'Created' });
-    await checkReminders();
+    logAction({ taskId: task._id, userId: req.user._id, action: 'Created' }).catch(() => {});
+    setImmediate(() => { checkReminders().catch(() => {}); });
 
     // 1. If Self-Task: notify the verbal assigner (Manager/Admin)
     if (isSelfTask && verbalAssignerDoc) {
@@ -346,42 +362,38 @@ router.post('/', requireRole(['admin', 'manager', 'member']), async (req, res) =
         taskId: task._id,
         type: 'assignment'
       });
-      await supervisorNotif.save();
+      supervisorNotif.save().catch(() => {});
       sendInAppNotification(verbalAssignerDoc._id, supervisorNotif);
 
       if (verbalAssignerDoc.email) {
-        try {
-          await sendEmail(
-            verbalAssignerDoc.email,
-            `Self-Task Logged by ${req.user.name} - WorkTrivo`,
-            `<h2>Hello ${verbalAssignerDoc.name},</h2>
-             <p><strong>${req.user.name}</strong> has created a self-assigned task under your verbal assignment:</p>
-             <p><strong>Task:</strong> ${task.title}</p>
-             <p><strong>Due Date:</strong> ${new Date(task.dueDate).toLocaleDateString()}</p>
-             <p>Log in to WorkTrivo to review progress.</p>`
-          );
-        } catch (mailErr) {
-          console.error('Failed to send email to verbal assigner:', mailErr.message);
-        }
+        sendEmailAsync(
+          verbalAssignerDoc.email,
+          `Self-Task Logged by ${req.user.name} - WorkTrivo`,
+          `<h2>Hello ${verbalAssignerDoc.name},</h2>
+           <p><strong>${req.user.name}</strong> has created a self-assigned task under your verbal assignment:</p>
+           <p><strong>Task:</strong> ${task.title}</p>
+           <p><strong>Due Date:</strong> ${new Date(task.dueDate).toLocaleDateString()}</p>
+           <p>Log in to WorkTrivo to review progress.</p>`
+        );
       }
 
       // Also notify admins if verbal assigner was not an admin
       if (verbalAssignerDoc.role !== 'admin') {
-        const admins = await User.find({ role: 'admin', active: true });
-        for (const adm of admins) {
-          const admNotif = new Notification({
-            userId: adm._id,
-            message: `${req.user.name} logged a self-assigned task: "${task.title}" (verbal assignment by ${verbalAssignerDoc.name}).`,
-            taskId: task._id,
-            type: 'assignment'
+        User.find({ role: 'admin', active: true }, '_id').then(admins => {
+          admins.forEach(adm => {
+            const admNotif = new Notification({
+              userId: adm._id,
+              message: `${req.user.name} logged a self-assigned task: "${task.title}" (verbal assignment by ${verbalAssignerDoc.name}).`,
+              taskId: task._id,
+              type: 'assignment'
+            });
+            admNotif.save().catch(() => {});
+            sendInAppNotification(adm._id, admNotif);
           });
-          await admNotif.save();
-          sendInAppNotification(adm._id, admNotif);
-        }
+        }).catch(() => {});
       }
     } else {
       // 2. Standard assignment notifications to assignees
-      const calendarEvents = [];
       for (const userId of targetAssignees) {
         const notification = new Notification({
           userId,
@@ -389,44 +401,35 @@ router.post('/', requireRole(['admin', 'manager', 'member']), async (req, res) =
           taskId: task._id,
           type: 'assignment'
         });
-        await notification.save();
+        notification.save().catch(() => {});
         sendInAppNotification(userId, notification);
         sendTaskUpdate(userId, task._id);
 
-        const assigneeUser = await User.findById(userId);
-        if (assigneeUser?.email) {
-          try {
-            await sendEmail(
+        User.findById(userId).select('name email googleCalendar').then(assigneeUser => {
+          if (assigneeUser?.email) {
+            sendEmailAsync(
               assigneeUser.email,
               'New Task Assigned - WorkTrivo',
               `<h2>Hello ${assigneeUser.name},</h2><p>You have been assigned a new task: ${task.title}</p>`
             );
-          } catch (mErr) {}
-        }
-
-        try {
-          if (assigneeUser) {
-            const eventId = await upsertTaskEvent(assigneeUser, task, null);
-            if (eventId) calendarEvents.push({ user: userId, eventId });
           }
-        } catch (calendarErr) {
-          console.error('Calendar sync failed on task create:', calendarErr.message);
-        }
-      }
-
-      if (calendarEvents.length) {
-        task.googleCalendarEvents = calendarEvents;
-        await task.save();
+          if (assigneeUser?.googleCalendar?.connected) {
+            upsertTaskEvent(assigneeUser, task, null).catch(err => {
+              console.error('Calendar sync failed on task create:', err.message);
+            });
+          }
+        }).catch(() => {});
       }
     }
 
-    const populatedTask = await Task.findById(task._id)
-      .populate('assignedTo', '_id name email role active profilePhoto department designationRole')
-      .populate('createdBy', '_id name email role profilePhoto department designationRole')
-      .populate('verballyAssignedBy', '_id name email role profilePhoto department designationRole')
-      .populate('dependencies', 'title status');
+    await task.populate([
+      { path: 'assignedTo', select: '_id name email role active profilePhoto department designationRole' },
+      { path: 'createdBy', select: '_id name email role profilePhoto department designationRole' },
+      { path: 'verballyAssignedBy', select: '_id name email role profilePhoto department designationRole' },
+      { path: 'dependencies', select: 'title status' }
+    ]);
 
-    res.status(201).json(populatedTask);
+    res.status(201).json(task);
   } catch (err) {
     console.error('POST /api/tasks error:', err);
     res.status(500).json({ error: err.message || 'Internal Server Error' });
@@ -700,34 +703,46 @@ router.patch('/:id/status', async (req, res) => {
     task.assignedTo.forEach(user => { io.to(user.toString()).emit("taskUpdated"); });
     io.to("admins").emit("taskUpdated");
 
-    await logAction({ taskId, userId: req.user._id, action: 'Status Changed', oldValue: oldStatus, newValue: status });
+    logAction({ taskId, userId: req.user._id, action: 'Status Changed', oldValue: oldStatus, newValue: status }).catch(() => {});
     if (status === 'Rejected' && feedback) {
-      await logAction({ taskId, userId: req.user._id, action: 'Feedback Added', newValue: feedback });
+      logAction({ taskId, userId: req.user._id, action: 'Feedback Added', newValue: feedback }).catch(() => {});
     }
 
-    // Handle Notifications
+    // Handle Notifications (batch insert and non-blocking)
     if (status === 'Completed (Pending Approval)') {
       task.activityLogs.push({ action: "Submitted for Approval", performedBy: req.user._id, timestamp: new Date() });
-      const mgmtUsers = await User.find({ role: { $in: ['admin', 'manager', 'Admin', 'Manager'] }, active: true });
-      for (const user of mgmtUsers) {
-        const notification = new Notification({ userId: user._id, message: `${req.user.name} has submitted task "${task.title}" for approval.`, type: 'completed' });
-        await notification.save();
-        sendInAppNotification(user._id, notification);
-      }
+      User.find({ role: { $in: ['admin', 'manager', 'Admin', 'Manager'] }, active: true }, '_id').then(async (mgmtUsers) => {
+        if (!mgmtUsers.length) return;
+        const docs = mgmtUsers.map(u => ({
+          userId: u._id,
+          message: `${req.user.name} has submitted task "${task.title}" for approval.`,
+          taskId: task._id,
+          type: 'completed'
+        }));
+        const created = await Notification.insertMany(docs);
+        created.forEach(n => sendInAppNotification(n.userId, n));
+      }).catch(err => console.error('Notification dispatch error:', err.message));
     } else if (status === 'Approved' || status === 'Rejected') {
-      for (const userId of task.assignedTo) {
-        const notification = new Notification({ 
-            userId, 
-            message: status === 'Approved' ? `Your task "${task.title}" has been approved!` : `Your task "${task.title}" has been rejected. Feedback: "${feedback}"`, 
-            type: status === 'Approved' ? 'approval' : 'rejection' 
-        });
-        await notification.save();
-        sendInAppNotification(userId, notification);
-      }
+      const msg = status === 'Approved' ? `Your task "${task.title}" has been approved!` : `Your task "${task.title}" has been rejected. Feedback: "${feedback}"`;
+      const type = status === 'Approved' ? 'approval' : 'rejection';
+      const docs = task.assignedTo.map(uId => ({
+        userId: uId._id || uId,
+        message: msg,
+        taskId: task._id,
+        type
+      }));
+      Notification.insertMany(docs).then(created => {
+        created.forEach(n => sendInAppNotification(n.userId, n));
+      }).catch(err => console.error('Notification dispatch error:', err.message));
     }
 
-    const populatedTask = await Task.findById(taskId).populate('assignedTo', '_id name email role active').populate('createdBy', '_id name email role').populate('approvedBy', '_id name email role').populate('dependencies', 'title status');
-    res.json(populatedTask);
+    await task.populate([
+      { path: 'assignedTo', select: '_id name email role active profilePhoto department designationRole' },
+      { path: 'createdBy', select: '_id name email role profilePhoto department designationRole' },
+      { path: 'approvedBy', select: '_id name email role' },
+      { path: 'dependencies', select: 'title status' }
+    ]);
+    res.json(task);
   } catch (err) {
     res.status(500).json({ error: 'Internal Server Error' });
   }

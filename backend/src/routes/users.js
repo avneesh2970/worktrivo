@@ -34,6 +34,9 @@ router.get('/my-supervisors', userController.getMySupervisors);
 // User List
 router.get('/', userController.getUsers);
 
+// Candidate / Employee 360 Overview (Profile, Assigned Tasks, Daily Reports)
+router.get('/:id/overview', userController.getUserOverview);
+
 // ADMIN ROUTES
 router.use(requireRole('admin'));
 

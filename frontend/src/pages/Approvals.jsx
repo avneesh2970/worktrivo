@@ -143,7 +143,7 @@ const Approvals = () => {
         setLoadingDetails(false);
     };
 
-    // --- APPROVE / REJECT LOGIC ---
+    // --- APPROVE / REJECT LOGIC (Instant Optimistic UI) ---
     const handleProcessApproval = async (actionType) => {
         const isApprove = actionType === 'approve';
         
@@ -151,53 +151,64 @@ const Approvals = () => {
             toast.error("Please provide a decision note/feedback for rejection.");
             return;
         }
+
+        const item = viewingItem;
+        const feedbackValue = feedback.trim();
+        const itemId = item._id;
+        const itemType = item._itemType;
+
+        // Instant UI dismissal & optimistic removal
+        setViewingItem(null);
+        setItemDetails(null);
+        toast.success(`${itemType === 'dailyReport' ? 'Daily report' : itemType === 'project' ? 'Project' : 'Task'} successfully ${isApprove ? 'approved' : 'rejected'}`);
+
+        if (itemType === 'task') {
+            setStandaloneTasks(prev => prev.filter(t => t._id !== itemId));
+        } else if (itemType === 'projectTask') {
+            setProjectTasks(prev => prev.filter(t => t._id !== itemId));
+        } else if (itemType === 'project') {
+            setProjects(prev => prev.filter(p => p._id !== itemId));
+        } else if (itemType === 'dailyReport') {
+            setDailyReports(prev => prev.filter(r => r._id !== itemId));
+        }
         
-        setActionLoading(true);
         try {
-            if (viewingItem._itemType === 'task' || viewingItem._itemType === 'projectTask') {
-                const res = await fetch(`${API_BASE}/tasks/${viewingItem._id}/status`, {
+            if (itemType === 'task' || itemType === 'projectTask') {
+                const res = await fetch(`${API_BASE}/tasks/${itemId}/status`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                     body: JSON.stringify({ 
                         status: isApprove ? 'Approved' : 'Rejected',
-                        feedback: feedback.trim()
+                        feedback: feedbackValue
                     })
                 });
                 if (!res.ok) throw new Error("Failed to process task");
-                toast.success(`Task successfully ${isApprove ? 'approved' : 'rejected'}`);
             } 
-            else if (viewingItem._itemType === 'project') {
+            else if (itemType === 'project') {
                 const endpoint = isApprove ? 'approve' : 'reject';
-                const res = await fetch(`${API_BASE}/groups/${viewingItem._id}/${endpoint}`, {
+                const res = await fetch(`${API_BASE}/groups/${itemId}/${endpoint}`, {
                     method: 'PATCH',
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 if (!res.ok) throw new Error("Failed to process project");
-                toast.success(`Project successfully ${isApprove ? 'approved' : 'rejected'}`);
             }
-            else if (viewingItem._itemType === 'dailyReport') {
-                const res = await fetch(`${API_BASE}/daily-reports/${viewingItem._id}/status`, {
+            else if (itemType === 'dailyReport') {
+                const res = await fetch(`${API_BASE}/daily-reports/${itemId}/status`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                     body: JSON.stringify({
                         status: isApprove ? 'Approved' : 'Rejected',
-                        feedback: feedback.trim()
+                        feedback: feedbackValue
                     })
                 });
                 if (!res.ok) {
                     const errData = await res.json();
                     throw new Error(errData.error || "Failed to process daily report");
                 }
-                toast.success(`Daily report successfully ${isApprove ? 'approved' : 'rejected'}`);
             }
-            
-            setViewingItem(null);
-            setItemDetails(null);
-            fetchData(); 
         } catch (error) {
             toast.error(error.message);
-        } finally {
-            setActionLoading(false);
+            fetchData(); // revert on failure
         }
     };
 

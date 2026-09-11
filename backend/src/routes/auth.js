@@ -78,16 +78,16 @@ router.post('/google', async (req, res) => {
 
     // Create new session (old device becomes invalid)
     const sessionId = uuidv4();
+    const now = new Date();
 
     user.activeSessionId = sessionId;
-    user.lastSeen = new Date();
+    user.lastSeen = now;
+    user.lastLoginAt = now;
 
     await user.save();
 
-    // --------------------------------------------------
-    // Create Login Activity Entry
-    // --------------------------------------------------
-    await LoginActivity.create({
+    // Background Login Activity Entry
+    LoginActivity.create({
       user: user._id,
       name: user.name,
       email: user.email,
@@ -95,8 +95,8 @@ router.post('/google', async (req, res) => {
       loginProvider: 'google',
       ipAddress: req.ip || req.headers['x-forwarded-for'] || '',
       userAgent: req.headers['user-agent'] || '',
-      loginTime: new Date()
-    });
+      loginTime: now
+    }).catch(e => console.error('LoginActivity create error:', e.message));
 
     const appToken = jwt.sign(
       {
@@ -195,16 +195,17 @@ router.post('/login', async (req, res) => {
 
     // Create new session (old device becomes invalid)
     const sessionId = uuidv4();
+    const now = new Date();
 
     user.activeSessionId = sessionId;
-    user.lastSeen = new Date();
+    user.lastSeen = now;
+    user.lastLoginAt = now;
 
-    await user.save();
+    // Fast atomic session update
+    User.updateOne({ _id: user._id }, { $set: { activeSessionId: sessionId, lastSeen: now, lastLoginAt: now } }).catch(e => console.error('Session update error:', e.message));
 
-    // --------------------------------------------------
-    // Create Login Activity Entry
-    // --------------------------------------------------
-    await LoginActivity.create({
+    // Background Login Activity Entry so login response is instant
+    LoginActivity.create({
       user: user._id,
       name: user.name,
       email: user.email,
@@ -212,8 +213,8 @@ router.post('/login', async (req, res) => {
       loginProvider: 'local',
       ipAddress: req.ip || req.headers['x-forwarded-for'] || '',
       userAgent: req.headers['user-agent'] || '',
-      loginTime: new Date()
-    });
+      loginTime: now
+    }).catch(e => console.error('LoginActivity create error:', e.message));
 
     const token = jwt.sign(
       {
