@@ -60,8 +60,14 @@ async function getManagedUserIds(manager) {
 
   // 1. Match users in the manager's assigned department(s)
   if (departments.length > 0) {
-    // Case-insensitive regex match for department names
-    const deptRegexes = departments.map(d => new RegExp(`^${d.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}$`, 'i'));
+    // Case-insensitive regex match for department names with common aliases
+    const deptRegexes = departments.map(d => {
+      const clean = d.trim().toLowerCase();
+      if (clean === 'hr' || clean === 'human resource' || clean === 'human resources') {
+        return /^(hr|human\s*resources?)$/i;
+      }
+      return new RegExp(`^${d.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}$`, 'i');
+    });
     conditions.push({ department: { $in: deptRegexes } });
   }
 

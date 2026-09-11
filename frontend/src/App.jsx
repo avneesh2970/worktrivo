@@ -17,6 +17,7 @@ import Announcements from './pages/Announcements';
 import AdminSettings from './pages/AdminSettings';
 import Approvals from './pages/Approvals';
 import DailyReports from './pages/DailyReports';
+import MyTeam from './pages/MyTeam';
 
 const AdminRoute = ({ children }) => {
   const { user } = useAuth();
@@ -103,6 +104,15 @@ function App() {
               </ManagerOrAdminRoute>
             }
           />
+          <Route
+            path="team"
+            element={
+              <ManagerOrAdminRoute>
+                <MyTeam />
+              </ManagerOrAdminRoute>
+            }
+          />
+          <Route path="my-team" element={<Navigate to="/team" replace />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

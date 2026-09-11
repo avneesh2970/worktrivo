@@ -65,9 +65,41 @@ const getChatRooms = async (req, res) => {
       })
       .sort({ updatedAt: -1 });
 
+    const roomIds = rooms.map((r) => r._id);
+    const unreadMap = new Map();
+
+    if (roomIds.length > 0) {
+      const unreadCounts = await Message.aggregate([
+        {
+          $match: {
+            chatRoom: { $in: roomIds },
+            deleted: false,
+            sender: { $ne: userId },
+            "readBy.user": { $ne: userId },
+          },
+        },
+        {
+          $group: {
+            _id: "$chatRoom",
+            count: { $sum: 1 },
+          },
+        },
+      ]);
+
+      unreadCounts.forEach((u) => {
+        unreadMap.set(u._id.toString(), u.count);
+      });
+    }
+
+    const roomsWithUnread = rooms.map((r) => {
+      const obj = r.toObject ? r.toObject() : { ...r };
+      obj.unreadCount = unreadMap.get(r._id.toString()) || 0;
+      return obj;
+    });
+
     res.status(200).json({
       success: true,
-      data: rooms,
+      data: roomsWithUnread,
     });
   } catch (error) {
     console.error("Get Chat Rooms Error:", error);
@@ -406,6 +438,40 @@ const getMessages = async (req, res) => {
       });
     }
 
+    // Mark unread messages in this room as read for current user
+    await Message.updateMany(
+      {
+        chatRoom: roomId,
+        deleted: false,
+        sender: { $ne: userId },
+        "readBy.user": { $ne: userId },
+      },
+      {
+        $push: {
+          readBy: {
+            user: userId,
+            readAt: new Date(),
+          },
+        },
+      }
+    );
+
+    // Mark unread chat notifications for this room as read
+    try {
+      const Notification = require("../models/Notification");
+      await Notification.updateMany(
+        {
+          userId,
+          type: "chat",
+          chatRoomId: roomId,
+          read: false,
+        },
+        {
+          $set: { read: true },
+        }
+      );
+    } catch (notifErr) {}
+
     const messages = await Message.find({
       chatRoom: roomId,
       deleted: false,
@@ -424,6 +490,62 @@ const getMessages = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to fetch messages.",
+    });
+  }
+};
+
+// Mark entire room as read
+const markRoomRead = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const userId = req.user._id;
+
+    await Message.updateMany(
+      {
+        chatRoom: roomId,
+        deleted: false,
+        sender: { $ne: userId },
+        "readBy.user": { $ne: userId },
+      },
+      {
+        $push: {
+          readBy: {
+            user: userId,
+            readAt: new Date(),
+          },
+        },
+      }
+    );
+
+    try {
+      const Notification = require("../models/Notification");
+      await Notification.updateMany(
+        {
+          userId,
+          type: "chat",
+          chatRoomId: roomId,
+          read: false,
+        },
+        {
+          $set: { read: true },
+        }
+      );
+    } catch (notifErr) {}
+
+    const io = getIo();
+    if (io) {
+      io.to(roomId.toString()).emit("room_read", { roomId, userId });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Room marked as read.",
+    });
+  } catch (error) {
+    console.error("Mark Room Read Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to mark room as read.",
     });
   }
 };
@@ -971,7 +1093,15 @@ const sendMessageWithMentions = async (req, res) => {
     const io = getIo();
 
     if (io) {
-      io.to(chatRoom).emit("receive_message", populatedMessage);
+      const roomStr = chatRoom.toString();
+      io.to(roomStr).emit("receive_message", populatedMessage);
+
+      // Also emit directly to every member of the room so their sidebar updates immediately
+      if (Array.isArray(room.members)) {
+        room.members.forEach((memberId) => {
+          io.to(memberId.toString()).emit("receive_message", populatedMessage);
+        });
+      }
 
       uniqueMentions.forEach((mentionedUserId) => {
         if (mentionedUserId !== req.user._id.toString()) {
@@ -981,6 +1111,36 @@ const sendMessageWithMentions = async (req, res) => {
           });
         }
       });
+
+      // Send chat notifications to all members except sender
+      const senderName = req.user.name || "Someone";
+      const previewText = text
+        ? text.length > 50
+          ? text.substring(0, 50) + "..."
+          : text
+        : attachments?.length
+        ? "Sent an attachment"
+        : "Sent a message";
+      const roomTitle = room.type === "direct" ? "Direct Message" : room.name || "Community";
+
+      const Notification = require("../models/Notification");
+      const { sendInAppNotification } = require("../utils/socket");
+
+      if (Array.isArray(room.members)) {
+        for (const memberId of room.members) {
+          const mIdStr = (memberId._id || memberId).toString();
+          if (mIdStr !== req.user._id.toString()) {
+            Notification.create({
+              userId: memberId,
+              message: `${senderName}${room.type !== "direct" ? ` in ${roomTitle}` : ""}: "${previewText}"`,
+              type: "chat",
+              chatRoomId: room._id,
+            })
+              .then((notif) => sendInAppNotification(memberId, notif))
+              .catch((err) => console.error("Chat notif save error:", err.message));
+          }
+        }
+      }
     }
 
     res.status(201).json({
@@ -998,6 +1158,36 @@ const sendMessageWithMentions = async (req, res) => {
   }
 };
 
+// Upload Chat Attachment (images, docs, pdfs, max 5MB)
+const uploadChatAttachment = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "Please choose a file to upload.",
+      });
+    }
+
+    const fileUrl = req.file.path || req.file.secure_url || `/uploads/chat/${req.file.filename}`;
+
+    res.status(200).json({
+      success: true,
+      file: {
+        fileName: req.file.originalname,
+        fileUrl,
+        fileType: req.file.mimetype,
+        fileSize: req.file.size,
+      },
+    });
+  } catch (error) {
+    console.error("Upload Chat Attachment Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to upload chat attachment.",
+    });
+  }
+};
+
 module.exports = {
   getRoomMentions,
   getUserMentions,
@@ -1007,6 +1197,7 @@ module.exports = {
   approveRoom,
   rejectRoom,
   getMessages,
+  markRoomRead,
   sendMessage,
   addMember,
   removeMember,
@@ -1017,4 +1208,5 @@ module.exports = {
   unpinMessage,
   sendMessageWithMentions,
   searchMentionUsers,
+  uploadChatAttachment,
 };

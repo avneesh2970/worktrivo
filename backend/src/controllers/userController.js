@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const Task = require('../models/Task');
 const DailyReport = require('../models/DailyReport');
+const Group = require('../models/Group');
 const transporter = require('../utils/nodemailer');
 const csv = require('csv-parser');
 const { Readable } = require('stream'); // Core Node.js module
@@ -193,13 +194,20 @@ exports.getUsers = async (req, res) => {
     } else if (req.user.role === 'manager') {
       const fullManager = await User.findById(req.user._id);
       const managedIds = await getManagedUserIds(fullManager);
-      const teamUserIds = [...managedIds, req.user._id];
 
-      const users = await User.find({ _id: { $in: teamUserIds }, active: true })
+      // Manager can strictly ONLY see members belonging to their assigned team
+      const users = await User.find({ _id: { $in: managedIds }, active: true })
         .populate('assignedMembers', '_id name email role department employeeId profilePhoto designationRole')
         .populate('manager', '_id name email role profilePhoto designationRole department')
         .sort({ name: 1 });
-      res.json(users);
+
+      const usersWithMeta = users.map(u => {
+        const uObj = u.toObject();
+        uObj.isDirectReport = true;
+        return uObj;
+      });
+
+      res.json(usersWithMeta);
     } else {
       const users = await User.find(
         { active: true },
@@ -477,17 +485,18 @@ exports.getUserOverview = async (req, res) => {
     const { id } = req.params;
     const { date, startDate, endDate } = req.query;
 
-    // Permissions check
+    // Permissions check: regular members can only view their own profile.
     if (req.user.role === 'member' && req.user._id.toString() !== id.toString()) {
       return res.status(403).json({ error: 'Access denied. You can only view your own profile.' });
     }
 
+    // Managers can strictly ONLY view members of their assigned team (or themselves)
     if (req.user.role === 'manager' && req.user._id.toString() !== id.toString()) {
       const fullManager = await User.findById(req.user._id);
       const managedIds = await getManagedUserIds(fullManager);
-      const allowedIds = [...managedIds.map(m => m.toString()), req.user._id.toString()];
+      const allowedIds = managedIds.map(m => m.toString());
       if (!allowedIds.includes(id.toString())) {
-        return res.status(403).json({ error: 'Access denied. User is not in your managed department or team.' });
+        return res.status(403).json({ error: 'Access denied. You can only view members of your assigned team.' });
       }
     }
 
@@ -568,6 +577,17 @@ exports.getUserOverview = async (req, res) => {
     const rejectedReports = reports.filter(r => r.status === 'Rejected').length;
     const blockersCount = reports.filter(r => r.blockers && r.blockers.trim()).length;
 
+    // 3. Fetch Projects / Groups (User is a member or creator)
+    const groups = await Group.find({
+      $or: [
+        { members: id },
+        { createdBy: id }
+      ]
+    })
+      .populate('createdBy', '_id name email role')
+      .populate('members', '_id name email role profilePhoto designationRole department')
+      .sort({ updatedAt: -1 });
+
     res.json({
       success: true,
       user: targetUser,
@@ -587,6 +607,10 @@ exports.getUserOverview = async (req, res) => {
         rejected: rejectedReports,
         blockers: blockersCount,
         list: reports
+      },
+      projects: {
+        total: groups.length,
+        list: groups
       }
     });
   } catch (err) {

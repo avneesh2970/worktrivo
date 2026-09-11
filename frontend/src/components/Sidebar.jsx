@@ -41,6 +41,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
   });
   
   const [pendingApprovals, setPendingApprovals] = useState(0);
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
 
   const handleCronTrigger = async () => {
     try {
@@ -61,6 +62,22 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
   const handleNavClick = () => {
     if (window.innerWidth < 1024 && toggleSidebar) {
       toggleSidebar();
+    }
+  };
+
+  const fetchUnreadChatCount = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_BASE}/chat/rooms`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+      const json = await res.json();
+      const rooms = json.data || [];
+      const total = rooms.reduce((sum, r) => sum + (r.unreadCount || 0), 0);
+      setUnreadChatCount(total);
+    } catch (err) {
+      console.error("Error fetching unread chat count in sidebar:", err);
     }
   };
 
@@ -114,6 +131,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
   useEffect(() => {
     if (token) {
       fetchSidebarStats();
+      fetchUnreadChatCount();
     }
   }, [token]);
 
@@ -124,6 +142,22 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
   }, [token, user?.role]);
 
   useEffect(() => {
+    const handleChatRefresh = () => {
+      fetchUnreadChatCount();
+    };
+
+    window.addEventListener("chat_unread_updated", handleChatRefresh);
+    window.addEventListener("room_read", handleChatRefresh);
+    window.addEventListener("new_chat_message", handleChatRefresh);
+
+    return () => {
+      window.removeEventListener("chat_unread_updated", handleChatRefresh);
+      window.removeEventListener("room_read", handleChatRefresh);
+      window.removeEventListener("new_chat_message", handleChatRefresh);
+    };
+  }, [token]);
+
+  useEffect(() => {
     if (!socket) return;
     
     let debounceTimer = null;
@@ -131,6 +165,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
       if (debounceTimer) clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
         fetchSidebarStats();
+        fetchUnreadChatCount();
         if (user?.role === "admin" || user?.role === "manager") {
           fetchPendingApprovalsCount();
         }
@@ -140,12 +175,16 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
     socket.on("taskUpdated", debouncedRefresh);
     socket.on("projectUpdated", debouncedRefresh);
     socket.on("dailyReportUpdated", debouncedRefresh);
+    socket.on("chat_room_created", debouncedRefresh);
+    socket.on("receive_message", debouncedRefresh);
 
     return () => {
       if (debounceTimer) clearTimeout(debounceTimer);
       socket.off("taskUpdated", debouncedRefresh);
       socket.off("projectUpdated", debouncedRefresh);
       socket.off("dailyReportUpdated", debouncedRefresh);
+      socket.off("chat_room_created", debouncedRefresh);
+      socket.off("receive_message", debouncedRefresh);
     };
   }, [socket, user?.role]);
 
@@ -233,7 +272,13 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
             {[
               { to: "/", icon: LayoutDashboard, label: "Dashboard", badge: stats.dashboard, badgeBg: "bg-[#10b981]/15 text-[#10b981] border border-[#10b981]/30" },
               { to: "/daily-reports", icon: FileText, label: "Daily Reports" },
-              { to: "/chat", icon: MessageSquare, label: "Discussion" },
+              {
+                to: "/chat",
+                icon: MessageSquare,
+                label: "Discussion",
+                badge: unreadChatCount > 0 ? (unreadChatCount > 99 ? "99+" : unreadChatCount) : null,
+                badgeBg: "bg-emerald-500 text-slate-950 font-black shadow-sm",
+              },
               { to: "/announcements", icon: Megaphone, label: "Announcements" },
               { to: "/profile", icon: UserCircle, label: "My Profile" },
               { to: "/groups", icon: FolderKanban, label: "Projects" },
@@ -273,6 +318,23 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                 <p className="px-3 mb-2 text-[10px] font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">
                   {user?.role === "admin" ? "Admin" : "Management"}
                 </p>
+
+                <NavLink
+                  to="/team"
+                  onClick={handleNavClick}
+                  className={({ isActive }) =>
+                    `flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium transition-all duration-200 active:scale-[0.98] ${
+                      isActive
+                        ? `bg-[#10b981]/15 text-[#10b981] font-semibold border border-[#10b981]/30 shadow-sm`
+                        : `text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900/60 hover:text-slate-900 dark:hover:text-slate-200`
+                    }`
+                  }
+                >
+                  <UsersRound size={18} className="shrink-0 opacity-80" />
+                  <div className="flex w-full items-center justify-between">
+                    <span>My Team</span>
+                  </div>
+                </NavLink>
 
                 <NavLink
                   to="/approvals"

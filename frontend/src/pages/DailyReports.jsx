@@ -337,15 +337,35 @@ const DailyReports = () => {
 
   // Socket listener for real-time updates
   useEffect(() => {
-    if (!socket) return;
-    const handleUpdate = () => {
+    const handleUpdate = (e) => {
+      const updatedReport = e?.detail || e;
+      if (updatedReport && updatedReport._id) {
+        setReports((prev) => {
+          if (updatedReport.deleted) {
+            return prev.filter((r) => r._id !== updatedReport._id);
+          }
+          const exists = prev.some((r) => r._id === updatedReport._id);
+          if (exists) {
+            return prev.map((r) => (r._id === updatedReport._id ? updatedReport : r));
+          }
+          return [updatedReport, ...prev];
+        });
+      }
       fetchReports();
       fetchStats();
       if (isAdmin || isManager) fetchSummary();
     };
-    socket.on('dailyReportUpdated', handleUpdate);
+
+    if (socket) {
+      socket.on('dailyReportUpdated', handleUpdate);
+    }
+    window.addEventListener('refreshDailyReports', handleUpdate);
+
     return () => {
-      socket.off('dailyReportUpdated', handleUpdate);
+      if (socket) {
+        socket.off('dailyReportUpdated', handleUpdate);
+      }
+      window.removeEventListener('refreshDailyReports', handleUpdate);
     };
   }, [socket, isAdmin, isManager, dateFilter, startDate, endDate, statusFilter, deptFilter, selectedMemberId, searchQuery]);
 
@@ -453,8 +473,26 @@ const DailyReports = () => {
         setFormBlockers('');
         setSelectedTaskIds([]);
         if (viewingReport) setViewingReport(null);
+
+        // Immediately update reports list without waiting for full refetch
+        if (data && data._id) {
+          setReports((prev) => {
+            const exists = prev.some((r) => r._id === data._id);
+            if (exists) {
+              return prev.map((r) => (r._id === data._id ? data : r));
+            }
+            return [data, ...prev];
+          });
+        }
+
+        // Notify socket in real-time
+        if (socket && socket.connected) {
+          socket.emit('dailyReportUpdated', data);
+        }
+
         fetchReports();
         fetchStats();
+        if (isAdmin || isManager) fetchSummary();
       } else {
         toast.error(data.error || 'Failed to submit report.');
       }

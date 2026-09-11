@@ -478,32 +478,49 @@ router.post('/', async (req, res) => {
       await report.save();
     }
 
-    // Real-time notifications and sockets
-    const io = getIo();
-    if (io) {
-      io.to('admins').emit('dailyReportUpdated');
-    }
-
-    // Notify Managers who manage this user
-    if (userObj) {
-      const managers = await User.find({ role: 'manager', active: true });
-      for (const mgr of managers) {
-        const managesUser = await isUserManagedBy(mgr, req.user._id);
-        if (managesUser) {
-          const notif = new Notification({
-            userId: mgr._id,
-            message: `Daily report ${existing ? 'resubmitted' : 'submitted'} by ${userObj.name} (${userObj.department || 'No Department'}).`,
-            type: 'report'
-          });
-          await notif.save();
-          sendInAppNotification(mgr._id, notif);
-          if (io) io.to(mgr._id.toString()).emit('dailyReportUpdated');
-        }
-      }
-    }
-
     const populated = await DailyReport.findById(report._id)
       .populate('user', '_id name email role profilePhoto designationRole department employeeId');
+
+    // Real-time broadcast to all connected clients (Admins, Managers, Members)
+    const io = getIo();
+    if (io) {
+      io.emit('dailyReportUpdated', populated);
+    }
+
+    // In-app notifications to managers and admins
+    if (userObj) {
+      const recipientIds = new Set();
+
+      // Notify Admins
+      const admins = await User.find({ role: 'admin', active: true }).select('_id');
+      admins.forEach((adm) => {
+        if (adm._id.toString() !== req.user._id.toString()) {
+          recipientIds.add(adm._id.toString());
+        }
+      });
+
+      // Notify Managers who manage this user
+      const managers = await User.find({ role: 'manager', active: true });
+      for (const mgr of managers) {
+        if (mgr._id.toString() !== req.user._id.toString()) {
+          const managesUser = await isUserManagedBy(mgr, req.user._id);
+          if (managesUser) {
+            recipientIds.add(mgr._id.toString());
+          }
+        }
+      }
+
+      for (const recId of recipientIds) {
+        const notif = new Notification({
+          userId: recId,
+          message: `Daily report ${existing ? 'resubmitted' : 'submitted'} by ${userObj.name} (${userObj.department || 'No Department'}).`,
+          type: 'report',
+          reportId: report._id
+        });
+        notif.save().catch((e) => console.error('Notif save error:', e.message));
+        sendInAppNotification(recId, notif);
+      }
+    }
 
     res.status(201).json(populated);
   } catch (err) {
@@ -550,15 +567,45 @@ router.put('/:id', async (req, res) => {
 
     await report.save();
 
-    const io = getIo();
-    if (io) {
-      io.to('admins').emit('dailyReportUpdated');
-      io.to(report.user.toString()).emit('dailyReportUpdated');
-    }
-
     const populated = await DailyReport.findById(report._id)
       .populate('user', '_id name email role profilePhoto designationRole department employeeId')
       .populate('reviewedBy', '_id name email role');
+
+    const io = getIo();
+    if (io) {
+      io.emit('dailyReportUpdated', populated);
+    }
+
+    // Send notifications to managers and admins
+    const submitter = await User.findById(report.user);
+    if (submitter) {
+      const recipientIds = new Set();
+      const admins = await User.find({ role: 'admin', active: true }).select('_id');
+      admins.forEach((adm) => {
+        if (adm._id.toString() !== req.user._id.toString()) {
+          recipientIds.add(adm._id.toString());
+        }
+      });
+      const managers = await User.find({ role: 'manager', active: true });
+      for (const mgr of managers) {
+        if (mgr._id.toString() !== req.user._id.toString()) {
+          const managesUser = await isUserManagedBy(mgr, report.user);
+          if (managesUser) {
+            recipientIds.add(mgr._id.toString());
+          }
+        }
+      }
+      for (const recId of recipientIds) {
+        const notif = new Notification({
+          userId: recId,
+          message: `Daily report updated and resubmitted by ${submitter.name} (${submitter.department || 'No Department'}).`,
+          type: 'report',
+          reportId: report._id
+        });
+        notif.save().catch((e) => console.error('Notif save error:', e.message));
+        sendInAppNotification(recId, notif);
+      }
+    }
 
     res.json(populated);
   } catch (err) {
@@ -620,7 +667,8 @@ router.patch('/:id/status', async (req, res) => {
     const notification = new Notification({
       userId: report.user,
       message: `Your daily report for ${new Date(report.reportDate).toLocaleDateString()} has been ${status.toLowerCase()}.${feedback ? ` Feedback: "${feedback.trim()}"` : ''}`,
-      type: 'report'
+      type: 'report',
+      reportId: report._id
     });
     notification.save().catch(e => console.error('Notification save error:', e.message));
     sendInAppNotification(report.user, notification);
@@ -644,12 +692,10 @@ router.patch('/:id/status', async (req, res) => {
       );
     }
 
-    // Sockets
+    // Sockets: broadcast to all connected clients
     const io = getIo();
     if (io) {
-      io.to('admins').emit('dailyReportUpdated');
-      io.to(report.user._id ? report.user._id.toString() : report.user.toString()).emit('dailyReportUpdated');
-      io.to(req.user._id.toString()).emit('dailyReportUpdated');
+      io.emit('dailyReportUpdated', report);
     }
 
     res.json({ message: `Daily report ${status.toLowerCase()} successfully.`, report });
@@ -683,8 +729,7 @@ router.delete('/:id', async (req, res) => {
 
     const io = getIo();
     if (io) {
-      io.to('admins').emit('dailyReportUpdated');
-      io.to(report.user.toString()).emit('dailyReportUpdated');
+      io.emit('dailyReportUpdated', { _id: req.params.id, deleted: true });
     }
 
     res.json({ message: 'Daily report deleted successfully.' });

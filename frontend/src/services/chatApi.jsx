@@ -90,6 +90,15 @@ export const useChatApi = () => {
     sendMessageWithMentions: async (data) =>
       (await apiClient.post("/chat/messages", data)).data,
 
+    uploadAttachment: async (formData) =>
+      (
+        await apiClient.post("/chat/upload", formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        })
+      ).data,
+
     // ---------------- Mention Search ----------------
     searchMentionUsers: async (roomId, query = "") =>
       (
@@ -115,6 +124,11 @@ export const useChatApi = () => {
       ).data,
 
     // ---------------- Message Actions ----------------
+    markRoomRead: async (roomId) =>
+      (
+        await apiClient.patch(`/chat/rooms/${roomId}/read`)
+      ).data,
+
     markMessageRead: async (messageId) =>
       (
         await apiClient.patch(`/chat/message/${messageId}/read`)

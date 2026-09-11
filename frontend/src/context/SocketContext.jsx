@@ -42,9 +42,27 @@ export const SocketProvider = ({ children }) => {
 
   useEffect(() => {
     fetchNotifications();
+    if (token && typeof window !== "undefined" && "Notification" in window) {
+      if (Notification.permission === "default") {
+        Notification.requestPermission().catch(() => {});
+      }
+    }
   }, [token]);
 
   // ---------------- Socket ----------------
+
+  const resolveSocketUrl = () => {
+    if (import.meta.env.VITE_SOCKET_URL) {
+      return import.meta.env.VITE_SOCKET_URL;
+    }
+    if (import.meta.env.VITE_API_BASE) {
+      return import.meta.env.VITE_API_BASE.replace(/\/api\/?$/, "");
+    }
+    if (typeof window !== "undefined" && window.location.hostname !== "localhost") {
+      return window.location.origin;
+    }
+    return "http://localhost:5000";
+  };
 
   useEffect(() => {
     if (!token || !user) {
@@ -53,19 +71,27 @@ export const SocketProvider = ({ children }) => {
       return;
     }
 
-    const socketUrl =
-      import.meta.env.VITE_SOCKET_URL || "http://localhost:5000";
+    const socketUrl = resolveSocketUrl();
 
     const newSocket = io(socketUrl, {
       auth: {
         token,
       },
+      transports: ["websocket", "polling"],
+      reconnection: true,
+      reconnectionAttempts: 20,
+      reconnectionDelay: 1000,
+      timeout: 10000,
     });
 
     setSocket(newSocket);
 
     newSocket.on("connect", () => {
-      console.log("Socket Connected");
+      console.log("Socket Connected to:", socketUrl);
+    });
+
+    newSocket.on("connect_error", (err) => {
+      console.warn("Socket connection error:", err.message);
     });
 
     // ---------------- Notifications ----------------
@@ -74,27 +100,43 @@ export const SocketProvider = ({ children }) => {
       setNotifications((prev) => [notification, ...prev]);
       setUnreadCount((prev) => prev + 1);
 
-      if (Notification.permission === "granted") {
-        new Notification("Task Management System", {
+      if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+        const title = notification.type === "chat" ? "New Chat Message" : (notification.type === "report" ? "Daily Report Update" : "WorkTrivo");
+        new Notification(title, {
           body: notification.message,
         });
       }
     });
 
-        newSocket.on("projectUpdated", () => {
+    newSocket.on("room_read", (data) => {
+      window.dispatchEvent(new CustomEvent("room_read", { detail: data }));
+    });
 
-    window.dispatchEvent(
+    newSocket.on("projectUpdated", () => {
+      window.dispatchEvent(new Event("refreshProjects"));
+    });
 
-        new Event("refreshProjects")
+    // ---------------- Real-time Daily Reports ----------------
+    newSocket.on("dailyReportUpdated", (payload) => {
+      console.log("Received real-time dailyReportUpdated:", payload);
+      window.dispatchEvent(
+        new CustomEvent("refreshDailyReports", { detail: payload })
+      );
+    });
 
-    );
-
-});
+    newSocket.on("taskUpdated", (payload) => {
+      window.dispatchEvent(
+        new CustomEvent("refreshTasks", { detail: payload })
+      );
+    });
 
     // ---------------- Messages ----------------
 
     newSocket.on("receive_message", (message) => {
       console.log("Received socket message:", message);
+      window.dispatchEvent(
+        new CustomEvent("new_chat_message", { detail: message })
+      );
       setMessages((prev) => {
         const exists = prev.some((m) => m._id === message._id);
         if (exists) return prev;

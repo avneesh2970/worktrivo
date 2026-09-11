@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useMemo } from "react";
+import { useLocation } from "react-router-dom";
 import { useChatApi } from "../services/chatApi";
 import {
   Send,
@@ -30,15 +31,23 @@ import {
   User,
   Radio,
   Share2,
+  Paperclip,
+  FileText,
+  Download,
+  File,
 } from "lucide-react";
 
 import { useAuth, API_BASE } from "../context/AuthContext";
 import { useSocket } from "../context/SocketContext";
 
 const ChatApp = () => {
+  const location = useLocation();
+  const targetRoomIdFromNav = location.state?.chatRoomId;
+
   const {
     getChatRooms,
     getMessages,
+    markRoomRead,
     createRoom,
     getOrCreateDirectRoom,
     approveRoom,
@@ -48,6 +57,7 @@ const ChatApp = () => {
     unpinMessage,
     sendMessageWithMentions,
     searchMentionUsers,
+    uploadAttachment,
   } = useChatApi();
 
   const { user, token } = useAuth();
@@ -83,6 +93,59 @@ const ChatApp = () => {
   const [activePinnedIndex, setActivePinnedIndex] = useState(0);
   const [showPinnedBar, setShowPinnedBar] = useState(true);
 
+  // Message 500-char Wrap & Attachment States
+  const [expandedMessages, setExpandedMessages] = useState(new Set());
+  const [attachmentFile, setAttachmentFile] = useState(null);
+  const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const toggleExpandMessage = (msgId) => {
+    setExpandedMessages((prev) => {
+      const next = new Set(prev);
+      if (next.has(msgId)) {
+        next.delete(msgId);
+      } else {
+        next.add(msgId);
+      }
+      return next;
+    });
+  };
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Strict 5 MB limit
+    const MAX_SIZE = 5 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      showToast("File size exceeds 5 MB limit. Please select a file smaller than 5 MB.", "error");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    const isImg = file.type.startsWith("image/");
+    const previewUrl = isImg ? URL.createObjectURL(file) : null;
+
+    setAttachmentFile({
+      file,
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      previewUrl,
+      isImage: isImg,
+    });
+  };
+
+  const removeAttachment = () => {
+    if (attachmentFile?.previewUrl) {
+      URL.revokeObjectURL(attachmentFile.previewUrl);
+    }
+    setAttachmentFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
   // Layout & Drawers
   const [showMembersDrawer, setShowMembersDrawer] = useState(false);
   const [showSidebarMobile, setShowSidebarMobile] = useState(true);
@@ -111,6 +174,7 @@ const ChatApp = () => {
   const toastTimeout = useRef(null);
   const mentionRequestId = useRef(0);
   const chatInputRef = useRef(null);
+  const isSendingRef = useRef(false);
 
   const showToast = (msg, type = "info") => {
     setToastMessage({ msg, type });
@@ -120,9 +184,9 @@ const ChatApp = () => {
 
   // Load Rooms on mount
   useEffect(() => {
-    loadRooms();
+    loadRooms(targetRoomIdFromNav);
     fetchAllUsers();
-  }, []);
+  }, [targetRoomIdFromNav]);
 
   // Socket event listeners for real-time room updates
   useEffect(() => {
@@ -181,6 +245,16 @@ const ChatApp = () => {
     loadMessages(selectedRoom._id);
     joinRoom(selectedRoom._id);
 
+    // Reset unread count for the opened room
+    setRooms((prev) =>
+      prev.map((r) => (r._id === selectedRoom._id ? { ...r, unreadCount: 0 } : r))
+    );
+    markRoomRead(selectedRoom._id).catch(() => {});
+    if (socket) {
+      socket.emit("mark_room_read", { roomId: selectedRoom._id });
+    }
+    window.dispatchEvent(new CustomEvent("chat_unread_updated"));
+
     // On mobile, collapse sidebar when room is chosen
     setShowSidebarMobile(false);
 
@@ -202,6 +276,65 @@ const ChatApp = () => {
       })
     );
   }, [messages]);
+
+  // Update room list immediately when a real-time message arrives
+  useEffect(() => {
+    const handleNewChatMessage = (e) => {
+      const newMsg = e.detail;
+      if (!newMsg) return;
+      const msgRoomId = (newMsg.chatRoom?._id || newMsg.chatRoom || "").toString();
+      const isFromSelf = (newMsg.sender?._id || newMsg.sender)?.toString() === user?._id?.toString();
+
+      setRooms((prev) => {
+        const next = prev.map((r) => {
+          if (r._id?.toString() === msgRoomId) {
+            const isCurrentRoom = selectedRoom?._id?.toString() === msgRoomId;
+            const newUnread = isCurrentRoom || isFromSelf ? 0 : (r.unreadCount || 0) + 1;
+            return {
+              ...r,
+              lastMessage: newMsg,
+              unreadCount: newUnread,
+              updatedAt: newMsg.createdAt || new Date().toISOString(),
+            };
+          }
+          return r;
+        });
+
+        const activeIndex = next.findIndex((r) => r._id?.toString() === msgRoomId);
+        if (activeIndex > 0) {
+          const [targeted] = next.splice(activeIndex, 1);
+          return [targeted, ...next];
+        }
+        return next;
+      });
+
+      if (selectedRoom?._id?.toString() === msgRoomId) {
+        markRoomRead(msgRoomId).catch(() => {});
+        if (socket) {
+          socket.emit("mark_room_read", { roomId: msgRoomId });
+        }
+      }
+
+      window.dispatchEvent(new CustomEvent("chat_unread_updated"));
+    };
+
+    window.addEventListener("new_chat_message", handleNewChatMessage);
+    return () => window.removeEventListener("new_chat_message", handleNewChatMessage);
+  }, [selectedRoom?._id, user?._id, socket]);
+
+  // Listen to room_read event
+  useEffect(() => {
+    const handleRoomRead = (e) => {
+      const { roomId, userId } = e.detail || {};
+      if (userId === user?._id) {
+        setRooms((prev) =>
+          prev.map((r) => (r._id?.toString() === roomId?.toString() ? { ...r, unreadCount: 0 } : r))
+        );
+      }
+    };
+    window.addEventListener("room_read", handleRoomRead);
+    return () => window.removeEventListener("room_read", handleRoomRead);
+  }, [user?._id]);
 
   // Clean up timers
   useEffect(() => {
@@ -435,34 +568,121 @@ const ChatApp = () => {
   // Message Sending
   const handleSend = async (e) => {
     e?.preventDefault();
-    if (!text.trim() || !selectedRoom) return;
+    if ((!text.trim() && !attachmentFile) || !selectedRoom || isSendingRef.current) return;
 
     if (selectedRoom.approvalStatus === "Pending") {
       showToast("Cannot send messages. This community is awaiting Admin approval.", "error");
       return;
     }
 
+    isSendingRef.current = true;
+
+    const messageText = text.trim();
+    const currentMentions = [...mentionedUsers];
+    const currentAttachment = attachmentFile;
+    const tempId = `temp_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const tempCreatedAt = new Date().toISOString();
+
+    const optimisticAttachments = currentAttachment
+      ? [
+          {
+            fileName: currentAttachment.name,
+            fileUrl: currentAttachment.previewUrl || "",
+            fileType: currentAttachment.type,
+            fileSize: currentAttachment.size,
+          },
+        ]
+      : [];
+
+    const optimisticMsg = {
+      _id: tempId,
+      chatRoom: selectedRoom._id,
+      sender: {
+        _id: user?._id,
+        name: user?.name || "Me",
+        profilePhoto: user?.profilePhoto,
+        role: user?.role,
+        designationRole: user?.designationRole,
+        department: user?.department,
+      },
+      text: messageText,
+      attachments: optimisticAttachments,
+      mentions: currentMentions,
+      replyTo: null,
+      createdAt: tempCreatedAt,
+      pending: true,
+    };
+
+    // 1. Immediately show message in chat (0ms perceived latency)
+    setMessages((prev) => [...prev, optimisticMsg]);
+
+    setText("");
+    setAttachmentFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    setMentionedUsers([]);
+    setMentionSuggestions([]);
+    setShowMentionBox(false);
+
+    clearTimeout(typingTimeout.current);
+    stopTyping(selectedRoom._id);
+
+    // Reset textarea height to 1 line
+    if (chatInputRef.current) {
+      chatInputRef.current.style.height = "auto";
+    }
+
     try {
+      let finalAttachments = [];
+
+      if (currentAttachment) {
+        setIsUploadingAttachment(true);
+        const formData = new FormData();
+        formData.append("file", currentAttachment.file);
+        const uploadRes = await uploadAttachment(formData);
+        if (uploadRes?.file) {
+          finalAttachments = [uploadRes.file];
+        }
+      }
+
       const messagePayload = {
         chatRoom: selectedRoom._id,
-        text: text.trim(),
-        attachments: [],
-        mentions: mentionedUsers.map((u) => u._id),
+        text: messageText,
+        attachments: finalAttachments,
+        mentions: currentMentions.map((u) => u._id),
         replyTo: null,
       };
 
-      setText("");
-      setMentionedUsers([]);
-      setMentionSuggestions([]);
-      setShowMentionBox(false);
+      // ONLY call sendMessageWithMentions: Backend saves to MongoDB and broadcasts via WebSocket.
+      const res = await sendMessageWithMentions(messagePayload);
+      const savedMsg = res?.data || res;
 
-      clearTimeout(typingTimeout.current);
-      stopTyping(selectedRoom._id);
+      if (savedMsg && savedMsg._id) {
+        setMessages((prev) => {
+          // Check if socket already inserted the message with savedMsg._id
+          const exists = prev.some((m) => m._id === savedMsg._id);
+          if (exists) {
+            return prev.filter((m) => m._id !== tempId);
+          }
+          return prev.map((m) => (m._id === tempId ? savedMsg : m));
+        });
 
-      await sendMessageWithMentions(messagePayload);
+        // Update room list's last message immediately
+        setRooms((prev) =>
+          prev.map((r) =>
+            r._id === selectedRoom._id
+              ? { ...r, lastMessage: savedMsg, updatedAt: savedMsg.createdAt || tempCreatedAt }
+              : r
+          )
+        );
+      }
     } catch (err) {
-      console.error(err);
+      console.error("Send message error:", err);
+      // Remove optimistic message if submission failed
+      setMessages((prev) => prev.filter((m) => m._id !== tempId));
       showToast(err.response?.data?.message || "Failed to send message", "error");
+    } finally {
+      setIsUploadingAttachment(false);
+      isSendingRef.current = false;
     }
   };
 
@@ -470,6 +690,12 @@ const ChatApp = () => {
   const handleTyping = async (e) => {
     const value = e.target.value;
     setText(value);
+
+    // Auto-grow textarea up to max-h-36 (144px)
+    if (chatInputRef.current) {
+      chatInputRef.current.style.height = "auto";
+      chatInputRef.current.style.height = `${Math.min(chatInputRef.current.scrollHeight, 144)}px`;
+    }
 
     if (!selectedRoom) return;
 
@@ -606,8 +832,14 @@ const ChatApp = () => {
     return d.toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" });
   };
 
-  const renderMessageContent = (msg) => {
-    let parts = [msg.text];
+  const renderMessageContent = (msg, isMine = false) => {
+    if (!msg?.text) return null;
+
+    const isLong = msg.text.length > 500;
+    const isExpanded = expandedMessages.has(msg._id);
+    const contentText = isLong && !isExpanded ? `${msg.text.slice(0, 500)}...` : msg.text;
+
+    let parts = [contentText];
     msg.mentions?.forEach((mention) => {
       parts = parts.flatMap((part) => {
         if (typeof part !== "string") return [part];
@@ -626,11 +858,41 @@ const ChatApp = () => {
         });
       });
     });
-    return parts;
+
+    return (
+      <div>
+        <div className="whitespace-pre-wrap break-words">{parts}</div>
+        {isLong && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleExpandMessage(msg._id);
+            }}
+            className={`mt-1.5 inline-flex items-center gap-1 text-[11px] font-bold cursor-pointer underline transition-opacity hover:opacity-80 ${
+              isMine ? "text-slate-950 font-black" : "text-[#10b981]"
+            }`}
+          >
+            {isExpanded ? "Show less" : `Read full message (${msg.text.length} chars)`}
+          </button>
+        )}
+      </div>
+    );
   };
 
-  const pinnedMessages = messages.filter((m) => m.pinned && !m.deleted);
-  const displayMessages = messages.filter((m) => !m.deleted);
+  const displayMessages = useMemo(() => {
+    if (!selectedRoom) return [];
+    const currentRoomId = selectedRoom._id?.toString();
+    return messages.filter((m) => {
+      if (m.deleted) return false;
+      const msgRoomId = (m.chatRoom?._id || m.chatRoom || "").toString();
+      return !msgRoomId || msgRoomId === currentRoomId;
+    });
+  }, [messages, selectedRoom?._id]);
+
+  const pinnedMessages = useMemo(() => {
+    return displayMessages.filter((m) => m.pinned);
+  }, [displayMessages]);
   const otherTypingUsers = typingUsers.filter((name) => name !== user?.name);
 
   const activeRoomDisplay = selectedRoom ? getRoomDisplay(selectedRoom) : null;
@@ -814,7 +1076,17 @@ const ChatApp = () => {
               return (
                 <div
                   key={room._id}
-                  onClick={() => setSelectedRoom(room)}
+                  onClick={() => {
+                    setSelectedRoom(room);
+                    setRooms((prev) =>
+                      prev.map((r) => (r._id === room._id ? { ...r, unreadCount: 0 } : r))
+                    );
+                    markRoomRead(room._id).catch(() => {});
+                    if (socket) {
+                      socket.emit("mark_room_read", { roomId: room._id });
+                    }
+                    window.dispatchEvent(new CustomEvent("chat_unread_updated"));
+                  }}
                   className={`
                     group relative flex items-center gap-3 p-3 rounded-2xl transition-all cursor-pointer select-none
                     ${
@@ -877,7 +1149,7 @@ const ChatApp = () => {
                       </p>
 
                       {/* Status Badges */}
-                      <div className="flex items-center gap-1 shrink-0">
+                      <div className="flex items-center gap-1.5 shrink-0">
                         {isPending && (
                           <span className="px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-[10px] font-extrabold flex items-center gap-1">
                             <Clock size={10} />
@@ -888,6 +1160,12 @@ const ChatApp = () => {
                         {room.type === "direct" && (
                           <span className="px-1.5 py-0.5 rounded-md bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[10px] font-semibold">
                             1-on-1
+                          </span>
+                        )}
+
+                        {room.unreadCount > 0 && (
+                          <span className="px-2 py-0.5 rounded-full bg-emerald-500 text-slate-950 text-[10px] font-black shadow-sm shrink-0 animate-pulse">
+                            {room.unreadCount > 99 ? "99+" : room.unreadCount}
                           </span>
                         )}
                       </div>
@@ -1204,11 +1482,17 @@ const ChatApp = () => {
                             {/* Editing mode */}
                             {editingId === msg._id ? (
                               <div className="space-y-2">
-                                <input
-                                  type="text"
+                                <textarea
+                                  rows={2}
                                   value={editingText}
                                   onChange={(e) => setEditingText(e.target.value)}
-                                  className="w-full bg-white dark:bg-slate-900 text-slate-900 dark:text-white px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-700 text-xs outline-none"
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" && !e.shiftKey) {
+                                      e.preventDefault();
+                                      saveEdit();
+                                    }
+                                  }}
+                                  className="w-full bg-white dark:bg-slate-900 text-slate-900 dark:text-white px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-xs outline-none resize-none"
                                 />
                                 <div className="flex justify-end gap-1.5">
                                   <button
@@ -1226,7 +1510,84 @@ const ChatApp = () => {
                                 </div>
                               </div>
                             ) : (
-                              <div>{renderMessageContent(msg)}</div>
+                              <div>
+                                {msg.text && renderMessageContent(msg, isMine)}
+
+                                {Array.isArray(msg.attachments) && msg.attachments.length > 0 && (
+                                  <div className={`space-y-2 ${msg.text ? "mt-2.5" : ""}`}>
+                                    {msg.attachments.map((att, attIdx) => {
+                                      const isImg =
+                                        att.fileType?.startsWith("image/") ||
+                                        /\.(jpg|jpeg|png|webp|gif)$/i.test(att.fileName || att.fileUrl);
+
+                                      const formatBytes = (bytes) => {
+                                        if (!bytes) return "";
+                                        const k = 1024;
+                                        const sizes = ["Bytes", "KB", "MB", "GB"];
+                                        const i = Math.floor(Math.log(bytes) / Math.log(k));
+                                        return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+                                      };
+
+                                      const resolvedUrl = att.fileUrl?.startsWith("http")
+                                        ? att.fileUrl
+                                        : `${API_BASE.replace(/\/api$/, "")}${att.fileUrl}`;
+
+                                      return (
+                                        <div key={attIdx} className="overflow-hidden rounded-xl">
+                                          {isImg ? (
+                                            <a
+                                              href={resolvedUrl}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="block group/att relative max-w-[280px] rounded-xl overflow-hidden border border-black/10 dark:border-white/10 shadow-sm"
+                                            >
+                                              <img
+                                                src={resolvedUrl}
+                                                alt={att.fileName || "Image attachment"}
+                                                className="w-full max-h-64 object-cover rounded-xl transition-transform duration-200 group-hover/att:scale-102"
+                                                loading="lazy"
+                                              />
+                                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/att:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-1.5 backdrop-blur-[2px]">
+                                                <Download size={15} />
+                                                <span>View Full Image</span>
+                                              </div>
+                                            </a>
+                                          ) : (
+                                            <a
+                                              href={resolvedUrl}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              download={att.fileName}
+                                              className={`flex items-center gap-3 p-2.5 rounded-xl border transition-all duration-150 max-w-sm ${
+                                                isMine
+                                                  ? "bg-slate-900/20 text-slate-950 border-slate-950/20 hover:bg-slate-900/30"
+                                                  : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-[#10b981] text-slate-800 dark:text-slate-200 shadow-sm"
+                                              }`}
+                                            >
+                                              <div
+                                                className={`p-2 rounded-lg shrink-0 ${
+                                                  isMine ? "bg-slate-950 text-[#10b981]" : "bg-emerald-500/15 text-[#10b981]"
+                                                }`}
+                                              >
+                                                <FileText size={18} />
+                                              </div>
+                                              <div className="min-w-0 flex-1">
+                                                <p className="text-xs font-bold truncate">{att.fileName || "File Attachment"}</p>
+                                                {att.fileSize > 0 && (
+                                                  <p className="text-[10px] opacity-75 font-medium">{formatBytes(att.fileSize)}</p>
+                                                )}
+                                              </div>
+                                              <div className="shrink-0 p-1 rounded-md opacity-70 hover:opacity-100">
+                                                <Download size={15} />
+                                              </div>
+                                            </a>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
                             )}
 
                             {msg.edited && (
@@ -1314,26 +1675,90 @@ const ChatApp = () => {
                   </span>
                 </div>
               ) : (
-                <form onSubmit={handleSend} className="flex items-center gap-2">
-                  <div className="flex-1 relative flex items-center bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus-within:border-[#10b981] rounded-2xl px-4 py-1.5 transition-colors shadow-inner">
-                    <input
-                      ref={chatInputRef}
-                      type="text"
-                      value={text}
-                      onChange={handleTyping}
-                      placeholder={`Message ${activeRoomDisplay.name}... (Type @ to mention)`}
-                      className="w-full bg-transparent py-1.5 text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 outline-none"
-                    />
-                  </div>
+                <div>
+                  {/* Selected Attachment Preview */}
+                  {attachmentFile && (
+                    <div className="mb-2.5 p-2 px-3 rounded-xl bg-slate-100 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3 animate-in fade-in slide-in-from-bottom-2">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        {attachmentFile.isImage && attachmentFile.previewUrl ? (
+                          <img
+                            src={attachmentFile.previewUrl}
+                            alt="preview"
+                            className="w-10 h-10 rounded-lg object-cover border border-slate-300 dark:border-slate-600 shrink-0"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-lg bg-emerald-500/15 text-[#10b981] flex items-center justify-center font-bold shrink-0">
+                            <FileText size={20} />
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate max-w-[200px] sm:max-w-sm md:max-w-md">
+                            {attachmentFile.name}
+                          </p>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
+                            {(attachmentFile.size / (1024 * 1024)).toFixed(2)} MB &bull; Less than 5 MB
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={removeAttachment}
+                        className="p-1 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                        title="Remove attachment"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  )}
 
-                  <button
-                    type="submit"
-                    disabled={!text.trim()}
-                    className="p-3 rounded-2xl bg-[#10b981] hover:bg-[#059669] active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 font-bold transition-all shadow-md shadow-[#10b981]/20 cursor-pointer shrink-0"
-                  >
-                    <Send size={18} />
-                  </button>
-                </form>
+                  <form onSubmit={handleSend} className="flex items-end gap-2">
+                    <div className="flex-1 relative flex items-center bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus-within:border-[#10b981] rounded-2xl px-3 py-1.5 transition-colors shadow-inner gap-2">
+                      {/* Attachment Trigger Button */}
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        title="Attach file (less than 5 MB)"
+                        className="p-1.5 text-slate-400 hover:text-[#10b981] rounded-xl hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
+                      >
+                        <Paperclip size={18} />
+                      </button>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        onChange={handleFileSelect}
+                        className="hidden"
+                        accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip"
+                      />
+
+                      <textarea
+                        ref={chatInputRef}
+                        rows={1}
+                        value={text}
+                        onChange={handleTyping}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSend(e);
+                          }
+                        }}
+                        placeholder={`Message ${activeRoomDisplay.name}... (Press Shift+Enter for new line, @ to mention)`}
+                        className="w-full bg-transparent py-1 text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 outline-none resize-none max-h-36 min-h-[24px] leading-relaxed scrollbar-thin"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={(!text.trim() && !attachmentFile) || isUploadingAttachment}
+                      className="p-3 rounded-2xl bg-[#10b981] hover:bg-[#059669] active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 font-bold transition-all shadow-md shadow-[#10b981]/20 cursor-pointer shrink-0 flex items-center justify-center min-w-[44px] min-h-[44px]"
+                    >
+                      {isUploadingAttachment ? (
+                        <div className="w-4 h-4 rounded-full border-2 border-slate-950 border-t-transparent animate-spin" />
+                      ) : (
+                        <Send size={18} />
+                      )}
+                    </button>
+                  </form>
+                </div>
               )}
             </div>
           </>

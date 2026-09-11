@@ -15,6 +15,16 @@ const notificationSchema = new mongoose.Schema({
     ref: 'Task',
     default: null
   },
+  chatRoomId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'ChatRoom',
+    default: null
+  },
+  reportId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'DailyReport',
+    default: null
+  },
   type: {
     type: String,
     enum: [
@@ -28,7 +38,8 @@ const notificationSchema = new mongoose.Schema({
         "completed",
         "update",
         "report",
-        "announcement"
+        "announcement",
+        "chat"
     ],
     required: true
 },
