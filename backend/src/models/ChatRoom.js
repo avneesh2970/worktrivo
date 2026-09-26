@@ -14,6 +14,12 @@ const chatRoomSchema = new mongoose.Schema(
       trim: true,
     },
 
+    image: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
     type: {
       type: String,
       enum: ["global", "group", "direct"],

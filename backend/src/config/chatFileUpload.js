@@ -49,11 +49,21 @@ if (
 
   storage = new CloudinaryStorage({
     cloudinary,
-    params: async (req, file) => ({
-      folder: "worktrivo/chat-attachments",
-      resource_type: file.mimetype.startsWith("image/") ? "image" : "raw",
-      public_id: `chat_${Date.now()}_${file.originalname.replace(/\s+/g, "_").replace(/\.[^/.]+$/, "")}`,
-    }),
+    params: async (req, file) => {
+      const ext = path.extname(file.originalname).toLowerCase();
+      const base = path.basename(file.originalname, ext).replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_-]/g, "");
+      const isImg = file.mimetype.startsWith("image/");
+      return {
+        folder: "worktrivo/chat-attachments",
+        resource_type: isImg ? "image" : "raw",
+        // Raw files (PDFs, Word docs, spreadsheets) MUST preserve the extension in public_id
+        // so Cloudinary delivers them with the exact extension and Content-Type header
+        public_id: isImg 
+          ? `chat_${Date.now()}_${base}` 
+          : `chat_${Date.now()}_${base}${ext}`,
+        format: isImg ? ext.replace(".", "") || undefined : undefined,
+      };
+    },
   });
 } else {
   const uploadDir = path.join(__dirname, "../../uploads/chat");

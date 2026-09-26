@@ -22,6 +22,8 @@ const {
   searchMentionUsers,
   sendMessageWithMentions,
   uploadChatAttachment,
+  updateRoom,
+  downloadAttachment,
 } = require("../controllers/chatController");
 
 const { authenticate, requireRole } = require("../middleware/auth");
@@ -51,9 +53,13 @@ router.post(
   uploadChatAttachment
 );
 
+// Download chat attachment ensuring exact original format
+router.get("/download-attachment", downloadAttachment);
+
 // Chat Rooms
 router.get("/rooms", authenticate, getChatRooms);
 router.post("/rooms", authenticate, createRoom);
+router.patch("/rooms/:roomId", authenticate, uploadChatAttachmentMulter.single("image"), updateRoom);
 router.post("/direct", authenticate, createOrGetDirectRoom);
 router.patch("/rooms/:roomId/approve", authenticate, requireRole(["admin"]), approveRoom);
 router.patch("/rooms/:roomId/reject", authenticate, requireRole(["admin"]), rejectRoom);

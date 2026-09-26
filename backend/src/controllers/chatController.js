@@ -1,3 +1,6 @@
+const path = require("path");
+const fs = require("fs");
+const { Readable } = require("stream");
 const ChatRoom = require("../models/ChatRoom");
 const User = require("../models/User");         // Make sure to import the User model
 const Message = require("../models/Message");
@@ -194,7 +197,7 @@ const createOrGetDirectRoom = async (req, res) => {
 // Create new community / group room
 const createRoom = async (req, res) => {
   try {
-    const { name, description, members = [], type, group } = req.body;
+    const { name, description, image, members = [], type, group } = req.body;
     const userRole = req.user.role;
 
     if (!name || !name.trim()) {
@@ -225,6 +228,7 @@ const createRoom = async (req, res) => {
     const room = await ChatRoom.create({
       name: name.trim(),
       description: (description || "").trim(),
+      image: (image || "").trim(),
       type: type || "group",
       group: group || null,
       members: finalMembers,
@@ -267,6 +271,96 @@ const createRoom = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to create community.",
+    });
+  }
+};
+
+// Update Community (Title, Description, Image/Avatar)
+const updateRoom = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const { name, description, image } = req.body;
+    const userRole = req.user.role;
+    const userId = req.user._id;
+
+    const room = await ChatRoom.findById(roomId);
+    if (!room) {
+      return res.status(404).json({
+        success: false,
+        message: "Community not found.",
+      });
+    }
+
+    if (room.type === "direct") {
+      return res.status(400).json({
+        success: false,
+        message: "Direct chats cannot be edited.",
+      });
+    }
+
+    // Permission check: System admin, creator, or room admin/manager
+    const isSystemAdmin = userRole === "admin";
+    const isCreator = room.createdBy && room.createdBy.equals(userId);
+    const isRoomAdmin = Array.isArray(room.admins) && room.admins.some((a) => a.equals(userId));
+    const isManagerInRoom = userRole === "manager" && room.members.some((m) => m.equals(userId));
+
+    if (!isSystemAdmin && !isCreator && !isRoomAdmin && !isManagerInRoom) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to edit this community.",
+      });
+    }
+
+    // Update Title (Name)
+    if (name !== undefined) {
+      if (!name.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: "Community name cannot be empty.",
+        });
+      }
+      room.name = name.trim();
+    }
+
+    // Update Description
+    if (description !== undefined) {
+      room.description = description.trim();
+    }
+
+    // Update Image
+    if (req.file) {
+      room.image = req.file.path || req.file.secure_url || `/uploads/chat/${req.file.filename}`;
+    } else if (image !== undefined) {
+      room.image = image.trim();
+    }
+
+    await room.save();
+
+    const populatedRoom = await ChatRoom.findById(room._id)
+      .populate("members", "name email profilePhoto role designationRole department")
+      .populate("admins", "name email profilePhoto role")
+      .populate("createdBy", "name email profilePhoto role")
+      .populate("approvedBy", "name email");
+
+    const io = getIo();
+    if (io) {
+      io.to(room._id.toString()).emit("chat_room_updated", populatedRoom);
+      (populatedRoom.members || []).forEach((m) => {
+        io.to(m._id.toString()).emit("chat_room_updated", populatedRoom);
+      });
+      io.to("admins").emit("chat_room_updated", populatedRoom);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Community updated successfully.",
+      data: populatedRoom,
+    });
+  } catch (error) {
+    console.error("Update Room Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update community.",
     });
   }
 };
@@ -1188,11 +1282,55 @@ const uploadChatAttachment = async (req, res) => {
   }
 };
 
+// Download chat attachment ensuring exact original filename and format
+const downloadAttachment = async (req, res) => {
+  try {
+    const { url, name } = req.query;
+    if (!url) {
+      return res.status(400).json({ success: false, message: "Attachment URL is required." });
+    }
+
+    const fileName = (name || "attachment").trim();
+
+    // Check if it is a local upload
+    if (url.startsWith("/uploads/") || url.includes("/uploads/chat/")) {
+      const relativePath = url.startsWith("http")
+        ? new URL(url).pathname
+        : url;
+      const cleanPath = relativePath.replace(/^\//, "");
+      const fullPath = path.join(__dirname, "../../", cleanPath);
+      if (fs.existsSync(fullPath)) {
+        return res.download(fullPath, fileName);
+      }
+    }
+
+    // Force exact Content-Disposition filename
+    res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(fileName)}"; filename*=UTF-8''${encodeURIComponent(fileName)}`);
+
+    // Remote file (Cloudinary, etc.)
+    const response = await fetch(url);
+    if (!response.ok) {
+      return res.status(response.status).json({ success: false, message: "Could not fetch attachment." });
+    }
+
+    if (response.headers.get("content-type")) {
+      res.setHeader("Content-Type", response.headers.get("content-type"));
+    }
+    Readable.fromWeb(response.body).pipe(res);
+  } catch (error) {
+    console.error("Download Attachment Error:", error.message);
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, message: "Failed to download attachment." });
+    }
+  }
+};
+
 module.exports = {
   getRoomMentions,
   getUserMentions,
   getChatRooms,
   createRoom,
+  updateRoom,
   createOrGetDirectRoom,
   approveRoom,
   rejectRoom,
@@ -1209,4 +1347,5 @@ module.exports = {
   sendMessageWithMentions,
   searchMentionUsers,
   uploadChatAttachment,
+  downloadAttachment,
 };

@@ -35,6 +35,10 @@ import {
   FileText,
   Download,
   File,
+  Image as ImageIcon,
+  Camera,
+  UploadCloud,
+  ExternalLink,
 } from "lucide-react";
 
 import { useAuth, API_BASE } from "../context/AuthContext";
@@ -49,6 +53,7 @@ const ChatApp = () => {
     getMessages,
     markRoomRead,
     createRoom,
+    updateRoom,
     getOrCreateDirectRoom,
     approveRoom,
     rejectRoom,
@@ -161,9 +166,21 @@ const ChatApp = () => {
   const [userPickerSearch, setUserPickerSearch] = useState("");
   const [newCommunityName, setNewCommunityName] = useState("");
   const [newCommunityDesc, setNewCommunityDesc] = useState("");
+  const [newCommunityImageFile, setNewCommunityImageFile] = useState(null);
+  const [newCommunityImagePreview, setNewCommunityImagePreview] = useState(null);
+  const createCommunityFileInputRef = useRef(null);
   const [selectedCommunityMembers, setSelectedCommunityMembers] = useState([]);
   const [isCreatingCommunity, setIsCreatingCommunity] = useState(false);
   const [approvalActionLoading, setApprovalActionLoading] = useState(false);
+
+  // Edit Community Modal State
+  const [isEditCommunityOpen, setIsEditCommunityOpen] = useState(false);
+  const [editCommunityName, setEditCommunityName] = useState("");
+  const [editCommunityDesc, setEditCommunityDesc] = useState("");
+  const [editCommunityImageFile, setEditCommunityImageFile] = useState(null);
+  const [editCommunityImagePreview, setEditCommunityImagePreview] = useState(null);
+  const [isEditingCommunity, setIsEditingCommunity] = useState(false);
+  const editCommunityFileInputRef = useRef(null);
 
   // Toast
   const [toastMessage, setToastMessage] = useState(null);
@@ -222,14 +239,25 @@ const ChatApp = () => {
       showToast(`Community "${rejectedRoom.name}" was rejected.`, "error");
     };
 
+    const handleRoomUpdated = (updatedRoom) => {
+      setRooms((prev) =>
+        prev.map((r) => (r._id === updatedRoom._id ? { ...r, ...updatedRoom } : r))
+      );
+      setSelectedRoom((current) =>
+        current && current._id === updatedRoom._id ? { ...current, ...updatedRoom } : current
+      );
+    };
+
     socket.on("chat_room_created", handleRoomCreated);
     socket.on("room_approved", handleRoomApproved);
     socket.on("room_rejected", handleRoomRejected);
+    socket.on("chat_room_updated", handleRoomUpdated);
 
     return () => {
       socket.off("chat_room_created", handleRoomCreated);
       socket.off("room_approved", handleRoomApproved);
       socket.off("room_rejected", handleRoomRejected);
+      socket.off("chat_room_updated", handleRoomUpdated);
     };
   }, [socket]);
 
@@ -439,7 +467,7 @@ const ChatApp = () => {
     return {
       name: room.name,
       subtitle: `${room.members?.length || 0} members`,
-      avatar: null,
+      avatar: room.image || null,
       isDirect: false,
       isOnline: false,
       otherUser: null,
@@ -473,6 +501,116 @@ const ChatApp = () => {
     return rooms.filter((r) => r.approvalStatus === "Pending").length;
   }, [rooms]);
 
+  // Permission check for editing community
+  const canEditCommunity = useMemo(() => {
+    if (!selectedRoom || selectedRoom.type === "direct") return false;
+    if (user?.role === "admin") return true;
+    const myId = user?._id?.toString();
+    const creatorId = (selectedRoom.createdBy?._id || selectedRoom.createdBy)?.toString();
+    if (creatorId && creatorId === myId) return true;
+    const isRoomAdmin = (selectedRoom.admins || []).some(
+      (a) => (a?._id || a)?.toString() === myId
+    );
+    if (isRoomAdmin) return true;
+    if (user?.role === "manager") {
+      const isMember = (selectedRoom.members || []).some(
+        (m) => (m?._id || m)?.toString() === myId
+      );
+      if (isMember) return true;
+    }
+    return false;
+  }, [selectedRoom, user]);
+
+  const handleOpenEditCommunity = () => {
+    if (!selectedRoom) return;
+    setEditCommunityName(selectedRoom.name || "");
+    setEditCommunityDesc(selectedRoom.description || "");
+    setEditCommunityImagePreview(selectedRoom.image || null);
+    setEditCommunityImageFile(null);
+    setIsEditCommunityOpen(true);
+  };
+
+  const handleSaveEditCommunity = async (e) => {
+    e.preventDefault();
+    if (!selectedRoom || !editCommunityName.trim()) return;
+
+    try {
+      setIsEditingCommunity(true);
+      let finalImageUrl = selectedRoom.image || "";
+
+      // If a new image file was chosen, upload it first
+      if (editCommunityImageFile) {
+        const formData = new FormData();
+        formData.append("file", editCommunityImageFile);
+        const uploadRes = await uploadAttachment(formData);
+        if (uploadRes?.file?.fileUrl) {
+          finalImageUrl = uploadRes.file.fileUrl;
+        }
+      } else if (editCommunityImagePreview === null) {
+        // Image was cleared/removed
+        finalImageUrl = "";
+      }
+
+      const res = await updateRoom(selectedRoom._id, {
+        name: editCommunityName.trim(),
+        description: editCommunityDesc.trim(),
+        image: finalImageUrl,
+      });
+
+      const updated = res.data;
+      setSelectedRoom(updated);
+      setRooms((prev) =>
+        prev.map((r) => (r._id === updated._id ? { ...r, ...updated } : r))
+      );
+
+      showToast("Community updated successfully!", "success");
+      setIsEditCommunityOpen(false);
+    } catch (err) {
+      console.error(err);
+      showToast(err.response?.data?.message || "Failed to update community.", "error");
+    } finally {
+      setIsEditingCommunity(false);
+    }
+  };
+
+  // Helper to reliably download chat attachments with original filename & format
+  const handleDownloadAttachment = async (e, fileUrl, fileName) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (!fileUrl) return;
+
+    const resolvedUrl = fileUrl.startsWith("http")
+      ? fileUrl
+      : `${API_BASE.replace(/\/api$/, "")}${fileUrl.startsWith("/") ? "" : "/"}${fileUrl}`;
+
+    const safeFileName = (fileName || "attachment").trim();
+
+    try {
+      const res = await fetch(resolvedUrl, { mode: "cors" });
+      if (!res.ok) throw new Error("Fetch failed");
+      const blob = await res.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = safeFileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => window.URL.revokeObjectURL(blobUrl), 1000);
+    } catch (err) {
+      // Backend proxy fallback ensuring Content-Disposition header with exact filename
+      const downloadProxyUrl = `${API_BASE}/chat/download-attachment?url=${encodeURIComponent(resolvedUrl)}&name=${encodeURIComponent(safeFileName)}`;
+      const a = document.createElement("a");
+      a.href = downloadProxyUrl;
+      a.setAttribute("download", safeFileName);
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+  };
+
   // Start 1-on-1 Direct Chat
   const handleStartDirectChat = async (targetUser) => {
     try {
@@ -503,9 +641,20 @@ const ChatApp = () => {
 
     try {
       setIsCreatingCommunity(true);
+      let finalImageUrl = "";
+      if (newCommunityImageFile) {
+        const formData = new FormData();
+        formData.append("file", newCommunityImageFile);
+        const uploadRes = await uploadAttachment(formData);
+        if (uploadRes?.file?.fileUrl) {
+          finalImageUrl = uploadRes.file.fileUrl;
+        }
+      }
+
       const res = await createRoom({
         name: newCommunityName.trim(),
         description: newCommunityDesc.trim(),
+        image: finalImageUrl,
         members: selectedCommunityMembers,
         type: "group",
       });
@@ -515,6 +664,8 @@ const ChatApp = () => {
 
       setNewCommunityName("");
       setNewCommunityDesc("");
+      setNewCommunityImageFile(null);
+      setNewCommunityImagePreview(null);
       setSelectedCommunityMembers([]);
       setIsCreateCommunityOpen(false);
 
@@ -1110,6 +1261,12 @@ const ChatApp = () => {
                           {display.name.charAt(0).toUpperCase()}
                         </div>
                       )
+                    ) : display.avatar ? (
+                      <img
+                        src={display.avatar}
+                        alt={display.name}
+                        className="w-11 h-11 rounded-2xl object-cover border border-slate-200 dark:border-slate-700 shadow-inner"
+                      />
                     ) : (
                       <div className="w-11 h-11 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-[#10b981] font-black shadow-inner">
                         {room.type === "global" ? <Sparkles size={20} /> : <Users size={20} />}
@@ -1235,6 +1392,12 @@ const ChatApp = () => {
                         {activeRoomDisplay.name.charAt(0).toUpperCase()}
                       </div>
                     )
+                  ) : activeRoomDisplay.avatar ? (
+                    <img
+                      src={activeRoomDisplay.avatar}
+                      alt={activeRoomDisplay.name}
+                      className="w-10 h-10 rounded-2xl object-cover border border-slate-200 dark:border-slate-700 shadow-inner"
+                    />
                   ) : (
                     <div className="w-10 h-10 rounded-2xl bg-emerald-500/15 text-[#10b981] font-bold flex items-center justify-center shadow-inner">
                       {selectedRoom.type === "global" ? <Sparkles size={20} /> : <Users size={20} />}
@@ -1291,6 +1454,18 @@ const ChatApp = () => {
                       <span className="hidden sm:inline">Reject</span>
                     </button>
                   </div>
+                )}
+
+                {/* Edit Community (Title, Description, Avatar) */}
+                {canEditCommunity && (
+                  <button
+                    onClick={handleOpenEditCommunity}
+                    title="Edit Community Settings"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold transition-all cursor-pointer"
+                  >
+                    <Edit2 size={14} className="text-[#10b981]" />
+                    <span className="hidden sm:inline">Edit Community</span>
+                  </button>
                 )}
 
                 {/* Toggle Members Drawer */}
@@ -1533,56 +1708,83 @@ const ChatApp = () => {
                                         : `${API_BASE.replace(/\/api$/, "")}${att.fileUrl}`;
 
                                       return (
-                                        <div key={attIdx} className="overflow-hidden rounded-xl">
-                                          {isImg ? (
-                                            <a
-                                              href={resolvedUrl}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              className="block group/att relative max-w-[280px] rounded-xl overflow-hidden border border-black/10 dark:border-white/10 shadow-sm"
-                                            >
-                                              <img
-                                                src={resolvedUrl}
-                                                alt={att.fileName || "Image attachment"}
-                                                className="w-full max-h-64 object-cover rounded-xl transition-transform duration-200 group-hover/att:scale-102"
-                                                loading="lazy"
-                                              />
-                                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/att:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-1.5 backdrop-blur-[2px]">
-                                                <Download size={15} />
-                                                <span>View Full Image</span>
-                                              </div>
-                                            </a>
-                                          ) : (
-                                            <a
-                                              href={resolvedUrl}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              download={att.fileName}
-                                              className={`flex items-center gap-3 p-2.5 rounded-xl border transition-all duration-150 max-w-sm ${
-                                                isMine
-                                                  ? "bg-slate-900/20 text-slate-950 border-slate-950/20 hover:bg-slate-900/30"
-                                                  : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-[#10b981] text-slate-800 dark:text-slate-200 shadow-sm"
-                                              }`}
-                                            >
-                                              <div
-                                                className={`p-2 rounded-lg shrink-0 ${
-                                                  isMine ? "bg-slate-950 text-[#10b981]" : "bg-emerald-500/15 text-[#10b981]"
-                                                }`}
-                                              >
-                                                <FileText size={18} />
-                                              </div>
-                                              <div className="min-w-0 flex-1">
-                                                <p className="text-xs font-bold truncate">{att.fileName || "File Attachment"}</p>
-                                                {att.fileSize > 0 && (
-                                                  <p className="text-[10px] opacity-75 font-medium">{formatBytes(att.fileSize)}</p>
-                                                )}
-                                              </div>
-                                              <div className="shrink-0 p-1 rounded-md opacity-70 hover:opacity-100">
-                                                <Download size={15} />
-                                              </div>
-                                            </a>
-                                          )}
-                                        </div>
+                                         <div key={attIdx} className="overflow-hidden rounded-xl">
+                                           {isImg ? (
+                                             <div className="group/att relative max-w-[280px] rounded-xl overflow-hidden border border-black/10 dark:border-white/10 shadow-sm bg-black/5 dark:bg-black/20">
+                                               <img
+                                                 src={resolvedUrl}
+                                                 alt={att.fileName || "Image attachment"}
+                                                 className="w-full max-h-64 object-cover rounded-xl transition-transform duration-200 group-hover/att:scale-102 cursor-pointer"
+                                                 loading="lazy"
+                                                 onClick={(e) => handleDownloadAttachment(e, att.fileUrl, att.fileName)}
+                                               />
+                                               <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/att:opacity-100 transition-opacity flex items-center justify-center gap-2 backdrop-blur-[2px]">
+                                                 <a
+                                                   href={resolvedUrl}
+                                                   target="_blank"
+                                                   rel="noopener noreferrer"
+                                                   onClick={(e) => e.stopPropagation()}
+                                                   className="p-2 rounded-xl bg-white/20 hover:bg-white/30 text-white transition-colors cursor-pointer"
+                                                   title="Open in new tab"
+                                                 >
+                                                   <ExternalLink size={16} />
+                                                 </a>
+                                                 <button
+                                                   onClick={(e) => handleDownloadAttachment(e, att.fileUrl, att.fileName)}
+                                                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 text-xs font-black shadow-md transition-all cursor-pointer"
+                                                   title="Download original file"
+                                                 >
+                                                   <Download size={14} />
+                                                   <span>Download</span>
+                                                 </button>
+                                               </div>
+                                             </div>
+                                           ) : (
+                                             <div
+                                               role="button"
+                                               tabIndex={0}
+                                               onClick={(e) => handleDownloadAttachment(e, att.fileUrl, att.fileName)}
+                                               className={`flex items-center gap-3 p-2.5 rounded-xl border transition-all duration-150 max-w-sm cursor-pointer select-none ${
+                                                 isMine
+                                                   ? "bg-slate-900/20 text-slate-950 border-slate-950/20 hover:bg-slate-900/30"
+                                                   : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-[#10b981] text-slate-800 dark:text-slate-200 shadow-sm"
+                                               }`}
+                                             >
+                                               <div
+                                                 className={`p-2 rounded-lg shrink-0 ${
+                                                   isMine ? "bg-slate-950 text-[#10b981]" : "bg-emerald-500/15 text-[#10b981]"
+                                                 }`}
+                                               >
+                                                 <FileText size={18} />
+                                               </div>
+                                               <div className="min-w-0 flex-1">
+                                                 <p className="text-xs font-bold truncate">{att.fileName || "File Attachment"}</p>
+                                                 {att.fileSize > 0 && (
+                                                   <p className="text-[10px] opacity-75 font-medium">{formatBytes(att.fileSize)}</p>
+                                                 )}
+                                               </div>
+                                               <div className="shrink-0 flex items-center gap-1">
+                                                 <a
+                                                   href={resolvedUrl}
+                                                   target="_blank"
+                                                   rel="noopener noreferrer"
+                                                   onClick={(e) => e.stopPropagation()}
+                                                   className="p-1 rounded-md opacity-70 hover:opacity-100 hover:text-emerald-500 transition-colors"
+                                                   title="Preview in new tab"
+                                                 >
+                                                   <ExternalLink size={15} />
+                                                 </a>
+                                                 <button
+                                                   onClick={(e) => handleDownloadAttachment(e, att.fileUrl, att.fileName)}
+                                                   className="p-1 rounded-md opacity-70 hover:opacity-100 hover:text-emerald-500 transition-colors"
+                                                   title="Download file"
+                                                 >
+                                                   <Download size={15} />
+                                                 </button>
+                                               </div>
+                                             </div>
+                                           )}
+                                         </div>
                                       );
                                     })}
                                   </div>
@@ -2001,6 +2203,74 @@ const ChatApp = () => {
             )}
 
             <form onSubmit={handleCreateCommunitySubmit} className="flex-1 flex flex-col min-h-0 space-y-4">
+              {/* Community Avatar Upload */}
+              <div className="flex items-center gap-3.5">
+                <input
+                  type="file"
+                  ref={createCommunityFileInputRef}
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    if (file.size > 5 * 1024 * 1024) {
+                      showToast("Community image must be less than 5 MB", "error");
+                      return;
+                    }
+                    setNewCommunityImageFile(file);
+                    setNewCommunityImagePreview(URL.createObjectURL(file));
+                  }}
+                />
+                <div
+                  onClick={() => createCommunityFileInputRef.current?.click()}
+                  className="w-14 h-14 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-[#10b981] dark:hover:border-[#10b981] flex flex-col items-center justify-center cursor-pointer transition-colors bg-slate-50 dark:bg-slate-950 overflow-hidden relative group shrink-0"
+                >
+                  {newCommunityImagePreview ? (
+                    <>
+                      <img
+                        src={newCommunityImagePreview}
+                        alt="Community Avatar"
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                        <Camera size={18} />
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center text-slate-400 group-hover:text-[#10b981] transition-colors">
+                      <Camera size={20} />
+                    </div>
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => createCommunityFileInputRef.current?.click()}
+                      className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold transition-colors cursor-pointer"
+                    >
+                      {newCommunityImagePreview ? "Change Logo" : "Upload Logo"}
+                    </button>
+                    {newCommunityImagePreview && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNewCommunityImageFile(null);
+                          setNewCommunityImagePreview(null);
+                          if (createCommunityFileInputRef.current) {
+                            createCommunityFileInputRef.current.value = "";
+                          }
+                        }}
+                        className="text-xs text-rose-500 hover:underline font-semibold cursor-pointer"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-1">Optional. JPG, PNG or WebP under 5 MB.</p>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                   Community Name *
@@ -2171,6 +2441,149 @@ const ChatApp = () => {
                 Remove
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: Edit Community (Title, Description, Avatar)                        */}
+      {/* ========================================================================= */}
+      {isEditCommunityOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div
+            className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in-95"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4 shrink-0">
+              <div>
+                <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">
+                  Edit Community Details
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Update name, description, and community icon.
+                </p>
+              </div>
+              <button
+                onClick={() => setIsEditCommunityOpen(false)}
+                className="p-1.5 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditCommunity} className="flex-1 flex flex-col min-h-0 space-y-4">
+              {/* Community Avatar / Logo Upload */}
+              <div className="flex items-center gap-3.5">
+                <input
+                  type="file"
+                  ref={editCommunityFileInputRef}
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    if (file.size > 5 * 1024 * 1024) {
+                      showToast("Community image must be less than 5 MB", "error");
+                      return;
+                    }
+                    setEditCommunityImageFile(file);
+                    setEditCommunityImagePreview(URL.createObjectURL(file));
+                  }}
+                />
+                <div
+                  onClick={() => editCommunityFileInputRef.current?.click()}
+                  className="w-16 h-16 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-[#10b981] dark:hover:border-[#10b981] flex flex-col items-center justify-center cursor-pointer transition-colors bg-slate-50 dark:bg-slate-950 overflow-hidden relative group shrink-0"
+                >
+                  {editCommunityImagePreview ? (
+                    <>
+                      <img
+                        src={editCommunityImagePreview}
+                        alt="Community Logo"
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                        <Camera size={20} />
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center text-slate-400 group-hover:text-[#10b981] transition-colors">
+                      <Camera size={22} />
+                    </div>
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => editCommunityFileInputRef.current?.click()}
+                      className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold transition-colors cursor-pointer"
+                    >
+                      {editCommunityImagePreview ? "Change Logo" : "Upload Logo"}
+                    </button>
+                    {editCommunityImagePreview && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditCommunityImageFile(null);
+                          setEditCommunityImagePreview(null);
+                          if (editCommunityFileInputRef.current) {
+                            editCommunityFileInputRef.current.value = "";
+                          }
+                        }}
+                        className="text-xs text-rose-500 hover:underline font-semibold cursor-pointer"
+                      >
+                        Remove Logo
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-1">Recommended: square image, under 5 MB.</p>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Community Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editCommunityName}
+                  onChange={(e) => setEditCommunityName(e.target.value)}
+                  placeholder="e.g. Design Systems, Frontend Guild..."
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-[#10b981]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Description
+                </label>
+                <textarea
+                  rows={3}
+                  value={editCommunityDesc}
+                  onChange={(e) => setEditCommunityDesc(e.target.value)}
+                  placeholder="State the purpose and topics of this channel..."
+                  className="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-[#10b981] resize-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200 dark:border-slate-800 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsEditCommunityOpen(false)}
+                  className="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isEditingCommunity || !editCommunityName.trim()}
+                  className="px-5 py-2 bg-[#10b981] hover:bg-[#059669] disabled:opacity-50 text-slate-950 text-xs font-bold rounded-xl shadow-md shadow-[#10b981]/20 transition-all cursor-pointer"
+                >
+                  {isEditingCommunity ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

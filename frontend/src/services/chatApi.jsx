@@ -71,6 +71,11 @@ export const useChatApi = () => {
     createRoom: async (data) =>
       (await apiClient.post("/chat/rooms", data)).data,
 
+    updateRoom: async (roomId, data) => {
+      const headers = data instanceof FormData ? { "Content-Type": "multipart/form-data" } : {};
+      return (await apiClient.patch(`/chat/rooms/${roomId}`, data, { headers })).data;
+    },
+
     getOrCreateDirectRoom: async (targetUserId) =>
       (await apiClient.post("/chat/direct", { targetUserId })).data,
 
