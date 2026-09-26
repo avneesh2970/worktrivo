@@ -46,7 +46,8 @@ import {
   MapPin,
   Activity,
   ExternalLink,
-  ListTodo
+  ListTodo,
+  CalendarOff
 } from 'lucide-react';
 
 const DailyReports = () => {
@@ -84,6 +85,7 @@ const DailyReports = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [departments, setDepartments] = useState([]);
   const [teamMembers, setTeamMembers] = useState([]);
+  const [approvedLeaves, setApprovedLeaves] = useState([]);
 
   // =========================================================
   // CANDIDATE / EMPLOYEE 360 OVERVIEW STATE
@@ -325,10 +327,32 @@ const DailyReports = () => {
     if (token) fetchUsers();
   }, [token, isAdmin, isManager]);
 
+  const fetchApprovedLeaves = async () => {
+    try {
+      let url = `${API_BASE}/leaves/on-date`;
+      if (dateFilter === 'custom') {
+        if (startDate) url += `?startDate=${encodeURIComponent(startDate)}`;
+        if (endDate) url += `${startDate ? '&' : '?'}endDate=${encodeURIComponent(endDate)}`;
+      } else if (dateFilter && dateFilter !== 'all') {
+        url += `?date=${encodeURIComponent(dateFilter)}`;
+      }
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setApprovedLeaves(Array.isArray(data.leaves) ? data.leaves : []);
+      }
+    } catch (err) {
+      console.error('Failed to load approved leaves:', err);
+    }
+  };
+
   useEffect(() => {
     if (token) {
       fetchReports();
       fetchStats();
+      fetchApprovedLeaves();
       if (isAdmin || isManager) {
         fetchSummary();
       }
@@ -353,17 +377,24 @@ const DailyReports = () => {
       }
       fetchReports();
       fetchStats();
+      fetchApprovedLeaves();
       if (isAdmin || isManager) fetchSummary();
     };
 
     if (socket) {
       socket.on('dailyReportUpdated', handleUpdate);
+      socket.on('leaveRequestCreated', handleUpdate);
+      socket.on('leaveRequestUpdated', handleUpdate);
+      socket.on('leaveRequestDeleted', handleUpdate);
     }
     window.addEventListener('refreshDailyReports', handleUpdate);
 
     return () => {
       if (socket) {
         socket.off('dailyReportUpdated', handleUpdate);
+        socket.off('leaveRequestCreated', handleUpdate);
+        socket.off('leaveRequestUpdated', handleUpdate);
+        socket.off('leaveRequestDeleted', handleUpdate);
       }
       window.removeEventListener('refreshDailyReports', handleUpdate);
     };
@@ -931,6 +962,62 @@ const DailyReports = () => {
       </div>
 
       {/* =========================================================
+          APPROVED LEAVES BANNER (Shows team members on leave during this period)
+      ========================================================= */}
+      {approvedLeaves.length > 0 && (
+        <div className="bg-gradient-to-r from-sky-500/10 via-indigo-500/10 to-emerald-500/10 border border-sky-500/25 dark:border-sky-500/30 rounded-2xl p-4 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="h-8 w-8 rounded-xl bg-sky-500/20 text-sky-600 dark:text-sky-400 flex items-center justify-center font-bold">
+                <CalendarOff size={16} />
+              </div>
+              <div>
+                <h3 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <span>Team Members on Approved Leave</span>
+                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-600 dark:text-sky-400 font-semibold font-mono">
+                    {approvedLeaves.length} {approvedLeaves.length === 1 ? 'member' : 'members'}
+                  </span>
+                </h3>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Approved leaves active during {stats.durationLabel || 'the selected period'}. These employees are excused from daily report submission.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+            {approvedLeaves.map((leave) => (
+              <div
+                key={leave._id}
+                className="bg-white/95 dark:bg-[#121826]/95 border border-sky-500/20 dark:border-sky-500/20 rounded-xl p-3 flex items-center justify-between gap-3 shadow-2xs hover:border-sky-500/40 transition-colors"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="h-8 w-8 rounded-full bg-sky-500/15 text-sky-600 dark:text-sky-400 flex items-center justify-center font-bold text-xs shrink-0 border border-sky-500/30">
+                    {leave.user?.name?.charAt(0).toUpperCase() || 'U'}
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                      {leave.user?.name || 'Employee'}
+                    </h4>
+                    <p className="text-[10px] text-slate-500 truncate flex items-center gap-1.5 font-medium">
+                      <span className="text-sky-600 dark:text-sky-400 font-semibold">{leave.leaveType}</span>
+                      <span>•</span>
+                      <span>{leave.daysCount}d</span>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="text-right shrink-0 font-mono text-[10px] text-slate-500 dark:text-slate-400">
+                  <div>{new Date(leave.startDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</div>
+                  <div>to {new Date(leave.endDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================
           VIEW MODE: TEAM SUMMARY BREAKDOWN
       ========================================================= */}
       {viewMode === 'summary' && (isAdmin || isManager) && activeTab === 'team' ? (
@@ -1022,6 +1109,19 @@ const DailyReports = () => {
                           ✕ {item.rejected} Rejected
                         </span>
                       )}
+                      {(() => {
+                        const mLeave = approvedLeaves.find(
+                          (l) => l.user?._id === item.user._id || l.user === item.user._id
+                        );
+                        if (mLeave) {
+                          return (
+                            <span className="px-2 py-0.5 rounded-md bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20 font-semibold flex items-center gap-1">
+                              🌴 On Leave ({mLeave.leaveType})
+                            </span>
+                          );
+                        }
+                        return null;
+                      })()}
                     </div>
 
                     {/* Blockers alert */}
@@ -1136,7 +1236,7 @@ const DailyReports = () => {
                 </div>
 
                 {/* Report Date & Hours */}
-                <div className="flex items-center gap-4 py-2 px-3 rounded-xl bg-slate-50 dark:bg-[#0B101E] border border-slate-200 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400 mb-4 font-mono font-medium">
+                <div className="flex flex-wrap items-center gap-3 py-2 px-3 rounded-xl bg-slate-50 dark:bg-[#0B101E] border border-slate-200 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400 mb-4 font-mono font-medium">
                   <div className="flex items-center gap-1.5">
                     <Calendar size={13} className="text-[#10b981]" />
                     <span>{new Date(report.reportDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
@@ -1145,6 +1245,23 @@ const DailyReports = () => {
                     <Clock size={13} className="text-sky-500 dark:text-sky-400" />
                     <span>{report.totalHours || 8} hrs logged</span>
                   </div>
+                  {(() => {
+                    const onLeaveRecord = approvedLeaves.find(
+                      (l) =>
+                        (l.user?._id === report.user?._id || l.user === report.user?._id) &&
+                        new Date(report.reportDate) >= new Date(new Date(l.startDate).setHours(0,0,0,0)) &&
+                        new Date(report.reportDate) <= new Date(new Date(l.endDate).setHours(23,59,59,999))
+                    );
+                    if (onLeaveRecord) {
+                      return (
+                        <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-sky-500/15 text-sky-600 dark:text-sky-400 font-sans font-semibold text-[10px] border border-sky-500/30 ml-auto">
+                          <span>🌴</span>
+                          <span>On Leave ({onLeaveRecord.leaveType})</span>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
 
                 {/* Accomplishments Snippet */}
@@ -1268,6 +1385,26 @@ const DailyReports = () => {
 
             {/* Form */}
             <form onSubmit={handleSubmitReport} className="space-y-4 mt-5">
+              {(() => {
+                const myLeaveOnFormDate = approvedLeaves.find(
+                  (l) =>
+                    (l.user?._id === user?._id || l.user === user?._id) &&
+                    new Date(formDate) >= new Date(new Date(l.startDate).setHours(0, 0, 0, 0)) &&
+                    new Date(formDate) <= new Date(new Date(l.endDate).setHours(23, 59, 59, 999))
+                );
+                if (myLeaveOnFormDate) {
+                  return (
+                    <div className="p-3 rounded-xl bg-sky-500/10 border border-sky-500/25 text-sky-700 dark:text-sky-300 text-xs flex items-center gap-2.5">
+                      <span className="text-base shrink-0">🌴</span>
+                      <p className="leading-relaxed">
+                        <strong>Approved Leave Notice:</strong> You have an approved <strong>{myLeaveOnFormDate.leaveType}</strong> covering {formDate}. You are excused from submitting a report, but you can still submit if you worked today.
+                      </p>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">

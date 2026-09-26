@@ -9,6 +9,31 @@ import {
 import FileUpload from "../components/FileUpload";
 import FileList from "../components/FileList";
 
+// Helper to render URLs as clickable links
+const renderClickableText = (text) => {
+  if (!text) return text;
+  const URL_REGEX = /(https?:\/\/[^\s<]+[^<.,:;"')\]\s]|www\.[^\s<]+[^<.,:;"')\]\s])/gi;
+  const parts = text.split(URL_REGEX);
+  return parts.map((part, idx) => {
+    if (part.match(/^https?:\/\//i) || part.match(/^www\./i)) {
+      const href = part.startsWith("http") ? part : `https://${part}`;
+      return (
+        <a
+          key={idx}
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="text-[#10b981] hover:text-[#059669] dark:text-emerald-400 dark:hover:text-emerald-300 underline underline-offset-2 break-all font-semibold"
+        >
+          {part}
+        </a>
+      );
+    }
+    return part;
+  });
+};
+
 const TaskDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -305,7 +330,7 @@ const TaskDetails = () => {
             <div className="py-6 space-y-2">
               <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Description</h4>
               <p className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed whitespace-pre-wrap font-normal">
-                {task.description || 'No description provided.'}
+                {task.description ? renderClickableText(task.description) : 'No description provided.'}
               </p>
             </div>
 
@@ -433,7 +458,7 @@ const TaskDetails = () => {
                         </span>
                         <span className="text-slate-500 ml-auto">{new Date(c.createdAt).toLocaleString()}</span>
                       </div>
-                      <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed font-normal">{c.message}</p>
+                      <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed font-normal">{renderClickableText(c.message)}</p>
                     </div>
                   </div>
                 ))

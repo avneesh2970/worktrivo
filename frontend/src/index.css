@@ -100,3 +100,14 @@ body,
   height: 100%;
   overflow: hidden;
 }
+
+/* Global text selection with high contrast */
+::selection {
+  background-color: #10b981;
+  color: #ffffff;
+}
+
+::-moz-selection {
+  background-color: #10b981;
+  color: #ffffff;
+}

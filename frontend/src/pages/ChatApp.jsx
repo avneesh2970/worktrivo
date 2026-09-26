@@ -116,8 +116,7 @@ const ChatApp = () => {
     });
   };
 
-  const handleFileSelect = (e) => {
-    const file = e.target.files?.[0];
+  const processAttachmentFile = (file, fromPaste = false) => {
     if (!file) return;
 
     // Strict 5 MB limit
@@ -128,17 +127,72 @@ const ChatApp = () => {
       return;
     }
 
-    const isImg = file.type.startsWith("image/");
+    const isImg = file.type?.startsWith("image/") || /\.(jpg|jpeg|png|webp|gif)$/i.test(file.name || "");
     const previewUrl = isImg ? URL.createObjectURL(file) : null;
 
+    if (attachmentFile?.previewUrl) {
+      URL.revokeObjectURL(attachmentFile.previewUrl);
+    }
+
+    let fileName = file.name;
+    if (!fileName || fileName === "image.png" || fileName === "blob") {
+      const ext = file.type ? (file.type.split("/")[1] || "png") : "png";
+      fileName = `screenshot_${Date.now()}.${ext}`;
+    }
+
+    const normalizedFile = file.name && file.name !== "blob"
+      ? file
+      : new File([file], fileName, { type: file.type || "image/png" });
+
     setAttachmentFile({
-      file,
-      name: file.name,
+      file: normalizedFile,
+      name: fileName,
       size: file.size,
-      type: file.type,
+      type: file.type || (isImg ? "image/png" : "application/octet-stream"),
       previewUrl,
       isImage: isImg,
     });
+
+    if (fromPaste) {
+      showToast(isImg ? "Image attached from clipboard!" : "File attached from clipboard!", "success");
+    }
+  };
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    processAttachmentFile(file, false);
+  };
+
+  const handlePaste = (e) => {
+    const clipboardData = e.clipboardData || window.clipboardData;
+    if (!clipboardData) return;
+
+    // 1. Check for files in clipboardData.files (e.g., copied file from filesystem)
+    if (clipboardData.files && clipboardData.files.length > 0) {
+      const file = clipboardData.files[0];
+      if (file && file.size > 0) {
+        e.preventDefault();
+        processAttachmentFile(file, true);
+        return;
+      }
+    }
+
+    // 2. Check clipboardData.items (e.g., screenshot or copied image from browser)
+    const items = clipboardData.items;
+    if (items && items.length > 0) {
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.kind === "file") {
+          const file = item.getAsFile();
+          if (file) {
+            e.preventDefault();
+            processAttachmentFile(file, true);
+            return;
+          }
+        }
+      }
+    }
   };
 
   const removeAttachment = () => {
@@ -265,6 +319,25 @@ const ChatApp = () => {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Global paste handler to attach images and files pasted anywhere in the active chat view
+  useEffect(() => {
+    if (!selectedRoom) return;
+
+    const handleGlobalPaste = (e) => {
+      if (
+        e.target &&
+        e.target !== chatInputRef.current &&
+        (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")
+      ) {
+        return;
+      }
+      handlePaste(e);
+    };
+
+    window.addEventListener("paste", handleGlobalPaste);
+    return () => window.removeEventListener("paste", handleGlobalPaste);
+  }, [selectedRoom?._id, attachmentFile]);
 
   // Load messages & join room when selectedRoom changes
   useEffect(() => {
@@ -1010,6 +1083,36 @@ const ChatApp = () => {
       });
     });
 
+    // Parse links (http://, https://, www.) so they are clickable
+    const URL_REGEX = /(https?:\/\/[^\s<]+[^<.,:;"')\]\s]|www\.[^\s<]+[^<.,:;"')\]\s])/gi;
+
+    parts = parts.flatMap((part, pIdx) => {
+      if (typeof part !== "string") return [part];
+      const tokens = part.split(URL_REGEX);
+      return tokens.map((token, tIdx) => {
+        if (token.match(/^https?:\/\//i) || token.match(/^www\./i)) {
+          const href = token.startsWith("http") ? token : `https://${token}`;
+          return (
+            <a
+              key={`link-${pIdx}-${tIdx}`}
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className={`underline underline-offset-2 break-all transition-opacity hover:opacity-80 font-bold cursor-pointer ${
+                isMine
+                  ? "text-slate-950 hover:text-slate-800 decoration-slate-950/70"
+                  : "text-[#10b981] dark:text-emerald-400 hover:text-[#059669] decoration-[#10b981]/60"
+              }`}
+            >
+              {token}
+            </a>
+          );
+        }
+        return token;
+      });
+    });
+
     return (
       <div>
         <div className="whitespace-pre-wrap break-words">{parts}</div>
@@ -1649,8 +1752,8 @@ const ChatApp = () => {
                               relative p-3.5 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-sm
                               ${
                                 isMine
-                                  ? "bg-[#10b981] text-slate-950 rounded-tr-none font-medium"
-                                  : "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-tl-none border border-slate-200/80 dark:border-slate-700/60"
+                                  ? "bg-[#10b981] text-slate-950 rounded-tr-none font-medium selection:bg-slate-950 selection:text-white"
+                                  : "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-tl-none border border-slate-200/80 dark:border-slate-700/60 selection:bg-[#10b981] selection:text-white"
                               }
                             `}
                           >
@@ -1667,7 +1770,7 @@ const ChatApp = () => {
                                       saveEdit();
                                     }
                                   }}
-                                  className="w-full bg-white dark:bg-slate-900 text-slate-900 dark:text-white px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-xs outline-none resize-none"
+                                  className="w-full bg-white dark:bg-slate-900 text-slate-900 dark:text-white px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-xs outline-none resize-none selection:bg-[#10b981] selection:text-white"
                                 />
                                 <div className="flex justify-end gap-1.5">
                                   <button
@@ -1914,7 +2017,16 @@ const ChatApp = () => {
                   )}
 
                   <form onSubmit={handleSend} className="flex items-end gap-2">
-                    <div className="flex-1 relative flex items-center bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus-within:border-[#10b981] rounded-2xl px-3 py-1.5 transition-colors shadow-inner gap-2">
+                    <div
+                      onPaste={handlePaste}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        const file = e.dataTransfer?.files?.[0];
+                        if (file) processAttachmentFile(file, true);
+                      }}
+                      className="flex-1 relative flex items-center bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus-within:border-[#10b981] rounded-2xl px-3 py-1.5 transition-colors shadow-inner gap-2"
+                    >
                       {/* Attachment Trigger Button */}
                       <button
                         type="button"
@@ -1937,14 +2049,15 @@ const ChatApp = () => {
                         rows={1}
                         value={text}
                         onChange={handleTyping}
+                        onPaste={handlePaste}
                         onKeyDown={(e) => {
                           if (e.key === "Enter" && !e.shiftKey) {
                             e.preventDefault();
                             handleSend(e);
                           }
                         }}
-                        placeholder={`Message ${activeRoomDisplay.name}... (Press Shift+Enter for new line, @ to mention)`}
-                        className="w-full bg-transparent py-1 text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 outline-none resize-none max-h-36 min-h-[24px] leading-relaxed scrollbar-thin"
+                        placeholder={`Message ${activeRoomDisplay.name}... (Press Shift+Enter for new line, paste images/files, @ to mention)`}
+                        className="w-full bg-transparent py-1 text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 outline-none resize-none max-h-36 min-h-[24px] leading-relaxed scrollbar-thin selection:bg-[#10b981] selection:text-white"
                       />
                     </div>
 

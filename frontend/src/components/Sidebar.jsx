@@ -18,6 +18,7 @@ import {
   ClipboardCheck,
   X,
   FileText,
+  CalendarOff,
   Sun,
   Moon,
 } from "lucide-react";
@@ -41,6 +42,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
   });
   
   const [pendingApprovals, setPendingApprovals] = useState(0);
+  const [pendingLeaves, setPendingLeaves] = useState(0);
   const [unreadChatCount, setUnreadChatCount] = useState(0);
 
   const handleCronTrigger = async () => {
@@ -128,6 +130,21 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
     }
   };
 
+  const fetchPendingLeavesCount = async () => {
+    if (user?.role !== "admin" && user?.role !== "manager") return;
+    try {
+      const res = await fetch(`${API_BASE}/leaves?status=Pending`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPendingLeaves(Array.isArray(data) ? data.length : 0);
+      }
+    } catch (err) {
+      console.error("Error fetching pending leaves count:", err);
+    }
+  };
+
   useEffect(() => {
     if (token) {
       fetchSidebarStats();
@@ -138,6 +155,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
   useEffect(() => {
     if (token && (user?.role === "admin" || user?.role === "manager")) {
       fetchPendingApprovalsCount();
+      fetchPendingLeavesCount();
     }
   }, [token, user?.role]);
 
@@ -168,6 +186,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
         fetchUnreadChatCount();
         if (user?.role === "admin" || user?.role === "manager") {
           fetchPendingApprovalsCount();
+          fetchPendingLeavesCount();
         }
       }, 300);
     };
@@ -175,6 +194,9 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
     socket.on("taskUpdated", debouncedRefresh);
     socket.on("projectUpdated", debouncedRefresh);
     socket.on("dailyReportUpdated", debouncedRefresh);
+    socket.on("leaveRequestCreated", debouncedRefresh);
+    socket.on("leaveRequestUpdated", debouncedRefresh);
+    socket.on("leaveRequestDeleted", debouncedRefresh);
     socket.on("chat_room_created", debouncedRefresh);
     socket.on("receive_message", debouncedRefresh);
 
@@ -183,6 +205,9 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
       socket.off("taskUpdated", debouncedRefresh);
       socket.off("projectUpdated", debouncedRefresh);
       socket.off("dailyReportUpdated", debouncedRefresh);
+      socket.off("leaveRequestCreated", debouncedRefresh);
+      socket.off("leaveRequestUpdated", debouncedRefresh);
+      socket.off("leaveRequestDeleted", debouncedRefresh);
       socket.off("chat_room_created", debouncedRefresh);
       socket.off("receive_message", debouncedRefresh);
     };
@@ -272,6 +297,13 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
             {[
               { to: "/", icon: LayoutDashboard, label: "Dashboard", badge: stats.dashboard, badgeBg: "bg-[#10b981]/15 text-[#10b981] border border-[#10b981]/30" },
               { to: "/daily-reports", icon: FileText, label: "Daily Reports" },
+              {
+                to: "/leaves",
+                icon: CalendarOff,
+                label: "Leave Requests",
+                badge: (user?.role === "admin" || user?.role === "manager") && pendingLeaves > 0 ? pendingLeaves : null,
+                badgeBg: "bg-amber-500/20 text-amber-600 dark:text-amber-300 border border-amber-500/30 font-bold",
+              },
               {
                 to: "/chat",
                 icon: MessageSquare,
