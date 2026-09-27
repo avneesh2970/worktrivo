@@ -135,7 +135,7 @@ router.post('/google', async (req, res) => {
 
     return res.status(400).json({
       success: false,
-      message: 'Invalid or expired Google Token.'
+      message: err.message || 'Invalid or expired Google Token.'
     });
   }
 });

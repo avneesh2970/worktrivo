@@ -440,13 +440,12 @@ const Auth = () => {
                 </div>
 
                 {/* Google Login Component */}
-                <div className="w-full bg-white rounded-xl p-1 overflow-hidden shadow-xs border border-slate-200">
+                <div className="w-full flex justify-center items-center py-1 overflow-hidden">
                   <GoogleLogin
                     theme="outline"
                     shape="rectangular"
                     size="large"
                     text={isSignUp ? "signup_with" : "signin_with"}
-                    width="100%"
                     onSuccess={handleGoogleLogin}
                     onError={() => {
                       setError("Google Login Failed");

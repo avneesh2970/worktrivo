@@ -3,7 +3,7 @@ const User = require('../models/User');
 const Task = require('../models/Task');
 const DailyReport = require('../models/DailyReport');
 const Group = require('../models/Group');
-const transporter = require('../utils/nodemailer');
+const sendEmail = require('../utils/sendEmail');
 const csv = require('csv-parser');
 const { Readable } = require('stream'); // Core Node.js module
 const { v4: uuidv4 } = require("uuid");
@@ -84,12 +84,21 @@ exports.sendResetOtp = async (req, res) => {
 
     await user.save();
 
-    await transporter.sendMail({
-      from: process.env.SENDER_EMAIL,
-      to: user.email,
-      subject: 'Password Reset OTP',
-      text: `Hi ${user.name || ''},\n\nYour password reset OTP is: ${otp}\n\nThis OTP is valid for 15 minutes.\n\nBest regards,\nCollabZoneX Team`
-    });
+    await sendEmail(
+      user.email,
+      'Password Reset OTP - WorkTrivo',
+      `<div style="font-family: sans-serif; padding: 24px; background: #0f172a; color: #f8fafc; border-radius: 16px;">
+        <h2 style="color: #10b981; margin-top: 0;">Password Reset Request</h2>
+        <p>Hi ${user.name || 'there'},</p>
+        <p>You requested a one-time password (OTP) to reset your WorkTrivo account password.</p>
+        <div style="margin: 24px 0; padding: 16px; background: #1e293b; border: 1px solid #334155; border-radius: 12px; text-align: center;">
+          <span style="font-size: 28px; font-weight: bold; letter-spacing: 6px; color: #10b981;">${otp}</span>
+        </div>
+        <p style="font-size: 13px; color: #94a3b8;">This code is valid for 15 minutes. If you did not request this, you can safely ignore this email.</p>
+        <hr style="border: none; border-top: 1px solid #334155; margin: 20px 0;" />
+        <p style="font-size: 11px; color: #64748b;">WorkTrivo Workspace System</p>
+      </div>`
+    );
 
     return res.json({ success: true, message: 'OTP sent to your email' });
   } catch (error) {
