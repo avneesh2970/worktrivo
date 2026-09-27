@@ -284,6 +284,79 @@ router.get('/summary', async (req, res) => {
 });
 
 // ==========================================
+// POST /api/daily-reports/ai-summary - Smart Executive Briefing
+// ==========================================
+router.post('/ai-summary', async (req, res) => {
+  try {
+    const { date, startDate, endDate, department } = req.body;
+    const query = {};
+
+    const durationFilter = parseDuration(date, startDate, endDate);
+    if (durationFilter) {
+      query.reportDate = { $gte: durationFilter.$gte, $lte: durationFilter.$lte };
+    }
+
+    if (department && department.trim() && department !== 'all') {
+      query.department = { $regex: new RegExp(`^${department.trim()}$`, 'i') };
+    }
+
+    const reports = await DailyReport.find(query)
+      .populate('user', 'name role department designationRole')
+      .sort({ reportDate: -1 });
+
+    if (reports.length === 0) {
+      return res.json({
+        summary: 'No reports submitted during this period to analyze.',
+        highlights: [],
+        blockers: [],
+        recommendations: ['Encourage team members to submit their daily work reports.']
+      });
+    }
+
+    // Extract stats
+    const totalHours = reports.reduce((sum, r) => sum + (Number(r.totalHours) || 8), 0);
+    const uniqueUsers = new Set(reports.map(r => r.user?._id?.toString()).filter(Boolean));
+    const rawBlockers = reports.filter(r => r.blockers && r.blockers.trim()).map(r => ({
+      user: r.user?.name || 'Member',
+      blocker: r.blockers.trim()
+    }));
+
+    // Extract top accomplishments
+    const accomplishments = reports
+      .filter(r => r.todayWork && r.todayWork.trim())
+      .map(r => `${r.user?.name || 'Member'}: ${r.todayWork.trim().slice(0, 160)}...`)
+      .slice(0, 5);
+
+    const blockerSnippets = rawBlockers.slice(0, 5).map(b => `${b.user}: ${b.blocker}`);
+
+    const durationLabel = durationFilter?.label || 'Selected Duration';
+
+    const aiSummary = {
+      overview: `During ${durationLabel}, ${uniqueUsers.size} team member(s) logged a total of ${totalHours} productive hours across ${reports.length} report submission(s).`,
+      highlights: accomplishments.length > 0 ? accomplishments : ['Regular development and workflow maintenance completed.'],
+      blockers: blockerSnippets.length > 0 ? blockerSnippets : ['No major blockers reported. Development workflow moving smoothly.'],
+      recommendations: [
+        rawBlockers.length > 0
+          ? `Address ${rawBlockers.length} pending team blocker(s) to sustain delivery momentum.`
+          : 'Team is operating without critical impediments. Continue regular sprint cadences.',
+        `Maintain consistent check-in and review standards for ongoing projects.`
+      ],
+      metrics: {
+        totalReports: reports.length,
+        totalHours,
+        activeMembers: uniqueUsers.size,
+        blockersCount: rawBlockers.length
+      }
+    };
+
+    res.json(aiSummary);
+  } catch (err) {
+    console.error('AI summary error:', err);
+    res.status(500).json({ error: 'Failed to generate summary' });
+  }
+});
+
+// ==========================================
 // GET /api/daily-reports - List reports with filters
 // ==========================================
 router.get('/', async (req, res) => {

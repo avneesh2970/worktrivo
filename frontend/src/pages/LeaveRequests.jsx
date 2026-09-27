@@ -25,7 +25,11 @@ import {
   ChevronRight,
   Briefcase,
   HelpCircle,
-  Sparkles
+  Sparkles,
+  Download,
+  Trash2,
+  CalendarHeart,
+  Palmtree
 } from 'lucide-react';
 
 const LEAVE_TYPES = [
@@ -70,6 +74,16 @@ const LeaveRequests = () => {
   const [rejectionReason, setRejectionReason] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
 
+  // Leave Balances & Company Holidays state
+  const [balances, setBalances] = useState(null);
+  const [holidays, setHolidays] = useState([]);
+  const [isHolidayModalOpen, setIsHolidayModalOpen] = useState(false);
+  const [holidayName, setHolidayName] = useState('');
+  const [holidayDate, setHolidayDate] = useState('');
+  const [holidayType, setHolidayType] = useState('Festival');
+  const [holidayDesc, setHolidayDesc] = useState('');
+  const [submittingHoliday, setSubmittingHoliday] = useState(false);
+
   // Auto calculate day count when dates change
   useEffect(() => {
     if (formStartDate && formEndDate) {
@@ -84,6 +98,38 @@ const LeaveRequests = () => {
       }
     }
   }, [formStartDate, formEndDate]);
+
+  // Fetch Balances
+  const fetchBalances = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_BASE}/leaves/balances`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setBalances(data);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Fetch Company Holidays
+  const fetchHolidays = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_BASE}/holidays?year=${new Date().getFullYear()}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setHolidays(Array.isArray(data) ? data : []);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   // Fetch Leaves
   const fetchLeaves = async () => {
@@ -122,6 +168,8 @@ const LeaveRequests = () => {
 
   useEffect(() => {
     fetchLeaves();
+    fetchBalances();
+    fetchHolidays();
   }, [token, statusFilter, typeFilter, searchQuery]);
 
   // Real-time socket updates
@@ -133,6 +181,7 @@ const LeaveRequests = () => {
       if (newLeave.user?._id === user?._id || newLeave.user === user?._id) {
         setMyLeaves((prev) => [newLeave, ...prev.filter((l) => l._id !== newLeave._id)]);
       }
+      fetchBalances();
     };
 
     const handleUpdated = (updatedLeave) => {
@@ -142,23 +191,108 @@ const LeaveRequests = () => {
       setMyLeaves((prev) =>
         prev.map((l) => (l._id === updatedLeave._id ? updatedLeave : l))
       );
+      fetchBalances();
     };
 
     const handleDeleted = ({ _id }) => {
       setLeaves((prev) => prev.filter((l) => l._id !== _id));
       setMyLeaves((prev) => prev.filter((l) => l._id !== _id));
+      fetchBalances();
     };
 
     socket.on('leaveRequestCreated', handleCreated);
     socket.on('leaveRequestUpdated', handleUpdated);
     socket.on('leaveRequestDeleted', handleDeleted);
+    socket.on('holidayUpdated', fetchHolidays);
 
     return () => {
       socket.off('leaveRequestCreated', handleCreated);
       socket.off('leaveRequestUpdated', handleUpdated);
       socket.off('leaveRequestDeleted', handleDeleted);
+      socket.off('holidayUpdated', fetchHolidays);
     };
   }, [socket, user?._id]);
+
+  // Export leaves to CSV
+  const handleExportLeavesCSV = () => {
+    if (!activeList || activeList.length === 0) {
+      toast.error('No leave records to export.');
+      return;
+    }
+    const headers = ['Employee Name', 'Email', 'Department', 'Leave Type', 'Start Date', 'End Date', 'Days', 'Status', 'Reason', 'Reviewed By'];
+    const rows = activeList.map((item) => [
+      `"${item.user?.name || ''}"`,
+      `"${item.user?.email || ''}"`,
+      `"${item.user?.department || ''}"`,
+      `"${item.leaveType || ''}"`,
+      `"${new Date(item.startDate).toLocaleDateString()}"`,
+      `"${new Date(item.endDate).toLocaleDateString()}"`,
+      item.daysCount,
+      `"${item.status}"`,
+      `"${(item.reason || '').replace(/"/g, '""')}"`,
+      `"${item.reviewedBy?.name || 'N/A'}"`
+    ]);
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `leave_requests_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('Leave report exported to CSV!');
+  };
+
+  // Admin Create Holiday
+  const handleCreateHoliday = async (e) => {
+    e.preventDefault();
+    if (!holidayName.trim() || !holidayDate) {
+      return toast.error('Holiday name and date are required.');
+    }
+    setSubmittingHoliday(true);
+    try {
+      const res = await fetch(`${API_BASE}/holidays`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ name: holidayName, date: holidayDate, type: holidayType, description: holidayDesc })
+      });
+      if (res.ok) {
+        toast.success('Company holiday added successfully!');
+        setHolidayName('');
+        setHolidayDate('');
+        setHolidayDesc('');
+        setIsHolidayModalOpen(false);
+        fetchHolidays();
+      } else {
+        const err = await res.json();
+        toast.error(err.error || 'Failed to add holiday');
+      }
+    } catch (err) {
+      toast.error('Error adding holiday');
+    } finally {
+      setSubmittingHoliday(false);
+    }
+  };
+
+  // Admin Delete Holiday
+  const handleDeleteHoliday = async (holidayId) => {
+    if (!window.confirm('Are you sure you want to delete this company holiday?')) return;
+    try {
+      const res = await fetch(`${API_BASE}/holidays/${holidayId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        toast.success('Holiday deleted');
+        fetchHolidays();
+      } else {
+        const err = await res.json();
+        toast.error(err.error || 'Failed to delete holiday');
+      }
+    } catch (err) {
+      toast.error('Error deleting holiday');
+    }
+  };
 
   // Handle Submit Form
   const handleSubmitLeave = async (e) => {
@@ -333,20 +467,42 @@ const LeaveRequests = () => {
           </p>
         </div>
 
-        {/* Apply for Leave Button */}
-        <button
-          onClick={() => {
-            const todayStr = new Date().toISOString().split('T')[0];
-            setFormStartDate(todayStr);
-            setFormEndDate(todayStr);
-            setFormDaysCount(1);
-            setIsApplyModalOpen(true);
-          }}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#10b981] hover:bg-[#059669] text-slate-950 font-bold text-xs transition-all shadow-sm active:scale-[0.98] cursor-pointer"
-        >
-          <Plus size={16} />
-          <span>Apply for Leave</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Export to CSV */}
+          <button
+            onClick={handleExportLeavesCSV}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#0B101E] text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white font-bold text-xs transition-all shadow-xs cursor-pointer"
+          >
+            <Download size={14} className="text-slate-400" />
+            <span>Export CSV</span>
+          </button>
+
+          {/* Manage Holidays Button (Admin) */}
+          {isAdmin && (
+            <button
+              onClick={() => setIsHolidayModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-sky-500/30 bg-sky-500/10 text-sky-600 dark:text-sky-400 font-bold text-xs hover:bg-sky-500/20 transition-all shadow-xs cursor-pointer"
+            >
+              <CalendarHeart size={14} />
+              <span>Holidays ({holidays.length})</span>
+            </button>
+          )}
+
+          {/* Apply for Leave Button */}
+          <button
+            onClick={() => {
+              const todayStr = new Date().toISOString().split('T')[0];
+              setFormStartDate(todayStr);
+              setFormEndDate(todayStr);
+              setFormDaysCount(1);
+              setIsApplyModalOpen(true);
+            }}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#10b981] hover:bg-[#059669] text-slate-950 font-bold text-xs transition-all shadow-sm active:scale-[0.98] cursor-pointer"
+          >
+            <Plus size={16} />
+            <span>Apply for Leave</span>
+          </button>
+        </div>
       </div>
 
       {/* =========================================================
@@ -401,6 +557,147 @@ const LeaveRequests = () => {
           </div>
         </div>
       </div>
+
+      {/* =========================================================
+          LEAVE BALANCES & ANNUAL QUOTAS WIDGET
+      ========================================================= */}
+      {balances && (
+        <div className="bg-white dark:bg-[#121826] border border-slate-200 dark:border-slate-800/80 rounded-2xl p-5 shadow-xs space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Palmtree size={16} className="text-[#10b981]" />
+              <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                My Annual Leave Quotas & Balances ({new Date().getFullYear()})
+              </h3>
+            </div>
+            <span className="text-[11px] text-slate-400 font-medium">Updated automatically on approval</span>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[
+              {
+                label: 'Casual Leave',
+                total: balances.quotas?.casual || 12,
+                used: balances.used?.casual || 0,
+                remaining: balances.remaining?.casual ?? 12,
+                color: 'emerald'
+              },
+              {
+                label: 'Sick Leave',
+                total: balances.quotas?.sick || 10,
+                used: balances.used?.sick || 0,
+                remaining: balances.remaining?.sick ?? 10,
+                color: 'sky'
+              },
+              {
+                label: 'Paid Leave',
+                total: balances.quotas?.paid || 15,
+                used: balances.used?.paid || 0,
+                remaining: balances.remaining?.paid ?? 15,
+                color: 'indigo'
+              },
+              {
+                label: 'Work From Home',
+                total: balances.quotas?.wfh || 24,
+                used: balances.used?.wfh || 0,
+                remaining: balances.remaining?.wfh ?? 24,
+                color: 'amber'
+              }
+            ].map((bal) => {
+              const pct = Math.min(100, Math.round((bal.used / bal.total) * 100));
+              return (
+                <div
+                  key={bal.label}
+                  className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#0B101E]"
+                >
+                  <div className="flex items-center justify-between text-xs font-semibold mb-1">
+                    <span className="text-slate-700 dark:text-slate-300">{bal.label}</span>
+                    <span className="font-mono text-slate-900 dark:text-white font-bold">
+                      {bal.remaining} <span className="text-[10px] text-slate-400 font-normal">left</span>
+                    </span>
+                  </div>
+                  <div className="w-full bg-slate-200 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden mb-2">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        bal.color === 'emerald'
+                          ? 'bg-[#10b981]'
+                          : bal.color === 'sky'
+                          ? 'bg-sky-500'
+                          : bal.color === 'indigo'
+                          ? 'bg-indigo-500'
+                          : 'bg-amber-500'
+                      }`}
+                      style={{ width: `${Math.max(5, pct)}%` }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono">
+                    <span>Used: {bal.used}d</span>
+                    <span>Total: {bal.total}d</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================
+          COMPANY HOLIDAYS PREVIEW
+      ========================================================= */}
+      {holidays.length > 0 && (
+        <div className="bg-white dark:bg-[#121826] border border-slate-200 dark:border-slate-800/80 rounded-2xl p-5 shadow-xs space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CalendarHeart size={16} className="text-rose-500" />
+              <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                Official Company Holidays ({new Date().getFullYear()})
+              </h3>
+            </div>
+            {isAdmin && (
+              <button
+                onClick={() => setIsHolidayModalOpen(true)}
+                className="text-[11px] font-bold text-[#10b981] hover:underline cursor-pointer"
+              >
+                + Add Holiday
+              </button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5">
+            {holidays.map((h) => (
+              <div
+                key={h._id}
+                className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#0B101E] flex items-center justify-between gap-2 text-xs"
+              >
+                <div className="min-w-0">
+                  <h4 className="font-bold text-slate-900 dark:text-white truncate">{h.name}</h4>
+                  <p className="text-[11px] text-slate-500 font-mono mt-0.5">
+                    {new Date(h.date).toLocaleDateString(undefined, {
+                      month: 'short',
+                      day: 'numeric',
+                      weekday: 'short'
+                    })}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-rose-500/10 text-rose-500 border border-rose-500/20">
+                    {h.type}
+                  </span>
+                  {isAdmin && (
+                    <button
+                      onClick={() => handleDeleteHoliday(h._id)}
+                      className="text-slate-400 hover:text-rose-500 p-1 cursor-pointer transition-colors"
+                      title="Delete holiday"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* =========================================================
           NAV TABS & SEARCH / FILTER TOOLBAR
@@ -847,6 +1144,108 @@ const LeaveRequests = () => {
                 <span>Confirm Rejection</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================
+          ADMIN ADD COMPANY HOLIDAY MODAL
+      ========================================================= */}
+      {isHolidayModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white dark:bg-[#121826] border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800/80">
+              <div className="flex items-center gap-2 text-rose-500">
+                <CalendarHeart size={18} />
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  Add Official Company Holiday
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsHolidayModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateHoliday} className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1.5">
+                  Holiday Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Independence Day, Diwali, Christmas..."
+                  value={holidayName}
+                  onChange={(e) => setHolidayName(e.target.value)}
+                  className="w-full py-2 px-3 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-[#0B101E] text-xs text-slate-800 dark:text-slate-200 outline-none focus:border-[#10b981]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1.5">
+                    Date *
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={holidayDate}
+                    onChange={(e) => setHolidayDate(e.target.value)}
+                    className="w-full py-2 px-3 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-[#0B101E] text-xs text-slate-800 dark:text-slate-200 outline-none focus:border-[#10b981]"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1.5">
+                    Holiday Type
+                  </label>
+                  <select
+                    value={holidayType}
+                    onChange={(e) => setHolidayType(e.target.value)}
+                    className="w-full py-2 px-3 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-[#0B101E] text-xs text-slate-800 dark:text-slate-200 outline-none focus:border-[#10b981]"
+                  >
+                    <option value="Festival">Festival</option>
+                    <option value="National">National</option>
+                    <option value="Company">Company</option>
+                    <option value="Optional">Optional</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1.5">
+                  Description (Optional)
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="Notes about the holiday celebration or observance..."
+                  value={holidayDesc}
+                  onChange={(e) => setHolidayDesc(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-[#0B101E] text-xs text-slate-800 dark:text-slate-200 outline-none focus:border-[#10b981] resize-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800/80">
+                <button
+                  type="button"
+                  onClick={() => setIsHolidayModalOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingHoliday}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#10b981] hover:bg-[#059669] text-slate-950 font-bold text-xs transition-all shadow-sm cursor-pointer disabled:opacity-50"
+                >
+                  {submittingHoliday && <Loader2 size={13} className="animate-spin" />}
+                  <span>Save Holiday</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -19,6 +19,7 @@ import {
   X,
   FileText,
   CalendarOff,
+  Network,
   Sun,
   Moon,
 } from "lucide-react";
@@ -304,6 +305,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                 badge: (user?.role === "admin" || user?.role === "manager") && pendingLeaves > 0 ? pendingLeaves : null,
                 badgeBg: "bg-amber-500/20 text-amber-600 dark:text-amber-300 border border-amber-500/30 font-bold",
               },
+              { to: "/org-chart", icon: Network, label: "Org Chart" },
               {
                 to: "/chat",
                 icon: MessageSquare,

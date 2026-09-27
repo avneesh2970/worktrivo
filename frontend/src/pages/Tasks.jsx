@@ -4,19 +4,21 @@ import { useAuth, API_BASE } from '../context/AuthContext';
 import {
   Plus, Search, Filter, RefreshCw, Edit2, Trash2, Calendar, AlertCircle,
   LayoutGrid, List, X, Paperclip, CheckCircle2, Loader2,
-  KanbanSquare, CalendarDays, GanttChartSquare, Mic, UserPlus, CheckSquare, Square
+  KanbanSquare, CalendarDays, GanttChartSquare, Mic, UserPlus, CheckSquare, Square, Clock
 } from 'lucide-react';
 import KanbanBoard from '../components/KanbanBoard';
 import CalendarView from '../components/CalendarView';
 import GanttChart from '../components/GanttChart';
 import VoiceTaskModal from '../components/VoiceTaskModal';
 import { useSocket } from "../context/SocketContext";
+import { useTaskTimer } from '../context/TaskTimerContext';
 
 const Tasks = () => {
   const { user, token } = useAuth();
   const { socket } = useSocket();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { activeTimer, startTimer } = useTaskTimer();
 
   // Tasks & View State
   const [tasks, setTasks] = useState([]);
@@ -927,14 +929,32 @@ const Tasks = () => {
                 </div>
 
                 <div className="pt-3.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between mt-auto">
-                  <div
-                    className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg ${isOverdue
-                      ? 'bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/50 dark:text-rose-400 dark:border-rose-800/50 font-semibold animate-pulse'
-                      : 'bg-slate-50 text-slate-700 border border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 font-medium'
+                  <div className="flex items-center gap-1.5">
+                    <div
+                      className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg ${isOverdue
+                        ? 'bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/50 dark:text-rose-400 dark:border-rose-800/50 font-semibold animate-pulse'
+                        : 'bg-slate-50 text-slate-700 border border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 font-medium'
+                        }`}
+                    >
+                      <Calendar size={13} />
+                      <span>{new Date(task.dueDate).toLocaleDateString()}</span>
+                    </div>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        startTimer(task);
+                      }}
+                      className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        activeTimer?.taskId === task._id
+                          ? 'bg-emerald-500 text-slate-950 font-bold shadow-xs animate-pulse'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-[#10b981] hover:bg-[#10b981]/15'
                       }`}
-                  >
-                    <Calendar size={13} />
-                    <span>{new Date(task.dueDate).toLocaleDateString()}</span>
+                      title={activeTimer?.taskId === task._id ? 'Timer is running' : 'Start work timer on this task'}
+                    >
+                      <Clock size={12} />
+                      <span>{activeTimer?.taskId === task._id ? 'Tracking' : 'Timer'}</span>
+                    </button>
                   </div>
 
                   <div className="flex items-center">

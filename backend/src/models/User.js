@@ -93,6 +93,12 @@ const userSchema = new mongoose.Schema(
       trim: true,
       default: ''
     },
+    leaveBalances: {
+      casual: { type: Number, default: 12 },
+      sick: { type: Number, default: 10 },
+      paid: { type: Number, default: 15 },
+      wfh: { type: Number, default: 24 }
+    },
       resetOtp: {
       type: String,
       default: ''

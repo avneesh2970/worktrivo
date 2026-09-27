@@ -113,6 +113,58 @@ router.get('/my', async (req, res) => {
   }
 });
 
+/* ==========================================================
+   GET LEAVE BALANCES FOR LOGGED-IN USER
+========================================================== */
+router.get('/balances', async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select('leaveBalances');
+    const quotas = user?.leaveBalances || {
+      casual: 12,
+      sick: 10,
+      paid: 15,
+      wfh: 24
+    };
+
+    const currentYear = new Date().getFullYear();
+    const yearStart = new Date(currentYear, 0, 1);
+    const yearEnd = new Date(currentYear, 11, 31, 23, 59, 59, 999);
+
+    const approvedLeaves = await LeaveRequest.find({
+      user: req.user._id,
+      status: 'Approved',
+      startDate: { $gte: yearStart, $lte: yearEnd }
+    });
+
+    const used = {
+      casual: 0,
+      sick: 0,
+      paid: 0,
+      wfh: 0
+    };
+
+    approvedLeaves.forEach((leave) => {
+      const type = (leave.leaveType || '').toLowerCase();
+      if (type.includes('casual')) used.casual += leave.daysCount || 1;
+      else if (type.includes('sick')) used.sick += leave.daysCount || 1;
+      else if (type.includes('paid')) used.paid += leave.daysCount || 1;
+      else if (type.includes('home') || type.includes('wfh')) used.wfh += leave.daysCount || 1;
+    });
+
+    const remaining = {
+      casual: Math.max(0, (quotas.casual ?? 12) - used.casual),
+      sick: Math.max(0, (quotas.sick ?? 10) - used.sick),
+      paid: Math.max(0, (quotas.paid ?? 15) - used.paid),
+      wfh: Math.max(0, (quotas.wfh ?? 24) - used.wfh)
+    };
+
+    res.json({ quotas, used, remaining });
+  } catch (err) {
+    console.error('Error calculating leave balances:', err);
+    res.status(500).json({ error: 'Failed to calculate leave balances' });
+  }
+});
+
 // Helper to parse duration presets (matching dailyReports)
 const parseDuration = (date, startDate, endDate) => {
   if (!date && !startDate && !endDate) return null;

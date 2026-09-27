@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth, API_BASE } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import toast from 'react-hot-toast';
@@ -52,6 +52,7 @@ import {
 
 const DailyReports = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user, token } = useAuth();
   const { socket } = useSocket();
 
@@ -190,6 +191,27 @@ const DailyReports = () => {
     }
     setIsSubmitModalOpen(true);
   };
+
+  // Auto-fill from Live Task Timer
+  useEffect(() => {
+    const autoOpen = searchParams.get('autoOpen');
+    const paramHours = searchParams.get('hours');
+    const paramTaskId = searchParams.get('taskId');
+    if (autoOpen === 'true') {
+      setEditingReportId(null);
+      setFormDate(new Date().toISOString().split('T')[0]);
+      if (paramHours) setFormHours(Number(paramHours) || 8);
+      if (paramTaskId) setSelectedTaskIds([paramTaskId]);
+      setIsSubmitModalOpen(true);
+      // Clean query params
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('autoOpen');
+      newParams.delete('hours');
+      newParams.delete('taskId');
+      setSearchParams(newParams, { replace: true });
+      toast.success('Work timer synced to Daily Report form!');
+    }
+  }, [searchParams]);
 
   // Detailed View & Approval Modal
   const [viewingReport, setViewingReport] = useState(null);
@@ -452,6 +474,41 @@ const DailyReports = () => {
     window.print();
   };
 
+  // AI Executive Summary State & Handler
+  const [aiSummary, setAiSummary] = useState(null);
+  const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
+  const [loadingAiSummary, setLoadingAiSummary] = useState(false);
+
+  const handleGenerateAiSummary = async () => {
+    setIsSummaryModalOpen(true);
+    setLoadingAiSummary(true);
+    try {
+      const res = await fetch(`${API_BASE}/daily-reports/ai-summary`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          date: dateFilter,
+          startDate,
+          endDate,
+          department: deptFilter
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAiSummary(data);
+      } else {
+        toast.error('Failed to generate executive summary.');
+      }
+    } catch (err) {
+      toast.error('Network error generating summary.');
+    } finally {
+      setLoadingAiSummary(false);
+    }
+  };
+
   // Handle Form Submission / Editing
   const handleSubmitReport = async (e) => {
     e.preventDefault();
@@ -639,6 +696,16 @@ const DailyReports = () => {
 
         {/* Header Action Buttons */}
         <div className="flex flex-wrap items-center gap-2.5">
+          {/* Smart Executive Summary Button */}
+          <button
+            onClick={handleGenerateAiSummary}
+            title="Generate AI Executive Briefing for this period"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-violet-500/15 via-indigo-500/15 to-[#10b981]/15 border border-indigo-500/30 text-indigo-700 dark:text-indigo-300 hover:opacity-90 font-bold text-xs transition-all shadow-xs cursor-pointer"
+          >
+            <Sparkles size={15} className="text-indigo-500" />
+            <span>AI Executive Briefing</span>
+          </button>
+
           {/* Export CSV Button */}
           <button
             onClick={handleExportCSV}
@@ -2281,6 +2348,124 @@ const DailyReports = () => {
                 className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold transition-colors cursor-pointer"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================
+          AI EXECUTIVE BRIEFING MODAL
+      ========================================================= */}
+      {isSummaryModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white dark:bg-[#121826] border border-slate-200 dark:border-slate-800 rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800/80">
+              <div className="flex items-center gap-2.5">
+                <div className="h-8 w-8 rounded-xl bg-gradient-to-tr from-indigo-500 to-[#10b981] flex items-center justify-center text-white shadow-xs">
+                  <Sparkles size={16} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                    Executive Productivity Briefing
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    AI-powered synthesis for {stats.durationLabel || 'the selected period'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsSummaryModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {loadingAiSummary ? (
+              <div className="py-16 text-center space-y-3">
+                <Loader2 size={32} className="animate-spin text-[#10b981] mx-auto" />
+                <p className="text-xs text-slate-500 font-medium">Analyzing team submissions, hours, and blockers...</p>
+              </div>
+            ) : aiSummary ? (
+              <div className="space-y-4 text-xs">
+                {/* Overview */}
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-indigo-500/10 via-sky-500/10 to-emerald-500/10 border border-indigo-500/20 text-slate-800 dark:text-slate-200 leading-relaxed font-medium">
+                  {aiSummary.overview}
+                </div>
+
+                {/* Metrics Grid */}
+                {aiSummary.metrics && (
+                  <div className="grid grid-cols-4 gap-2.5 text-center">
+                    <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#0B101E] border border-slate-200 dark:border-slate-800">
+                      <span className="text-[10px] text-slate-400 uppercase font-bold block">Reports</span>
+                      <span className="text-sm font-black text-slate-900 dark:text-white font-mono mt-0.5 block">{aiSummary.metrics.totalReports}</span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#0B101E] border border-slate-200 dark:border-slate-800">
+                      <span className="text-[10px] text-slate-400 uppercase font-bold block">Hours Logged</span>
+                      <span className="text-sm font-black text-sky-500 font-mono mt-0.5 block">{aiSummary.metrics.totalHours}</span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#0B101E] border border-slate-200 dark:border-slate-800">
+                      <span className="text-[10px] text-slate-400 uppercase font-bold block">Active Staff</span>
+                      <span className="text-sm font-black text-[#10b981] font-mono mt-0.5 block">{aiSummary.metrics.activeMembers}</span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#0B101E] border border-slate-200 dark:border-slate-800">
+                      <span className="text-[10px] text-slate-400 uppercase font-bold block">Blockers</span>
+                      <span className="text-sm font-black text-rose-500 font-mono mt-0.5 block">{aiSummary.metrics.blockersCount}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Key Accomplishments */}
+                <div className="space-y-2">
+                  <h4 className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 uppercase text-[11px] tracking-wider text-emerald-600 dark:text-emerald-400">
+                    <span>🌟</span> Top Accomplishments
+                  </h4>
+                  <ul className="space-y-1.5">
+                    {aiSummary.highlights?.map((h, i) => (
+                      <li key={i} className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#0B101E] border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 leading-relaxed">
+                        {h}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Blockers */}
+                <div className="space-y-2">
+                  <h4 className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 uppercase text-[11px] tracking-wider text-rose-600 dark:text-rose-400">
+                    <span>⚠️</span> Flagged Blockers & Impediments
+                  </h4>
+                  <ul className="space-y-1.5">
+                    {aiSummary.blockers?.map((b, i) => (
+                      <li key={i} className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-700 dark:text-rose-300 leading-relaxed">
+                        {b}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Recommendations */}
+                <div className="space-y-2">
+                  <h4 className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 uppercase text-[11px] tracking-wider text-indigo-600 dark:text-indigo-400">
+                    <span>💡</span> Recommended Manager Actions
+                  </h4>
+                  <ul className="space-y-1.5">
+                    {aiSummary.recommendations?.map((r, i) => (
+                      <li key={i} className="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-700 dark:text-indigo-300 leading-relaxed">
+                        {r}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex justify-end">
+              <button
+                onClick={() => setIsSummaryModalOpen(false)}
+                className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 font-bold text-xs transition-colors cursor-pointer"
+              >
+                Close Briefing
               </button>
             </div>
           </div>

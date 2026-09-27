@@ -3,6 +3,7 @@ import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Sidebar from './Sidebar';
 import Navbar from './Navbar';
+import ActiveTaskTimerBar from './ActiveTaskTimerBar';
 
 const Layout = () => {
   const { user, loading } = useAuth();
@@ -90,6 +91,7 @@ const Layout = () => {
           }`}
         >
           <Outlet />
+          <ActiveTaskTimerBar />
         </main>
       </div>
     </div>

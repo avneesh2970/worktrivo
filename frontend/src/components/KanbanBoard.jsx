@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
-import { Calendar, GripVertical, AlertTriangle, X } from 'lucide-react';
+import { Calendar, GripVertical, AlertTriangle, X, Clock } from 'lucide-react';
 import { API_BASE } from '../context/AuthContext';
+import { useTaskTimer } from '../context/TaskTimerContext';
 
 const COLUMNS = [
   { key: 'To Do', dot: 'bg-slate-400' },
@@ -44,6 +45,7 @@ const KanbanBoard = ({ tasks, user, token, navigate, showToast, refreshTasks }) 
   const [updatingId, setUpdatingId] = useState(null);
   const [rejectModal, setRejectModal] = useState(null); // { taskId, title }
   const [rejectFeedback, setRejectFeedback] = useState('');
+  const { activeTimer, startTimer } = useTaskTimer();
 
   const isManagement = user?.role === 'admin' || user?.role === 'manager';
 
@@ -204,9 +206,25 @@ const KanbanBoard = ({ tasks, user, token, navigate, showToast, refreshTasks }) 
                       </div>
 
                       <div className="flex items-center justify-between">
-                        <div className={`flex items-center gap-1 text-[10px] ${isOverdue ? 'text-rose-600 font-medium' : 'text-slate-400'}`}>
-                          <Calendar size={11} />
-                          {new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                        <div className="flex items-center gap-1.5">
+                          <div className={`flex items-center gap-1 text-[10px] ${isOverdue ? 'text-rose-600 font-medium' : 'text-slate-400'}`}>
+                            <Calendar size={11} />
+                            {new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              startTimer(task);
+                            }}
+                            className={`p-1 rounded text-[10px] transition-all cursor-pointer ${
+                              activeTimer?.taskId === task._id
+                                ? 'bg-emerald-500 text-slate-950 font-bold animate-pulse'
+                                : 'text-slate-400 hover:text-[#10b981] hover:bg-slate-100 dark:hover:bg-slate-800'
+                            }`}
+                            title="Start work timer on this task"
+                          >
+                            <Clock size={11} />
+                          </button>
                         </div>
                         <div className="flex -space-x-1 overflow-hidden">
                           {(task.assignedTo || []).slice(0, 3).map((u) => (

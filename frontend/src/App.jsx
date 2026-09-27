@@ -19,6 +19,7 @@ import Approvals from './pages/Approvals';
 import DailyReports from './pages/DailyReports';
 import MyTeam from './pages/MyTeam';
 import LeaveRequests from './pages/LeaveRequests';
+import OrgChart from './pages/OrgChart';
 
 const AdminRoute = ({ children }) => {
   const { user } = useAuth();
@@ -81,6 +82,7 @@ function App() {
           <Route path="announcements" element={<Announcements />} />
           <Route path="daily-reports" element={<DailyReports />} />
           <Route path="leaves" element={<LeaveRequests />} />
+          <Route path="org-chart" element={<OrgChart />} />
           
           <Route
             path="users"
