@@ -81,6 +81,41 @@ app.get(["/health", "/api/health"], (req, res) => {
 });
 
 // ===============================
+// Email System Diagnostic Route
+// ===============================
+app.get("/api/email-diag", async (req, res) => {
+  const transporter = require("./src/utils/nodemailer");
+  let verifyResult = "PENDING";
+  let verifyError = null;
+
+  try {
+    await transporter.verify();
+    verifyResult = "SUCCESS";
+  } catch (err) {
+    verifyResult = "FAILED";
+    verifyError = err.message;
+  }
+
+  res.status(200).json({
+    status: verifyResult === "SUCCESS" ? "OK" : "ERROR",
+    config: {
+      hasRefreshToken: !!process.env.GOOGLE_REFRESH_TOKEN,
+      refreshTokenPrefix: process.env.GOOGLE_REFRESH_TOKEN
+        ? process.env.GOOGLE_REFRESH_TOKEN.substring(0, 10) + "..."
+        : null,
+      hasClientId: !!process.env.GOOGLE_CLIENT_ID,
+      hasClientSecret: !!process.env.GOOGLE_CLIENT_SECRET,
+      senderEmail: process.env.SENDER_EMAIL || null,
+      hasSmtpPass: !!process.env.SMTP_PASS && !process.env.SMTP_PASS.includes("Your SMTP"),
+      smtpUser: process.env.SMTP_USER || null,
+    },
+    verifyResult,
+    verifyError,
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// ===============================
 // Auto Keep-Alive (Prevents Render Free Tier from sleeping)
 // ===============================
 const startKeepAlive = () => {

@@ -20,11 +20,18 @@
 
 const nodemailer = require('nodemailer');
 
+const TIMEOUT_CONFIG = {
+  connectionTimeout: 8000,
+  greetingTimeout: 8000,
+  socketTimeout: 12000,
+};
+
 const createTransporter = () => {
   // 1. Gmail OAuth2 (if GOOGLE_REFRESH_TOKEN is configured)
   if (process.env.GOOGLE_REFRESH_TOKEN) {
     return nodemailer.createTransport({
       service: 'gmail',
+      ...TIMEOUT_CONFIG,
       auth: {
         type: 'OAuth2',
         user: process.env.SENDER_EMAIL || process.env.SMTP_USER,
@@ -41,6 +48,7 @@ const createTransporter = () => {
       host: process.env.SMTP_HOST,
       port: Number(process.env.SMTP_PORT) || 587,
       secure: process.env.SMTP_SECURE === 'true',
+      ...TIMEOUT_CONFIG,
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
@@ -55,6 +63,7 @@ const createTransporter = () => {
   ) {
     return nodemailer.createTransport({
       service: 'gmail',
+      ...TIMEOUT_CONFIG,
       auth: {
         user: process.env.SENDER_EMAIL || process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
@@ -65,6 +74,7 @@ const createTransporter = () => {
   // 4. Default / Fallback OAuth2 configuration
   return nodemailer.createTransport({
     service: 'gmail',
+    ...TIMEOUT_CONFIG,
     auth: {
       type: 'OAuth2',
       user: process.env.SENDER_EMAIL,
@@ -75,6 +85,9 @@ const createTransporter = () => {
   });
 };
 
-const transporter = createTransporter();
+const transporter = {
+  sendMail: (...args) => createTransporter().sendMail(...args),
+  verify: (...args) => createTransporter().verify(...args),
+};
 
 module.exports = transporter;
