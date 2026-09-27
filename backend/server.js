@@ -1,3 +1,8 @@
+const dns = require("node:dns");
+if (dns.setDefaultResultOrder) {
+  dns.setDefaultResultOrder("ipv4first");
+}
+
 const http = require("http");
 const express = require("express");
 const mongoose = require("mongoose");
@@ -85,19 +90,50 @@ app.get(["/health", "/api/health"], (req, res) => {
 // ===============================
 app.get("/api/email-diag", async (req, res) => {
   const transporter = require("./src/utils/nodemailer");
-  let verifyResult = "PENDING";
-  let verifyError = null;
+  let smtpVerifyResult = "PENDING";
+  let smtpVerifyError = null;
+  let gmailApiResult = "NOT_CONFIGURED";
+  let gmailApiError = null;
 
-  try {
-    await transporter.verify();
-    verifyResult = "SUCCESS";
-  } catch (err) {
-    verifyResult = "FAILED";
-    verifyError = err.message;
+  // Test Gmail REST API over HTTPS (Port 443)
+  if (process.env.GOOGLE_REFRESH_TOKEN && process.env.GOOGLE_CLIENT_ID) {
+    try {
+      const { google } = require("googleapis");
+      const oauth2Client = new google.auth.OAuth2(
+        process.env.GOOGLE_CLIENT_ID,
+        process.env.GOOGLE_CLIENT_SECRET
+      );
+      oauth2Client.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
+      await oauth2Client.getAccessToken();
+      gmailApiResult = "SUCCESS_HTTPS";
+    } catch (apiErr) {
+      gmailApiResult = "FAILED";
+      gmailApiError = apiErr.message;
+    }
   }
 
+  // Test SMTP connection
+  try {
+    await transporter.verify();
+    smtpVerifyResult = "SUCCESS";
+  } catch (err) {
+    smtpVerifyResult = "FAILED";
+    smtpVerifyError = err.message;
+  }
+
+  const isWorking = gmailApiResult === "SUCCESS_HTTPS" || smtpVerifyResult === "SUCCESS";
+
   res.status(200).json({
-    status: verifyResult === "SUCCESS" ? "OK" : "ERROR",
+    status: isWorking ? "OK" : "ERROR",
+    activeTransport: gmailApiResult === "SUCCESS_HTTPS" ? "Gmail REST API (HTTPS Port 443)" : "SMTP",
+    gmailApi: {
+      result: gmailApiResult,
+      error: gmailApiError,
+    },
+    smtp: {
+      result: smtpVerifyResult,
+      error: smtpVerifyError,
+    },
     config: {
       hasRefreshToken: !!process.env.GOOGLE_REFRESH_TOKEN,
       refreshTokenPrefix: process.env.GOOGLE_REFRESH_TOKEN
@@ -107,10 +143,7 @@ app.get("/api/email-diag", async (req, res) => {
       hasClientSecret: !!process.env.GOOGLE_CLIENT_SECRET,
       senderEmail: process.env.SENDER_EMAIL || null,
       hasSmtpPass: !!process.env.SMTP_PASS && !process.env.SMTP_PASS.includes("Your SMTP"),
-      smtpUser: process.env.SMTP_USER || null,
     },
-    verifyResult,
-    verifyError,
     timestamp: new Date().toISOString(),
   });
 });

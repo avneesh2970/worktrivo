@@ -24,13 +24,16 @@ const TIMEOUT_CONFIG = {
   connectionTimeout: 8000,
   greetingTimeout: 8000,
   socketTimeout: 12000,
+  family: 4, // Force IPv4 to prevent ENETUNREACH on cloud containers
 };
 
 const createTransporter = () => {
   // 1. Gmail OAuth2 (if GOOGLE_REFRESH_TOKEN is configured)
   if (process.env.GOOGLE_REFRESH_TOKEN) {
     return nodemailer.createTransport({
-      service: 'gmail',
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true,
       ...TIMEOUT_CONFIG,
       auth: {
         type: 'OAuth2',
@@ -62,7 +65,9 @@ const createTransporter = () => {
     !process.env.SMTP_PASS.includes('Your SMTP')
   ) {
     return nodemailer.createTransport({
-      service: 'gmail',
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true,
       ...TIMEOUT_CONFIG,
       auth: {
         user: process.env.SENDER_EMAIL || process.env.SMTP_USER,
@@ -73,7 +78,9 @@ const createTransporter = () => {
 
   // 4. Default / Fallback OAuth2 configuration
   return nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
     ...TIMEOUT_CONFIG,
     auth: {
       type: 'OAuth2',
