@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import Sidebar from './Sidebar';
 import Navbar from './Navbar';
 import ActiveTaskTimerBar from './ActiveTaskTimerBar';
+import MobileNotificationPrompt from './MobileNotificationPrompt';
 
 const Layout = () => {
   const { user, loading } = useAuth();
@@ -82,6 +83,7 @@ const Layout = () => {
       {/* Main Viewport Container */}
       <div className="flex h-[100dvh] min-w-0 flex-1 flex-col overflow-hidden">
         <Navbar toggleSidebar={toggleSidebar} isSidebarOpen={isSidebarOpen} />
+        <MobileNotificationPrompt />
         
         <main
           className={`flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-white/10 scrollbar-track-transparent ${
