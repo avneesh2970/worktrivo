@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import FileUpload from "../components/FileUpload";
 import FileList from "../components/FileList";
+import { formatDateTime, formatDate, toDateTimeLocalValue, toDateLocalValue } from "../utils/dateUtils";
 
 const GroupDetails = () => {
   const { id } = useParams();
@@ -250,7 +251,7 @@ const GroupDetails = () => {
       description: task.description || "",
       assignedTo: task.assignedTo?.[0]?._id || task.assignedTo?.[0] || "",
       priority: task.priority || "Medium",
-      dueDate: task.dueDate ? task.dueDate.substring(0, 10) : "",
+      dueDate: toDateTimeLocalValue(task.dueDate),
     });
     setShowEditModal(true);
   };
@@ -491,6 +492,11 @@ const GroupDetails = () => {
                         <span className={`rounded-full px-3 py-0.5 text-xs font-bold uppercase tracking-wider border ${getBadgeStyle('status', task.status)}`}>
                           {task.status || "Pending"}
                         </span>
+                        {task.status === 'Approved' && (task.wasOverdue || (task.dueDate && task.approvedAt && new Date(task.dueDate) < new Date(task.approvedAt)) || (task.dueDate && !task.approvedAt && new Date(task.dueDate) < new Date(task.updatedAt || task.createdAt))) && (
+                          <span className="rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-rose-100 text-rose-700 border border-rose-300 dark:bg-rose-950/70 dark:text-rose-300 dark:border-rose-800">
+                            Overdue
+                          </span>
+                        )}
                       </div>
                       <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed max-w-3xl font-normal line-clamp-1">
                         {task.description || "No description provided."}
@@ -505,7 +511,7 @@ const GroupDetails = () => {
 
                     <span className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-2.5 py-1 text-xs font-medium text-slate-600 dark:text-slate-400">
                       <Calendar className="h-3.5 w-3.5 text-slate-400" />
-                      Due: {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : "No date"}
+                      Due: {formatDateTime(task.dueDate)}
                     </span>
 
                     {task.assignedTo?.length > 0 && (
@@ -578,10 +584,15 @@ const GroupDetails = () => {
                       {viewingTask.title}
                     </h1>
 
-                    <div className="flex items-center gap-3 mb-8">
+                    <div className="flex items-center gap-3 mb-8 flex-wrap">
                       <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider border ${getBadgeStyle('status', viewingTask.status)}`}>
                         {viewingTask.status || "Pending"}
                       </span>
+                      {viewingTask.status === 'Approved' && (viewingTask.wasOverdue || (viewingTask.dueDate && viewingTask.approvedAt && new Date(viewingTask.dueDate) < new Date(viewingTask.approvedAt)) || (viewingTask.dueDate && !viewingTask.approvedAt && new Date(viewingTask.dueDate) < new Date(viewingTask.updatedAt || viewingTask.createdAt))) && (
+                        <span className="rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider bg-rose-100 text-rose-700 border border-rose-300 dark:bg-rose-950/70 dark:text-rose-300 dark:border-rose-800">
+                          Overdue
+                        </span>
+                      )}
                       <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider border ${getBadgeStyle('priority', viewingTask.priority)}`}>
                         {viewingTask.priority} Priority
                       </span>
@@ -621,7 +632,7 @@ const GroupDetails = () => {
                         <div>
                           <p className="text-[10px] uppercase font-bold text-slate-500">Due Date</p>
                           <p className="text-sm font-bold text-slate-900 dark:text-white">
-                            {viewingTask.dueDate ? new Date(viewingTask.dueDate).toLocaleString() : "Not Set"}
+                            {formatDateTime(viewingTask.dueDate)}
                           </p>
                         </div>
                       </div>
@@ -882,7 +893,7 @@ const GroupDetails = () => {
                   Due Date
                 </label>
                 <input
-                  type="date"
+                  type="datetime-local"
                   value={taskForm.dueDate}
                   onChange={(e) => setTaskForm({ ...taskForm, dueDate: e.target.value })}
                   className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 p-3 text-sm text-slate-900 dark:text-white focus:border-[#10b981] focus:outline-none transition-all"
@@ -994,7 +1005,7 @@ const GroupDetails = () => {
                   Due Date
                 </label>
                 <input
-                  type="date"
+                  type="datetime-local"
                   value={editForm.dueDate}
                   onChange={(e) => setEditForm({ ...editForm, dueDate: e.target.value })}
                   className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 p-3 text-sm text-slate-900 dark:text-white focus:border-[#10b981] focus:outline-none transition-all"

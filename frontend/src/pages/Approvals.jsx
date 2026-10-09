@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 
 import FileList from '../components/FileList';
+import { formatDateTime, formatDate } from '../utils/dateUtils';
 
 // --- FIXED HELPER: Replaces Windows backslashes ---
 const getFileUrl = (path) => {
@@ -284,17 +285,32 @@ const Approvals = () => {
         );
     };
 
-    const getStatusBadge = (status) => {
+    const getStatusBadge = (status, item = null) => {
         const styles = {
             'Approved': 'border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10',
             'Completed': 'border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10',
             'Pending': 'border-amber-500 text-amber-600 dark:text-amber-400 bg-amber-500/10',
             'Completed (Pending Approval)': 'border-amber-500 text-amber-600 dark:text-amber-400 bg-amber-500/10',
         };
+
+        const target = item || itemDetails;
+        const isApprovedOverdue = (status === 'Approved' || status === 'Completed') && target && (
+            target.wasOverdue ||
+            (target.dueDate && target.approvedAt && new Date(target.dueDate) < new Date(target.approvedAt)) ||
+            (target.dueDate && !target.approvedAt && new Date(target.dueDate) < new Date(target.updatedAt || target.createdAt))
+        );
+
         return (
-            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${styles[status] || 'border-sky-500 text-sky-600 dark:text-sky-400 bg-sky-500/10'}`}>
-                {status || "Pending"}
-            </span>
+            <div className="inline-flex items-center gap-1.5 flex-wrap">
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${styles[status] || 'border-sky-500 text-sky-600 dark:text-sky-400 bg-sky-500/10'}`}>
+                    {status || "Pending"}
+                </span>
+                {isApprovedOverdue && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose-100 text-rose-700 border border-rose-300 dark:bg-rose-950/70 dark:text-rose-300 dark:border-rose-800">
+                        Overdue
+                    </span>
+                )}
+            </div>
         );
     };
 
@@ -417,7 +433,7 @@ const Approvals = () => {
                                         <div className="flex flex-col">
                                             <span className="text-[10px] uppercase font-bold tracking-widest text-slate-500 dark:text-slate-400 mb-1">Department / Date</span>
                                             <span className="text-[#10b981] font-semibold truncate">
-                                                {item.department || 'General'} • {new Date(item.reportDate).toLocaleDateString()}
+                                                {item.department || 'General'} • {formatDate(item.reportDate)}
                                             </span>
                                         </div>
                                     ) : item._itemType !== 'project' && activeTab === 'projects' ? (
@@ -589,7 +605,7 @@ const Approvals = () => {
                                                     <div>
                                                         <p className="text-[10px] uppercase font-bold text-slate-500">Due Date</p>
                                                         <p className="text-sm font-bold text-slate-900 dark:text-white">
-                                                            {itemDetails.dueDate ? new Date(itemDetails.dueDate).toLocaleString() : "Not Set"}
+                                                            {formatDateTime(itemDetails.dueDate)}
                                                         </p>
                                                     </div>
                                                 </div>
@@ -657,7 +673,7 @@ const Approvals = () => {
                                                                         <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-400 rounded">
                                                                             {c.userId?.role === 'admin' ? 'Manager' : 'Member'}
                                                                         </span>
-                                                                        <span className="text-slate-500 ml-auto">{new Date(c.createdAt).toLocaleString()}</span>
+                                                                        <span className="text-slate-500 ml-auto">{formatDateTime(c.createdAt)}</span>
                                                                     </div>
                                                                     <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">{c.message}</p>
                                                                 </div>
@@ -738,7 +754,7 @@ const Approvals = () => {
                                                             <div className="mb-1 flex flex-wrap items-center gap-2 text-[10px] font-bold text-slate-500">
                                                                 <span className="text-slate-900 dark:text-white">{log.userId?.name || 'System'}</span>
                                                                 <span>•</span>
-                                                                <span>{new Date(log.createdAt).toLocaleString()}</span>
+                                                                <span>{formatDateTime(log.createdAt)}</span>
                                                             </div>
                                                             
                                                             <p className="text-xs font-bold text-slate-900 dark:text-white mb-2">{log.action}</p>

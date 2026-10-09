@@ -517,7 +517,7 @@ router.patch('/bulk-assign', requireRole(['admin', 'manager']), async (req, res)
 
 // PUT /api/tasks/:id
 router.put('/:id', requireRole(['admin', 'manager', 'member']), async (req, res) => {
-  const { title, description, priority, dueDate, assignedTo, attachments, verballyAssignedBy } = req.body;
+  const { title, description, priority, dueDate, startDate, estimatedHours, tags, checklist, dependencies, assignedTo, attachments, verballyAssignedBy } = req.body;
   const taskId = req.params.id;
 
   try {
@@ -544,6 +544,11 @@ router.put('/:id', requireRole(['admin', 'manager', 'member']), async (req, res)
     if (description !== undefined) task.description = description.trim();
     if (priority) task.priority = priority;
     if (dueDate) task.dueDate = dueDate;
+    if (startDate !== undefined) task.startDate = startDate || null;
+    if (estimatedHours !== undefined) task.estimatedHours = Number(estimatedHours) || 0;
+    if (tags !== undefined) task.tags = tags;
+    if (checklist !== undefined) task.checklist = checklist;
+    if (dependencies !== undefined) task.dependencies = dependencies;
     if (isManagerOrAdmin && assignedTo && assignedTo.length) task.assignedTo = assignedTo;
     if (attachments) task.attachments = attachments;
 
@@ -680,20 +685,28 @@ router.patch('/:id/status', async (req, res) => {
       return res.status(403).json({ error: 'Forbidden. Only assigned members should submit for approval.' });
     }
 
+    // Track if task was overdue or completed past its deadline
+    if (task.status === 'Overdue' || (task.dueDate && new Date(task.dueDate) < new Date())) {
+      task.wasOverdue = true;
+    }
+
     // Update status
     task.status = status;
     task.activityLogs.push({ action: `Status changed to ${status}`, performedBy: req.user._id, timestamp: new Date() });
 
     if (status === 'Approved') {
       task.approvedBy = req.user._id;
+      task.approvedAt = new Date();
       task.activityLogs.push({ action: "Task Approved", performedBy: req.user._id, timestamp: new Date() });
       task.feedback = '';
     } else if (status === 'Rejected') {
       task.approvedBy = null;
+      task.approvedAt = null;
       task.feedback = feedback;
       task.activityLogs.push({ action: "Task Rejected", performedBy: req.user._id, timestamp: new Date() });
     } else {
       task.approvedBy = null;
+      task.approvedAt = null;
       task.feedback = '';
     }
 

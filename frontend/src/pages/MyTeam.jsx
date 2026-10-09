@@ -30,6 +30,7 @@ import {
   TrendingUp
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { formatDateTime, formatDate } from '../utils/dateUtils';
 
 // Helper Avatar component with initials fallback
 const EmployeeAvatar = ({ user, size = 'md' }) => {
@@ -666,7 +667,7 @@ const MyTeam = () => {
                                 {task.dueDate && (
                                   <span className="flex items-center gap-1 font-medium">
                                     <Clock size={12} className={new Date(task.dueDate) < new Date() && !['Completed', 'Approved'].includes(task.status) ? 'text-rose-500' : 'text-sky-500'} />
-                                    Due: {new Date(task.dueDate).toLocaleDateString()}
+                                    Due: {formatDateTime(task.dueDate)}
                                   </span>
                                 )}
                                 {task.group?.name && (
@@ -682,15 +683,22 @@ const MyTeam = () => {
                             </div>
 
                             <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800/80">
-                              <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
-                                task.status === 'Completed' || task.status === 'Approved'
-                                  ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
-                                  : task.status === 'In Progress'
-                                  ? 'bg-sky-500/10 text-sky-500 border border-sky-500/20'
-                                  : 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
-                              }`}>
-                                {task.status}
-                              </span>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                                  task.status === 'Completed' || task.status === 'Approved'
+                                    ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                                    : task.status === 'In Progress'
+                                    ? 'bg-sky-500/10 text-sky-500 border border-sky-500/20'
+                                    : 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                                }`}>
+                                  {task.status}
+                                </span>
+                                {task.status === 'Approved' && (task.wasOverdue || (task.dueDate && task.approvedAt && new Date(task.dueDate) < new Date(task.approvedAt)) || (task.dueDate && !task.approvedAt && new Date(task.dueDate) < new Date(task.updatedAt || task.createdAt))) && (
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
+                                    Overdue
+                                  </span>
+                                )}
+                              </div>
 
                               <button
                                 onClick={() => navigate(`/tasks/${task._id}`)}

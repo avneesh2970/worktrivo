@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Calendar, GripVertical, AlertTriangle, X, Clock } from 'lucide-react';
 import { API_BASE } from '../context/AuthContext';
 import { useTaskTimer } from '../context/TaskTimerContext';
+import { formatDateTime, formatDate } from '../utils/dateUtils';
 
 const COLUMNS = [
   { key: 'To Do', dot: 'bg-slate-400' },
@@ -195,6 +196,11 @@ const KanbanBoard = ({ tasks, user, token, navigate, showToast, refreshTasks }) 
                       <div className="flex items-center gap-1.5 mb-2 flex-wrap">
                         <span className={`w-1.5 h-1.5 rounded-full ${priorityDot[task.priority] || 'bg-slate-400'}`} />
                         <span className="text-[10px] text-slate-500 dark:text-slate-400">{task.priority}</span>
+                        {task.status === 'Approved' && (task.wasOverdue || (task.dueDate && task.approvedAt && new Date(task.dueDate) < new Date(task.approvedAt)) || (task.dueDate && !task.approvedAt && new Date(task.dueDate) < new Date(task.updatedAt || task.createdAt))) && (
+                          <span className="text-[9px] font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 px-1.5 py-0.5 rounded">
+                            Overdue
+                          </span>
+                        )}
                         {task.verballyAssignedBy && (
                           <span className="text-[9px] font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 px-1.5 py-0.5 rounded" title={`Verbally assigned by ${task.verballyAssignedBy.name}`}>
                             🗣️ {task.verballyAssignedBy.name}
@@ -209,7 +215,7 @@ const KanbanBoard = ({ tasks, user, token, navigate, showToast, refreshTasks }) 
                         <div className="flex items-center gap-1.5">
                           <div className={`flex items-center gap-1 text-[10px] ${isOverdue ? 'text-rose-600 font-medium' : 'text-slate-400'}`}>
                             <Calendar size={11} />
-                            {new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                            {formatDate(task.dueDate)}
                           </div>
                           <button
                             onClick={(e) => {

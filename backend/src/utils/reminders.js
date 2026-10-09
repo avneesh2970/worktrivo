@@ -187,6 +187,7 @@ const checkReminders = async () => {
       const oldStatus = task.status;
 
       task.status = "Overdue";
+      task.wasOverdue = true;
 
       await task.save();
 

@@ -141,6 +141,14 @@ isArchived: {
   type: Boolean,
   default: false
 },
+wasOverdue: {
+  type: Boolean,
+  default: false
+},
+approvedAt: {
+  type: Date,
+  default: null
+},
 
 activityLogs: [activitySchema],
 

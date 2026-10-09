@@ -527,14 +527,14 @@ const Auth = () => {
                   <div className="absolute inset-0 flex items-center">
                     <div className="w-full border-t border-white/10"></div>
                   </div>
-                  <div className="relative flex justify-center">
+                  {/* <div className="relative flex justify-center">
                     <span className="bg-[#1e2640]-900 px-3 text-xs text-slate-400">
                       OR
                     </span>
-                  </div>
+                  </div> */}
                 </div>
 
-                {/* Google Login Component */}
+                {/* Google Login Component
                 <div className="w-full flex justify-center items-center py-1 overflow-hidden">
                   <GoogleLogin
                     theme="outline"
@@ -545,8 +545,10 @@ const Auth = () => {
                     onError={() => {
                       setError("Google Login Failed");
                     }}
+                      
                   />
                 </div>
+                 */}
               </>
             )}
 

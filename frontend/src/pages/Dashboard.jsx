@@ -12,6 +12,7 @@ import {
   XCircle, PlayCircle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { formatDateTime, formatDate } from '../utils/dateUtils';
 
 const Dashboard = () => {
   const { user, token } = useAuth();
@@ -518,7 +519,7 @@ const Dashboard = () => {
                         <span className="text-slate-600 dark:text-gray-400">{formatLogAction(log)}</span>
                       </p>
                       <p className="text-slate-400 dark:text-gray-500 text-[10px] font-medium">
-                        {new Date(log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {new Date(log.createdAt).toLocaleDateString()}
+                        {formatDateTime(log.createdAt)}
                       </p>
                     </div>
 
@@ -558,7 +559,7 @@ const Dashboard = () => {
                         {task.title}
                       </p>
                       <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold">
-                        Due: {new Date(task.dueDate).toLocaleDateString()}
+                        Due: {formatDateTime(task.dueDate)}
                       </p>
                     </div>
                     <ArrowRight size={14} className="text-rose-500 dark:text-rose-400 group-hover:translate-x-1 transition-transform" />
