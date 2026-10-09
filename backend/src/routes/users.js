@@ -13,6 +13,8 @@ const uploadMemory = multer({ storage: multer.memoryStorage() });
 router.post('/send-reset-otp', userController.sendResetOtp);
 router.post('/reset-password', userController.resetPassword);
 router.post('/register', userController.registerUser);
+router.post('/verify-email', userController.verifyEmail);
+router.post('/resend-verification-otp', userController.resendVerificationOtp);
 
 // PROTECTED ROUTES
 router.use(authenticate);

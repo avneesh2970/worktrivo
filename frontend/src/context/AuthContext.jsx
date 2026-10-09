@@ -140,7 +140,10 @@ export const AuthProvider = ({ children }) => {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || data.error || "Authentication failed");
+        const error = new Error(data.message || data.error || "Authentication failed");
+        error.isUnverified = data.isUnverified;
+        error.email = data.email || email;
+        throw error;
       }
 
       localStorage.setItem("task_tracker_token", data.token);
@@ -229,12 +232,83 @@ export const AuthProvider = ({ children }) => {
         throw new Error(data.message || data.error || "Registration failed");
       }
 
-      return await login(email, password);
+      return data;
     } catch (err) {
       setError(err.message);
       throw err;
     } finally {
       setLoading(false);
+    }
+  };
+
+  // ===========================
+  // Verify Email with 6-Digit OTP
+  // ===========================
+  const verifyEmail = async (email, otp) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`${API_BASE}/users/verify-email`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          otp,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Email verification failed");
+      }
+
+      if (data.token && data.user) {
+        localStorage.setItem("task_tracker_token", data.token);
+        localStorage.setItem("user", JSON.stringify(data.user));
+
+        skipNextFetchMeRef.current = true;
+        setToken(data.token);
+        setUser(data.user);
+      }
+
+      return data;
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ===========================
+  // Resend Email Verification OTP
+  // ===========================
+  const resendVerificationOtp = async (email) => {
+    setError(null);
+
+    try {
+      const response = await fetch(`${API_BASE}/users/resend-verification-otp`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Failed to resend verification code");
+      }
+
+      return data;
+    } catch (err) {
+      setError(err.message);
+      throw err;
     }
   };
 
@@ -249,6 +323,8 @@ export const AuthProvider = ({ children }) => {
         login,
         googleLogin,
         register,
+        verifyEmail,
+        resendVerificationOtp,
         logout,
         setError,
       }}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { GoogleLogin } from '@react-oauth/google';
@@ -21,14 +21,15 @@ import {
   UserCheck,
   ArrowLeft,
   Lock,
-  Send
+  Send,
+  MailCheck
 } from 'lucide-react';
 import AnimatedHub from '../components/AnimatedHub';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000/api';
 
 const Auth = () => {
-  const { user, login, register, error, setError, googleLogin } = useAuth();
+  const { user, login, register, error, setError, googleLogin, verifyEmail, resendVerificationOtp } = useAuth();
   const navigate = useNavigate();
 
   // Navigation / View modes: 'auth' (signin/signup), 'forgot' (send OTP), 'reset' (verify OTP & new password)
@@ -47,9 +48,24 @@ const Auth = () => {
   const [newPassword, setNewPassword] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
 
+  // Email verification states
+  const [verifyOtp, setVerifyOtp] = useState('');
+  const [verifyEmailAddress, setVerifyEmailAddress] = useState('');
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resending, setResending] = useState(false);
+
   // Feedback & submitting states
   const [submitting, setSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+
+  // Countdown timer for Resend Verification Code
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const interval = setInterval(() => {
+      setResendCooldown((prev) => prev - 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [resendCooldown]);
 
   // Redirect if user is already authenticated
   if (user) {
@@ -79,15 +95,69 @@ const Auth = () => {
 
     try {
       if (isSignUp) {
-        await register(name, email, password);
+        const res = await register(name, email, password);
+        if (res?.requireVerification) {
+          setVerifyEmailAddress(email.toLowerCase().trim());
+          setVerifyOtp('');
+          setViewMode('verify');
+          setSuccessMessage(res.message || 'Verification code sent to your email! Please check your inbox.');
+          setResendCooldown(60);
+          return;
+        }
+        navigate('/');
       } else {
         await login(email, password);
+        navigate('/');
       }
-      navigate('/');
     } catch (err) {
       console.error('Auth error:', err);
+      if (err.isUnverified) {
+        setVerifyEmailAddress(err.email || email.toLowerCase().trim());
+        setVerifyOtp('');
+        setViewMode('verify');
+        setSuccessMessage('Please enter the 6-digit verification code sent to your email to activate your account.');
+        setResendCooldown(60);
+      }
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // Verify Email Handler
+  const handleVerifyEmail = async (e) => {
+    e.preventDefault();
+    if (!verifyOtp || verifyOtp.length < 6) {
+      setError('Please enter the complete 6-digit verification code.');
+      return;
+    }
+
+    setSubmitting(true);
+    resetMessages();
+
+    try {
+      await verifyEmail(verifyEmailAddress || email, verifyOtp);
+      navigate('/');
+    } catch (err) {
+      console.error('Verify Email Error:', err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Resend Verification Code Handler
+  const handleResendVerification = async () => {
+    if (resendCooldown > 0 || resending) return;
+    setResending(true);
+    setError(null);
+
+    try {
+      const res = await resendVerificationOtp(verifyEmailAddress || email);
+      setSuccessMessage(res?.message || 'A new verification code has been sent!');
+      setResendCooldown(60);
+    } catch (err) {
+      console.error('Resend verification error:', err);
+    } finally {
+      setResending(false);
     }
   };
 
@@ -257,6 +327,31 @@ const Auth = () => {
                   </h1>
                   <p className="text-xs sm:text-sm text-slate-300/80 mt-2">
                     Enter the OTP sent to <span className="text-[#10b981] font-medium">{email}</span> along with your new password.
+                  </p>
+                </>
+              )}
+
+              {viewMode === 'verify' && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      resetMessages();
+                      setViewMode('auth');
+                      setIsSignUp(true);
+                    }}
+                    className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-300/80 hover:text-[#10b981] transition-colors mb-4 cursor-pointer"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" /> Back to Sign Up
+                  </button>
+                  <h1 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight flex items-center gap-3">
+                    <span>Verify Email</span>
+                    <MailCheck className="w-7 h-7 sm:w-9 sm:h-9 text-[#10b981]" />
+                  </h1>
+                  <p className="text-xs sm:text-sm text-slate-300/80 mt-2 leading-relaxed">
+                    We sent a 6-digit verification code to{' '}
+                    <span className="text-[#10b981] font-semibold">{verifyEmailAddress || email}</span>.
+                    Enter it below to activate your account.
                   </p>
                 </>
               )}
@@ -566,6 +661,79 @@ const Auth = () => {
                     <span>Reset Password</span>
                   )}
                 </button>
+              </form>
+            )}
+
+            {/* VIEW 4: VERIFY EMAIL (SIGN UP OTP) */}
+            {viewMode === 'verify' && (
+              <form onSubmit={handleVerifyEmail} className="space-y-4">
+                {/* 6-Digit OTP Input */}
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
+                    Verification Code
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                      <KeyRound className="w-4 h-4" />
+                    </div>
+                    <input
+                      type="text"
+                      maxLength={6}
+                      value={verifyOtp}
+                      onChange={(e) => setVerifyOtp(e.target.value.replace(/\D/g, ''))}
+                      placeholder="Enter 6-digit code"
+                      className="w-full pl-10 pr-4 py-3 bg-[#1e2640]/50 border border-slate-700/60 rounded-xl focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] text-white placeholder-slate-500 transition-all text-sm tracking-widest font-mono text-center font-bold"
+                      required
+                      autoFocus
+                    />
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-1.5 text-center">
+                    Check your spam or junk folder if you don't see the code within a few moments.
+                  </p>
+                </div>
+
+                {/* Submit Verification Button */}
+                <button
+                  type="submit"
+                  disabled={submitting || verifyOtp.length !== 6}
+                  className="w-full py-3 px-4 flex items-center justify-center gap-2 bg-[#10b981] hover:bg-[#059669] text-white font-medium rounded-xl shadow-lg shadow-[#10b981]/20 active:scale-[0.99] transition-all duration-200 disabled:opacity-60 cursor-pointer text-sm sm:text-base"
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Verifying account...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Verify & Continue</span>
+                    </>
+                  )}
+                </button>
+
+                {/* Resend Verification Code Button */}
+                <div className="pt-2 text-center">
+                  <button
+                    type="button"
+                    onClick={handleResendVerification}
+                    disabled={resending || resendCooldown > 0}
+                    className="inline-flex items-center gap-2 text-xs font-medium text-slate-400 hover:text-[#10b981] transition-colors disabled:opacity-50 disabled:hover:text-slate-400 cursor-pointer"
+                  >
+                    {resending ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-[#10b981]" />
+                        <span>Sending new code...</span>
+                      </>
+                    ) : resendCooldown > 0 ? (
+                      <span>Resend code in {resendCooldown}s</span>
+                    ) : (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        <span>Resend Verification Code</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </form>
             )}
 

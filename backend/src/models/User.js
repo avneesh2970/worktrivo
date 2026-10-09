@@ -107,6 +107,18 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0
     },
+    isEmailVerified: {
+      type: Boolean,
+      default: true
+    },
+    verificationOtp: {
+      type: String,
+      default: ''
+    },
+    verificationOtpExpiryAt: {
+      type: Number,
+      default: 0
+    },
     activeSessionId: {
       type: String,
       default: null

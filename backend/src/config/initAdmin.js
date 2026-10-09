@@ -20,7 +20,8 @@ const initAdminUser = async () => {
         role: 'admin',
         active: true,
         loginProvider: 'local',
-        designationRole: 'System Administrator'
+        designationRole: 'System Administrator',
+        isEmailVerified: true
       });
 
       console.log(`✅ Default Admin user initialized automatically from .env: ${adminEmail}`);

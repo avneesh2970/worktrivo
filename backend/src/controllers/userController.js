@@ -1,8 +1,10 @@
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Task = require('../models/Task');
 const DailyReport = require('../models/DailyReport');
 const Group = require('../models/Group');
+const LoginActivity = require('../models/LoginActivity');
 const sendEmail = require('../utils/sendEmail');
 const csv = require('csv-parser');
 const { Readable } = require('stream'); // Core Node.js module
@@ -148,6 +150,51 @@ exports.resetPassword = async (req, res) => {
   }
 };
 
+const sendVerificationCodeEmail = async (email, name, otp) => {
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 0 auto; padding: 32px 24px; background: #0b101e; color: #f8fafc; border-radius: 20px; border: 1px solid #1e293b;">
+      <div style="text-align: center; margin-bottom: 24px;">
+        <div style="display: inline-block; padding: 8px 18px; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 12px; color: #10b981; font-weight: 700; font-size: 15px; letter-spacing: 0.5px;">
+          WorkTrivo Workspace
+        </div>
+      </div>
+      
+      <h2 style="color: #ffffff; font-size: 22px; font-weight: 700; text-align: center; margin: 0 0 12px 0;">
+        Verify Your Email Address
+      </h2>
+      
+      <p style="color: #94a3b8; font-size: 14px; line-height: 1.6; text-align: center; margin: 0 0 24px 0;">
+        Hi <strong style="color: #f1f5f9;">${name || 'there'}</strong>, welcome to WorkTrivo! Please enter the 6-digit verification code below to verify your email and activate your account:
+      </p>
+
+      <div style="background: #121826; border: 1px solid #1e293b; border-radius: 16px; padding: 24px; text-align: center; margin-bottom: 24px;">
+        <span style="font-family: 'Courier New', Courier, monospace; font-size: 34px; font-weight: 800; letter-spacing: 8px; color: #10b981; display: inline-block;">
+          ${otp}
+        </span>
+        <p style="color: #64748b; font-size: 12px; margin: 12px 0 0 0;">
+          This code is valid for 15 minutes.
+        </p>
+      </div>
+
+      <p style="color: #64748b; font-size: 13px; line-height: 1.5; text-align: center; margin: 0 0 24px 0;">
+        If you did not request to create an account, you can safely ignore this email.
+      </p>
+
+      <hr style="border: none; border-top: 1px solid #1e293b; margin: 20px 0;" />
+      
+      <div style="text-align: center; color: #475569; font-size: 11px;">
+        WorkTrivo • Secure Collaborative Workspace Management
+      </div>
+    </div>
+  `;
+
+  return await sendEmail(
+    email,
+    'Verify Your Email - WorkTrivo',
+    html
+  );
+};
+
 exports.registerUser = async (req, res) => {
   const { name, email, password } = req.body;
 
@@ -156,25 +203,199 @@ exports.registerUser = async (req, res) => {
       return res.status(400).json({ error: 'Please provide name, email, and password.' });
     }
 
-    const emailExists = await User.findOne({ email: email.toLowerCase() });
-    if (emailExists) {
-      return res.status(400).json({ error: 'Email already registered.' });
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters long.' });
+    }
+
+    const cleanEmail = email.toLowerCase().trim();
+    const existingUser = await User.findOne({ email: cleanEmail });
+
+    // Generate 6-digit verification code
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    const otpExpiry = Date.now() + 15 * 60 * 1000;
+
+    if (existingUser) {
+      // If user is already verified, reject duplicate registration
+      if (existingUser.isEmailVerified !== false) {
+        return res.status(400).json({ error: 'An account with this email is already registered. Please sign in.' });
+      }
+
+      // If user exists but is unverified (previous incomplete registration):
+      const salt = await bcrypt.genSalt(10);
+      existingUser.passwordHash = await bcrypt.hash(password, salt);
+      existingUser.name = name.trim();
+      existingUser.verificationOtp = otp;
+      existingUser.verificationOtpExpiryAt = otpExpiry;
+      await existingUser.save();
+
+      await sendVerificationCodeEmail(existingUser.email, existingUser.name, otp);
+
+      return res.status(200).json({
+        success: true,
+        requireVerification: true,
+        email: existingUser.email,
+        message: 'A 6-digit verification code has been sent to your email.'
+      });
     }
 
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
     const newUser = new User({
-      name,
-      email: email.toLowerCase(),
+      name: name.trim(),
+      email: cleanEmail,
       passwordHash,
-      role: 'member'
+      role: 'member',
+      active: true,
+      loginProvider: 'local',
+      isEmailVerified: false,
+      verificationOtp: otp,
+      verificationOtpExpiryAt: otpExpiry
     });
 
     await newUser.save();
-    res.status(201).json({ message: 'Registration successful', user: newUser });
+
+    await sendVerificationCodeEmail(newUser.email, newUser.name, otp);
+
+    return res.status(201).json({
+      success: true,
+      requireVerification: true,
+      email: newUser.email,
+      message: 'Account created! Please enter the 6-digit verification code sent to your email.'
+    });
   } catch (err) {
-    res.status(500).json({ error: 'Internal Server Error' });
+    console.error('registerUser error:', err);
+    res.status(500).json({ error: err.message || 'Internal Server Error' });
+  }
+};
+
+exports.verifyEmail = async (req, res) => {
+  const { email, otp } = req.body;
+
+  if (!email || !otp) {
+    return res.status(400).json({ success: false, message: 'Email and 6-digit verification code are required.' });
+  }
+
+  try {
+    const cleanEmail = email.toLowerCase().trim();
+    const user = await User.findOne({ email: cleanEmail });
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
+
+    if (user.isEmailVerified && !user.verificationOtp) {
+      return res.status(200).json({
+        success: true,
+        alreadyVerified: true,
+        message: 'Email is already verified. You can log in directly.'
+      });
+    }
+
+    if (!user.verificationOtp || user.verificationOtp !== String(otp).trim()) {
+      return res.status(400).json({ success: false, message: 'Invalid verification code. Please check your email and try again.' });
+    }
+
+    if (Date.now() > (user.verificationOtpExpiryAt || 0)) {
+      return res.status(400).json({ success: false, message: 'Verification code has expired. Please request a new code.' });
+    }
+
+    // Mark as verified and clear OTP
+    user.isEmailVerified = true;
+    user.verificationOtp = '';
+    user.verificationOtpExpiryAt = 0;
+
+    // Create session & JWT token
+    const sessionId = uuidv4();
+    const now = new Date();
+    user.activeSessionId = sessionId;
+    user.lastSeen = now;
+    user.lastLoginAt = now;
+
+    await user.save();
+
+    // Log login activity
+    LoginActivity.create({
+      user: user._id,
+      name: user.name,
+      email: user.email,
+      action: 'register_verified',
+      loginProvider: user.loginProvider || 'local',
+      ipAddress: req.ip || req.headers['x-forwarded-for'] || '',
+      userAgent: req.headers['user-agent'] || '',
+      loginTime: now
+    }).catch(e => console.error('LoginActivity error:', e.message));
+
+    const token = jwt.sign(
+      {
+        userId: user._id,
+        role: user.role,
+        designationRole: user.designationRole,
+        sessionId
+      },
+      process.env.JWT_SECRET || 'companysecretkey123',
+      {
+        expiresIn: process.env.JWT_EXPIRES_IN || '7d'
+      }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: 'Email verified successfully! Welcome to WorkTrivo.',
+      token,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        active: user.active,
+        loginProvider: user.loginProvider,
+        profilePhoto: user.profilePhoto,
+        employeeId: user.employeeId,
+        department: user.department,
+        designationRole: user.designationRole,
+        isEmailVerified: true
+      }
+    });
+  } catch (err) {
+    console.error('verifyEmail error:', err);
+    res.status(500).json({ success: false, message: err.message || 'Internal Server Error' });
+  }
+};
+
+exports.resendVerificationOtp = async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ success: false, message: 'Email is required.' });
+  }
+
+  try {
+    const cleanEmail = email.toLowerCase().trim();
+    const user = await User.findOne({ email: cleanEmail });
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
+
+    if (user.isEmailVerified && !user.verificationOtp) {
+      return res.status(400).json({ success: false, message: 'Your email is already verified. You can sign in.' });
+    }
+
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    user.verificationOtp = otp;
+    user.verificationOtpExpiryAt = Date.now() + 15 * 60 * 1000;
+    await user.save();
+
+    await sendVerificationCodeEmail(user.email, user.name, otp);
+
+    return res.status(200).json({
+      success: true,
+      message: 'A new 6-digit verification code has been sent to your email.'
+    });
+  } catch (err) {
+    console.error('resendVerificationOtp error:', err);
+    res.status(500).json({ success: false, message: err.message || 'Internal Server Error' });
   }
 };
 
