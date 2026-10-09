@@ -24,11 +24,13 @@ const ProfileSetup = ({ onCancel, onSuccess }) => {
     name: '',
     dob: '',
     gender: '',
+    employeeId: '',
     department: '',
     workLocation: '',
     designationRole: '',
   });
 
+  const [departments, setDepartments] = useState([]);
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState('');
   const [loading, setLoading] = useState(false);
@@ -36,8 +38,24 @@ const ProfileSetup = ({ onCancel, onSuccess }) => {
   const [message, setMessage] = useState({ type: '', text: '' });
 
   useEffect(() => {
-    if (token) fetchCurrentProfile();
+    if (token) {
+      fetchCurrentProfile();
+      fetchDepartments();
+    }
   }, [token]);
+
+  const fetchDepartments = async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/departments`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (Array.isArray(res.data)) {
+        setDepartments(res.data);
+      }
+    } catch (err) {
+      // Non-blocking: fallback to manual input if departments endpoint unavailable
+    }
+  };
 
   const fetchCurrentProfile = async () => {
     try {
@@ -49,6 +67,7 @@ const ProfileSetup = ({ onCancel, onSuccess }) => {
         name: data.name || '',
         dob: data.dob ? new Date(data.dob).toISOString().split('T')[0] : '',
         gender: data.gender || '',
+        employeeId: data.employeeId || '',
         department: data.department || '',
         workLocation: data.workLocation || '',
         designationRole: data.designationRole || '',
@@ -229,7 +248,14 @@ const ProfileSetup = ({ onCancel, onSuccess }) => {
                   <h2 className="text-sm font-bold text-slate-900 dark:text-white">Professional Details</h2>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <Input
+                    label="Employee ID"
+                    name="employeeId"
+                    placeholder="e.g. EMP-101"
+                    value={formData.employeeId}
+                    onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
+                  />
                   <Input
                     label="Job Title / Designation"
                     name="designationRole"
@@ -237,13 +263,40 @@ const ProfileSetup = ({ onCancel, onSuccess }) => {
                     value={formData.designationRole}
                     onChange={(e) => setFormData({ ...formData, designationRole: e.target.value })}
                   />
-                  <Input
-                    label="Department"
-                    name="department"
-                    placeholder="e.g. Product Development"
-                    value={formData.department}
-                    onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                  />
+                  {departments.length > 0 ? (
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        Department
+                      </label>
+                      <select
+                        name="department"
+                        value={formData.department}
+                        onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 focus:border-emerald-500 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition duration-200"
+                      >
+                        <option value="" className="bg-white dark:bg-slate-900 text-slate-500">
+                          Select Department...
+                        </option>
+                        {departments.map((d) => (
+                          <option
+                            key={d._id || d.name}
+                            value={d.name}
+                            className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-200"
+                          >
+                            {d.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : (
+                    <Input
+                      label="Department"
+                      name="department"
+                      placeholder="e.g. Product Development"
+                      value={formData.department}
+                      onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                    />
+                  )}
                   <Input
                     label="Work Location"
                     name="workLocation"

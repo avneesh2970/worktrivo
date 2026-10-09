@@ -46,13 +46,18 @@ exports.updateProfile = async (req, res) => {
       user.profilePhoto = req.file.path;
     }
 
-    if (name !== undefined) user.name = name;
-    if (employeeId !== undefined) user.employeeId = employeeId;
-    if (dob !== undefined) user.dob = dob;
+    if (name !== undefined) user.name = name.trim();
+    if (employeeId !== undefined) {
+      const cleanEmpId = employeeId.trim();
+      user.employeeId = cleanEmpId || undefined;
+    }
+    if (dob !== undefined) {
+      user.dob = dob ? new Date(dob) : null;
+    }
     if (gender !== undefined) user.gender = gender;
-    if (department !== undefined) user.department = department;
-    if (workLocation !== undefined) user.workLocation = workLocation;
-    if (designationRole !== undefined) user.designationRole = designationRole;
+    if (department !== undefined) user.department = department.trim();
+    if (workLocation !== undefined) user.workLocation = workLocation.trim();
+    if (designationRole !== undefined) user.designationRole = designationRole.trim();
 
     await user.save();
     res.json({ message: 'Profile updated successfully', user });
@@ -60,7 +65,10 @@ exports.updateProfile = async (req, res) => {
     if (err.name === 'ValidationError') {
       return res.status(400).json({ error: err.message });
     }
-    res.status(500).json({ error: 'Internal Server Error' });
+    if (err.code === 11000 && err.keyPattern && err.keyPattern.employeeId) {
+      return res.status(400).json({ error: 'This Employee ID is already in use by another user.' });
+    }
+    res.status(500).json({ error: err.message || 'Internal Server Error' });
   }
 };
 
