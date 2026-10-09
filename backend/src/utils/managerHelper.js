@@ -192,9 +192,137 @@ async function getSupervisorsForUser(userIdOrDoc) {
   return admins;
 }
 
+/**
+ * Checks if a user is currently on an approved leave on a given date (defaults to now).
+ * @param {string|mongoose.Types.ObjectId} userId
+ * @param {Date} [onDate]
+ * @returns {Promise<boolean>}
+ */
+async function isUserOnLeave(userId, onDate = new Date()) {
+  if (!userId) return false;
+  const LeaveRequest = require('../models/LeaveRequest');
+  const d = new Date(onDate);
+  const startOfDay = new Date(d);
+  startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay = new Date(d);
+  endOfDay.setHours(23, 59, 59, 999);
+
+  const activeLeave = await LeaveRequest.findOne({
+    user: userId,
+    status: 'Approved',
+    startDate: { $lte: endOfDay },
+    endDate: { $gte: startOfDay }
+  });
+
+  return Boolean(activeLeave);
+}
+
+/**
+ * Resolves the active approvers for a given target member.
+ * If their primary manager(s) are on approved leave, delegating fallback managers (or admins) become eligible.
+ * Returns { primaryManagers, availableManagers, admins, fallbackUsed }
+ */
+async function getEffectiveApproversForUser(userIdOrDoc) {
+  let user = userIdOrDoc;
+  if (!user || typeof user === 'string' || user._id) {
+    const id = user?._id || user;
+    user = await User.findById(id);
+  }
+  if (!user) return { primaryManagers: [], availableManagers: [], admins: [], fallbackUsed: false };
+
+  const allSupervisors = await getSupervisorsForUser(user);
+  const admins = await User.find({ active: true, role: 'admin' }, '_id name email role department');
+
+  const managersOnly = allSupervisors.filter(s => s.role === 'manager');
+  const availableManagers = [];
+
+  for (const mgr of managersOnly) {
+    const onLeave = await isUserOnLeave(mgr._id);
+    if (!onLeave) {
+      availableManagers.push(mgr);
+    }
+  }
+
+  // If all assigned managers are on leave (or none exist), fallback to other managers or admins
+  let fallbackUsed = false;
+  if (managersOnly.length > 0 && availableManagers.length === 0) {
+    fallbackUsed = true;
+  }
+
+  return {
+    primaryManagers: managersOnly,
+    availableManagers,
+    admins,
+    fallbackUsed
+  };
+}
+
+/**
+ * Checks whether an actor (manager/admin) is allowed to approve/reject an item belonging to targetUserId.
+ * If actor is Admin: always allowed.
+ * If actor is Manager:
+ *   1. Allowed if actor is normally a manager for targetUserId AND not on leave.
+ *   2. If the user's primary assigned manager is on leave:
+ *      Another manager (e.g. In the same department or assigned) or any active manager/admin can step in.
+ */
+async function canUserApproveFor(actor, targetUserId) {
+  if (!actor || !targetUserId) return false;
+  if (actor.role === 'admin') return true;
+  if (actor.role !== 'manager') return false;
+
+  const targetIdStr = targetUserId.toString();
+  const actorIdStr = (actor._id || actor.id).toString();
+
+  // Manager cannot approve themselves
+  if (targetIdStr === actorIdStr) return false;
+
+  // 1. Direct normal management check
+  const directlyManages = await isUserManagedBy(actor, targetUserId);
+  if (directlyManages) return true;
+
+  // 2. Check if all primary managers for targetUserId are on leave
+  const targetUser = await User.findById(targetUserId);
+  if (!targetUser) return false;
+
+  const supervisors = await getSupervisorsForUser(targetUser);
+  const primaryManagers = supervisors.filter(s => s.role === 'manager');
+
+  if (primaryManagers.length > 0) {
+    let allOnLeave = true;
+    for (const pm of primaryManagers) {
+      const onLeave = await isUserOnLeave(pm._id);
+      if (!onLeave) {
+        allOnLeave = false;
+        break;
+      }
+    }
+
+    // If all primary managers are on leave, another manager can approve if:
+    // a) They share the same department with targetUser or primary manager, OR
+    // b) If no department manager is available, any active manager is allowed as proxy
+    if (allOnLeave) {
+      const actorDept = (actor.department || actor.assignedDepartment || '').trim().toLowerCase();
+      const targetDept = (targetUser.department || '').trim().toLowerCase();
+      if (actorDept && targetDept && actorDept === targetDept) {
+        return true;
+      }
+      // Or if actor is an assigned manager in the organisation
+      return true;
+    }
+  } else {
+    // If user has no manager assigned at all, any manager or admin can approve
+    return true;
+  }
+
+  return false;
+}
+
 module.exports = {
   getManagedUserIds,
   isUserManagedBy,
-  getSupervisorsForUser
+  getSupervisorsForUser,
+  isUserOnLeave,
+  getEffectiveApproversForUser,
+  canUserApproveFor
 };
 

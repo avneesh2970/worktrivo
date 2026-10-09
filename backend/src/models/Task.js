@@ -149,6 +149,14 @@ approvedAt: {
   type: Date,
   default: null
 },
+submittedForApprovalAt: {
+  type: Date,
+  default: null
+},
+autoRejectedAt: {
+  type: Date,
+  default: null
+},
 
 activityLogs: [activitySchema],
 

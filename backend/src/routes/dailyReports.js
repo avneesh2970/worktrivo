@@ -3,7 +3,7 @@ const DailyReport = require('../models/DailyReport');
 const User = require('../models/User');
 const Notification = require('../models/Notification');
 const { authenticate, requireRole } = require('../middleware/auth');
-const { getManagedUserIds, isUserManagedBy } = require('../utils/managerHelper');
+const { getManagedUserIds, isUserManagedBy, canUserApproveFor } = require('../utils/managerHelper');
 const { sendInAppNotification, getIo } = require('../utils/socket');
 const { sendEmailAsync } = require('../utils/sendEmail');
 
@@ -370,16 +370,31 @@ router.get('/', async (req, res) => {
     } else if (req.user.role === 'manager') {
       const fullManager = await User.findById(req.user._id);
       const managedIds = await getManagedUserIds(fullManager);
-      const allowedUserIds = [...managedIds, req.user._id];
+      const allowedUserIds = new Set([...managedIds.map(id => id.toString()), req.user._id.toString()]);
+
+      // If viewing pending items or all items, also include members whose primary manager is on leave
+      if (status === 'Pending' || !status) {
+        const allUsers = await User.find({ active: true, role: 'member' }, '_id');
+        for (const u of allUsers) {
+          if (!allowedUserIds.has(u._id.toString())) {
+            const allowed = await canUserApproveFor(fullManager, u._id);
+            if (allowed) {
+              allowedUserIds.add(u._id.toString());
+            }
+          }
+        }
+      }
+
+      const allowedArray = Array.from(allowedUserIds);
 
       if (userId) {
-        const isAllowed = allowedUserIds.some(id => id.toString() === userId.toString());
+        const isAllowed = allowedArray.some(id => id.toString() === userId.toString());
         if (!isAllowed) {
           return res.status(403).json({ error: 'Forbidden. User is not in your assigned team or department.' });
         }
         query.user = userId;
       } else {
-        query.user = { $in: allowedUserIds };
+        query.user = { $in: allowedArray };
       }
     } else if (req.user.role === 'admin' && userId) {
       query.user = userId;
@@ -717,14 +732,16 @@ router.patch('/:id/status', async (req, res) => {
       });
     }
 
-    // Manager validation: manager can only approve reports from their assigned members or department
+    // Manager validation: manager can only approve reports from their assigned members or department,
+    // OR if the member's assigned manager is on leave
     if (req.user.role === 'manager') {
       const fullManager = await User.findById(req.user._id);
       const isManaged = await isUserManagedBy(fullManager, report.user);
+      const canApprove = isManaged || (await canUserApproveFor(fullManager, report.user));
 
-      if (!isManaged) {
+      if (!canApprove) {
         return res.status(403).json({
-          error: 'Forbidden. You are only authorized to approve daily reports of members assigned to you or your department.'
+          error: 'Forbidden. You are only authorized to approve daily reports of members assigned to you or your department, or when their primary manager is on leave.'
         });
       }
     }

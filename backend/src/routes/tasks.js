@@ -16,7 +16,7 @@ const {
   sendTaskUpdate,
   getIo,
 } = require("../utils/socket");
-const { getManagedUserIds } = require('../utils/managerHelper');
+const { getManagedUserIds, canUserApproveFor } = require('../utils/managerHelper');
 
 const router = express.Router();
 
@@ -84,9 +84,20 @@ router.get('/', async (req, res) => {
       );
       query.assignedTo = { $in: matchedUsers.map((u) => u._id) };
     } else if (status === 'Completed (Pending Approval)' || req.query.forApproval === 'true') {
-      // In Approvals center, manager only sees tasks of assigned team or tasks they created
+      // In Approvals center, manager sees tasks of assigned team, tasks they created,
+      // AND tasks of members whose primary manager is currently on leave
+      const allMembers = await User.find({ active: true, role: 'member' }, '_id');
+      const delegatedMemberIds = [];
+      for (const m of allMembers) {
+        if (!teamUserIds.some(id => id.toString() === m._id.toString())) {
+          const canDelegate = await canUserApproveFor(fullManager, m._id);
+          if (canDelegate) delegatedMemberIds.push(m._id);
+        }
+      }
+
+      const approvalUserIds = [...teamUserIds, ...delegatedMemberIds];
       query.$or = [
-        { assignedTo: { $in: teamUserIds } },
+        { assignedTo: { $in: approvalUserIds } },
         { createdBy: req.user._id }
       ];
     } else {
@@ -674,8 +685,22 @@ router.patch('/:id/status', async (req, res) => {
           const aId = (a._id || a).toString();
           return managedIds.includes(aId) || aId === req.user._id.toString();
         });
+
+        // Also check if any assignee can be approved under on-leave delegation
+        let canDelegateApprove = false;
         if (!isCreator && !hasManagedAssignee) {
-          return res.status(403).json({ error: 'Forbidden. You are only authorized to approve tasks of members assigned to you or your department.' });
+          for (const a of task.assignedTo) {
+            const aId = a._id || a;
+            const allowed = await canUserApproveFor(fullManager, aId);
+            if (allowed) {
+              canDelegateApprove = true;
+              break;
+            }
+          }
+        }
+
+        if (!isCreator && !hasManagedAssignee && !canDelegateApprove) {
+          return res.status(403).json({ error: 'Forbidden. You are only authorized to approve tasks of members assigned to you or your department, or when their primary manager is on leave.' });
         }
       }
       if (status === 'Rejected' && (!feedback || !feedback.trim())) return res.status(400).json({ error: 'Feedback is required when rejecting a task.' });
@@ -702,8 +727,14 @@ router.patch('/:id/status', async (req, res) => {
     } else if (status === 'Rejected') {
       task.approvedBy = null;
       task.approvedAt = null;
+      task.submittedForApprovalAt = null;
       task.feedback = feedback;
       task.activityLogs.push({ action: "Task Rejected", performedBy: req.user._id, timestamp: new Date() });
+    } else if (status === 'Completed (Pending Approval)') {
+      task.submittedForApprovalAt = new Date();
+      task.approvedBy = null;
+      task.approvedAt = null;
+      task.feedback = '';
     } else {
       task.approvedBy = null;
       task.approvedAt = null;

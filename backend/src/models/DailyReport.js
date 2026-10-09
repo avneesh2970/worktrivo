@@ -80,7 +80,11 @@ const dailyReportSchema = new mongoose.Schema(
     },
     attachments: [{
       type: String
-    }]
+    }],
+    autoRejectedAt: {
+      type: Date,
+      default: null
+    }
   },
   {
     timestamps: true
