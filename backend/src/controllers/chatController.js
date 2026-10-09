@@ -922,13 +922,24 @@ const pinMessage = async (req, res) => {
       {
         new: true,
       }
-    );
+    )
+      .populate("sender", "name profilePhoto role")
+      .populate("mentions", "name email");
 
     if (!message) {
       return res.status(404).json({
         success: false,
         message: "Message not found.",
       });
+    }
+
+    try {
+      const io = getIo();
+      if (io && message.chatRoom) {
+        io.to(message.chatRoom.toString()).emit("message_pinned", message);
+      }
+    } catch (socketErr) {
+      console.warn("Could not emit message_pinned via socket:", socketErr.message);
     }
 
     res.status(200).json({
@@ -959,13 +970,24 @@ const unpinMessage = async (req, res) => {
       {
         new: true,
       }
-    );
+    )
+      .populate("sender", "name profilePhoto role")
+      .populate("mentions", "name email");
 
     if (!message) {
       return res.status(404).json({
         success: false,
         message: "Message not found.",
       });
+    }
+
+    try {
+      const io = getIo();
+      if (io && message.chatRoom) {
+        io.to(message.chatRoom.toString()).emit("message_unpinned", message);
+      }
+    } catch (socketErr) {
+      console.warn("Could not emit message_unpinned via socket:", socketErr.message);
     }
 
     res.status(200).json({

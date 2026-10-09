@@ -287,6 +287,25 @@ const init = (server) => {
       }
     });
 
+    // Unpin message
+    socket.on("unpin_message", async ({ messageId }) => {
+      try {
+        const message = await Message.findByIdAndUpdate(
+          messageId,
+          { pinned: false },
+          { new: true }
+        )
+          .populate("sender", "name profilePhoto role")
+          .populate("mentions", "name email");
+
+        if (!message) return;
+
+        io.to(message.chatRoom.toString()).emit("message_unpinned", message);
+      } catch (err) {
+        console.error("Error unpinning message:", err);
+      }
+    });
+
     // Delete message (Disabled as per policy)
     socket.on("delete_message", async () => {
       socket.emit("error", { message: "Deleting messages is not permitted." });

@@ -59,7 +59,8 @@ const ChatApp = () => {
     rejectRoom,
     addMember,
     removeMember,
-    unpinMessage,
+    pinMessage: apiPinMessage,
+    unpinMessage: apiUnpinMessage,
     sendMessageWithMentions,
     searchMentionUsers,
     uploadAttachment,
@@ -1000,16 +1001,58 @@ const ChatApp = () => {
     showToast("Message updated", "info");
   };
 
+  const handleTogglePin = async (msg) => {
+    if (!msg?._id) return;
+    const isCurrentlyPinned = !!msg.pinned;
+    try {
+      if (isCurrentlyPinned) {
+        // Optimistic UI update
+        setMessages((prev) =>
+          prev.map((m) => (m._id === msg._id ? { ...m, pinned: false } : m))
+        );
+        // Socket + REST fallback
+        unpinMessage(msg._id);
+        await apiUnpinMessage(msg._id).catch(() => {});
+        showToast("Message unpinned", "info");
+      } else {
+        // Optimistic UI update
+        setMessages((prev) =>
+          prev.map((m) => (m._id === msg._id ? { ...m, pinned: true } : m))
+        );
+        // Socket + REST fallback
+        pinMessage(msg._id);
+        await apiPinMessage(msg._id).catch(() => {});
+        showToast("Message pinned to top", "success");
+      }
+    } catch (err) {
+      console.error(err);
+      showToast(isCurrentlyPinned ? "Failed to unpin message" : "Failed to pin message", "error");
+    }
+  };
+
   const handleUnpin = async (msgId) => {
     try {
-      await unpinMessage(msgId);
       setMessages((prev) =>
         prev.map((m) => (m._id === msgId ? { ...m, pinned: false } : m))
       );
+      unpinMessage(msgId);
+      await apiUnpinMessage(msgId).catch(() => {});
       showToast("Message unpinned", "info");
     } catch (err) {
       console.error(err);
       showToast("Failed to unpin message", "error");
+    }
+  };
+
+  const handleJumpToMessage = (messageId) => {
+    if (!messageId) return;
+    const el = document.getElementById(`msg-${messageId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("ring-2", "ring-[#10b981]", "ring-offset-2", "transition-all");
+      setTimeout(() => {
+        el.classList.remove("ring-2", "ring-[#10b981]", "ring-offset-2");
+      }, 2000);
     }
   };
 
@@ -1627,13 +1670,20 @@ const ChatApp = () => {
             {/* Pinned Messages Bar */}
             {pinnedMessages.length > 0 && showPinnedBar && (
               <div className="bg-slate-100/90 dark:bg-slate-900/90 border-b border-slate-200 dark:border-slate-800 px-4 py-2 shrink-0 flex items-center justify-between gap-3 backdrop-blur-md">
-                <div className="flex items-center gap-2 min-w-0">
+                <div
+                  onClick={() => handleJumpToMessage(pinnedMessages[activePinnedIndex]?._id)}
+                  className="flex items-center gap-2 min-w-0 flex-1 cursor-pointer hover:opacity-85 transition-opacity"
+                  title="Click to jump to message"
+                >
                   <Pin size={14} className="text-[#10b981] shrink-0 fill-[#10b981]" />
                   <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200 shrink-0">
                     Pinned:
                   </span>
                   <p className="text-[11px] text-slate-600 dark:text-slate-300 truncate">
-                    {pinnedMessages[activePinnedIndex]?.text}
+                    {pinnedMessages[activePinnedIndex]?.text ||
+                      (pinnedMessages[activePinnedIndex]?.attachments?.length > 0
+                        ? `📎 [Attachment: ${pinnedMessages[activePinnedIndex]?.attachments[0]?.fileName || "File"}]`
+                        : "Pinned message")}
                   </p>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
@@ -1644,24 +1694,38 @@ const ChatApp = () => {
                   )}
                   {activePinnedIndex > 0 && (
                     <button
-                      onClick={() => setActivePinnedIndex((prev) => prev - 1)}
-                      className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-800"
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActivePinnedIndex((prev) => prev - 1);
+                      }}
+                      className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-800 cursor-pointer"
+                      title="Previous pinned message"
                     >
                       <ChevronUp size={14} />
                     </button>
                   )}
                   {activePinnedIndex < pinnedMessages.length - 1 && (
                     <button
-                      onClick={() => setActivePinnedIndex((prev) => prev + 1)}
-                      className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-800"
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActivePinnedIndex((prev) => prev + 1);
+                      }}
+                      className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-800 cursor-pointer"
+                      title="Next pinned message"
                     >
                       <ChevronDown size={14} />
                     </button>
                   )}
                   <button
-                    onClick={() => handleUnpin(pinnedMessages[activePinnedIndex]._id)}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleUnpin(pinnedMessages[activePinnedIndex]?._id);
+                    }}
                     title="Unpin message"
-                    className="p-1 rounded text-slate-400 hover:text-rose-500"
+                    className="p-1 rounded text-slate-400 hover:text-rose-500 cursor-pointer"
                   >
                     <X size={14} />
                   </button>
@@ -1900,30 +1964,68 @@ const ChatApp = () => {
                                 (edited)
                               </span>
                             )}
+
+                            {/* Pinned Indicator on Bubble */}
+                            {msg.pinned && (
+                              <div
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleTogglePin(msg);
+                                }}
+                                className={`inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold cursor-pointer transition-colors ${
+                                  isMine
+                                    ? "bg-black/15 text-slate-900 hover:bg-black/25"
+                                    : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/25"
+                                }`}
+                                title="Click to unpin message"
+                              >
+                                <Pin size={10} className="fill-current rotate-45" />
+                                <span>Pinned</span>
+                              </div>
+                            )}
                           </div>
 
-                          {/* Action Hover Toolbar */}
+                          {/* Action Toolbar (Visible on hover and on touch/mobile) */}
                           <div
                             className={`
-                              opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 mt-1
+                              opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 mt-1 px-1
                               ${isMine ? "justify-end" : "justify-start"}
                             `}
                           >
                             <button
-                              onClick={() => pinMessage(msg._id)}
-                              title={msg.pinned ? "Pinned" : "Pin message"}
-                              className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleTogglePin(msg);
+                              }}
+                              title={msg.pinned ? "Unpin message" : "Pin message"}
+                              className={`p-1.5 sm:p-1 rounded-lg transition-colors cursor-pointer flex items-center gap-1 ${
+                                msg.pinned
+                                  ? "bg-emerald-500/15 text-[#10b981] hover:bg-emerald-500/25"
+                                  : "hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                              }`}
                             >
-                              <Pin size={12} className={msg.pinned ? "fill-[#10b981] text-[#10b981]" : ""} />
+                              <Pin
+                                size={13}
+                                className={msg.pinned ? "fill-[#10b981] text-[#10b981]" : ""}
+                              />
+                              <span className="text-[10px] sm:hidden font-medium">
+                                {msg.pinned ? "Pinned" : "Pin"}
+                              </span>
                             </button>
 
                             {isMine && canEditMessage(msg) && (
                               <button
-                                onClick={() => handleEdit(msg)}
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEdit(msg);
+                                }}
                                 title="Edit message (available for 5 mins)"
-                                className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                                className="p-1.5 sm:p-1 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors cursor-pointer flex items-center gap-1"
                               >
-                                <Edit2 size={12} />
+                                <Edit2 size={13} />
+                                <span className="text-[10px] sm:hidden font-medium">Edit</span>
                               </button>
                             )}
                           </div>
