@@ -162,4 +162,13 @@ activityLogs: [activitySchema]
   timestamps: true
 });
 
+// Performance Indexes
+taskSchema.index({ assignedTo: 1, status: 1 });
+taskSchema.index({ createdBy: 1 });
+taskSchema.index({ verballyAssignedBy: 1 });
+taskSchema.index({ group: 1 });
+taskSchema.index({ status: 1 });
+taskSchema.index({ dueDate: 1 });
+taskSchema.index({ createdAt: -1 });
+
 module.exports = mongoose.model('Task', taskSchema);

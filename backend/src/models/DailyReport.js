@@ -89,7 +89,9 @@ const dailyReportSchema = new mongoose.Schema(
 
 // Compound index for quick lookups by user and reportDate
 dailyReportSchema.index({ user: 1, reportDate: -1 });
+dailyReportSchema.index({ user: 1, status: 1 });
 dailyReportSchema.index({ department: 1, reportDate: -1 });
 dailyReportSchema.index({ status: 1 });
+dailyReportSchema.index({ reportDate: -1 });
 
 module.exports = mongoose.model('DailyReport', dailyReportSchema);

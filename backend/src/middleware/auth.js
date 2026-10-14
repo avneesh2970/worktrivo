@@ -47,9 +47,14 @@ const authenticate = async (req, res, next) => {
       });
     }
 
-    // Update last seen
-    user.lastSeen = new Date();
-    await user.save();
+    // Update last seen (throttled to once every 5 minutes, non-blocking)
+    const now = new Date();
+    if (!user.lastSeen || (now.getTime() - new Date(user.lastSeen).getTime() > 5 * 60 * 1000)) {
+      user.lastSeen = now;
+      User.updateOne({ _id: user._id }, { $set: { lastSeen: now } }).catch((err) => {
+        console.error('Error updating lastSeen:', err.message);
+      });
+    }
 
     req.user = user;
     req.token = token;

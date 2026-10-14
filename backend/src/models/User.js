@@ -121,10 +121,6 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null
     },
-    lastSeen:{
-    type:Date,
-    default:null
-},
     // Google Calendar sync (spec section 15). Each user connects their own
     // Google account via OAuth2; tasks assigned to them are then mirrored
     // as events on their personal calendar. NOTE: tokens are stored in
@@ -142,6 +138,14 @@ const userSchema = new mongoose.Schema(
     timestamps: true
   }
 );
+
+// Performance Indexes
+userSchema.index({ role: 1, active: 1 });
+userSchema.index({ manager: 1 });
+userSchema.index({ department: 1 });
+userSchema.index({ assignedDepartment: 1 });
+userSchema.index({ assignedMembers: 1 });
+userSchema.index({ name: 1 });
 
 
 userSchema.set('toJSON', {

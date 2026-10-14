@@ -65,8 +65,7 @@ router.get('/', async (req, res) => {
   if (req.user.role === 'member') {
     query.assignedTo = req.user._id;
   } else if (req.user.role === 'manager') {
-    const fullManager = await User.findById(req.user._id);
-    const managedIds = await getManagedUserIds(fullManager);
+    const managedIds = await getManagedUserIds(req.user);
     const teamUserIds = [...managedIds, req.user._id];
 
     if (assignedTo) {
@@ -280,8 +279,7 @@ router.post('/', requireRole(['admin', 'manager', 'member']), async (req, res) =
 
       // If manager is assigning to team members, ensure they are in their managed team
       if (req.user.role === 'manager') {
-        const fullManager = await User.findById(req.user._id);
-        const managedIds = await getManagedUserIds(fullManager);
+        const managedIds = await getManagedUserIds(req.user);
         const teamUserIds = [...managedIds.map(id => id.toString()), req.user._id.toString()];
         const hasInvalidAssignee = assignedTo.some(uid => !teamUserIds.includes(uid.toString()));
         if (hasInvalidAssignee) {
@@ -659,8 +657,7 @@ router.patch('/:id/status', async (req, res) => {
     if (status === 'Approved' || status === 'Rejected') {
       if (!hasMgmtPrivilege) return res.status(403).json({ error: 'Forbidden. Only managers and administrators can approve or reject tasks.' });
       if (req.user.role === 'manager') {
-        const fullManager = await User.findById(req.user._id);
-        const managedIds = (await getManagedUserIds(fullManager)).map(id => id.toString());
+        const managedIds = (await getManagedUserIds(req.user)).map(id => id.toString());
         const isCreator = task.createdBy && task.createdBy.toString() === req.user._id.toString();
         const hasManagedAssignee = task.assignedTo.some(a => {
           const aId = (a._id || a).toString();

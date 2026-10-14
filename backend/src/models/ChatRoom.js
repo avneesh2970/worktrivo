@@ -63,4 +63,7 @@ const chatRoomSchema = new mongoose.Schema(
   }
 );
 
+chatRoomSchema.index({ members: 1, isActive: 1 });
+chatRoomSchema.index({ type: 1, isActive: 1 });
+
 module.exports = mongoose.model("ChatRoom", chatRoomSchema);

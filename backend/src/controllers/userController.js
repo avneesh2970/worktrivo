@@ -186,17 +186,18 @@ exports.getUsers = async (req, res) => {
       const users = await User.find()
         .populate('assignedMembers', '_id name email role department employeeId profilePhoto designationRole')
         .populate('manager', '_id name email role profilePhoto designationRole department')
-        .sort({ name: 1 });
+        .sort({ name: 1 })
+        .lean();
       res.json(users);
     } else if (req.user.role === 'manager') {
-      const fullManager = await User.findById(req.user._id);
-      const managedIds = await getManagedUserIds(fullManager);
+      const managedIds = await getManagedUserIds(req.user);
       const teamUserIds = [...managedIds, req.user._id];
 
       const users = await User.find({ _id: { $in: teamUserIds }, active: true })
         .populate('assignedMembers', '_id name email role department employeeId profilePhoto designationRole')
         .populate('manager', '_id name email role profilePhoto designationRole department')
-        .sort({ name: 1 });
+        .sort({ name: 1 })
+        .lean();
       res.json(users);
     } else {
       const users = await User.find(
@@ -204,7 +205,8 @@ exports.getUsers = async (req, res) => {
         '_id name email role profilePhoto designationRole department employeeId manager'
       )
         .populate('manager', '_id name email role profilePhoto designationRole department')
-        .sort({ name: 1 });
+        .sort({ name: 1 })
+        .lean();
       res.json(users);
     }
   } catch (err) {

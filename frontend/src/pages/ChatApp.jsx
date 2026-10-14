@@ -108,11 +108,15 @@ const ChatApp = () => {
     const loadRooms = async () => {
         try {
             const res = await getChatRooms();
-            const filteredData = (res.data || []).filter(
-                (room) => room._id === TARGET_ROOM_ID
-            );
-            setRooms(filteredData);
-            if (filteredData.length > 0) setSelectedRoom(filteredData[0]);
+            const allRooms = res.data || [];
+            const targetRoom = allRooms.find((room) => room._id === TARGET_ROOM_ID);
+            const dataToSet = targetRoom
+                ? [targetRoom, ...allRooms.filter((r) => r._id !== TARGET_ROOM_ID)]
+                : allRooms;
+            setRooms(dataToSet);
+            if (dataToSet.length > 0) {
+                setSelectedRoom(targetRoom || dataToSet[0]);
+            }
         } catch (err) {
             console.error(err);
             showToast("Failed to load chat room", "error");

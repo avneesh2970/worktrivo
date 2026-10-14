@@ -94,7 +94,7 @@ router.get(
 
     const groupsWithStats = await Promise.all(
       groups.map(async (group) => {
-        const tasks = await Task.find({ group: group._id });
+        const tasks = await Task.find({ group: group._id }, 'status dueDate').lean();
         const completed = tasks.filter((t) => t.status === "Completed").length;
         const pending = tasks.filter((t) => t.status === "Pending").length;
         const overdue = tasks.filter(

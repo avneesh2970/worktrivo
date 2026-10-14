@@ -53,4 +53,7 @@ const groupSchema = new mongoose.Schema(
     timestamps:true
 });
 
+groupSchema.index({ members: 1, isActive: 1 });
+groupSchema.index({ approvalStatus: 1 });
+
 module.exports=mongoose.model("Group",groupSchema);

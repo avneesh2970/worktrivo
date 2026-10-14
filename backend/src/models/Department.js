@@ -10,4 +10,6 @@ const departmentSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+departmentSchema.index({ manager: 1 });
+
 module.exports = mongoose.model('Department', departmentSchema);

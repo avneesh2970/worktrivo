@@ -12,11 +12,18 @@ const Department = require('../models/Department');
  * @param {Object} manager - The manager User document or object with _id, role, assignedDepartment, assignedDepartments, assignedMembers.
  * @returns {Promise<Array<mongoose.Types.ObjectId>>} Array of managed user ObjectIds.
  */
-async function getManagedUserIds(manager) {
-  if (!manager) return [];
+async function getManagedUserIds(managerOrId) {
+  if (!managerOrId) return [];
+
+  let manager = managerOrId;
+  if (typeof managerOrId === 'string' || (!manager.role && manager._id)) {
+    manager = await User.findById(managerOrId).lean();
+    if (!manager) return [];
+  }
+
   if (manager.role === 'admin') {
     // Admin manages all users
-    const allUsers = await User.find({ _id: { $ne: manager._id } }, '_id');
+    const allUsers = await User.find({ _id: { $ne: manager._id } }, '_id').lean();
     return allUsers.map(u => u._id);
   }
 
@@ -41,7 +48,7 @@ async function getManagedUserIds(manager) {
 
   // Also query Department collection for departments where manager is this user
   try {
-    const managedDeptDocs = await Department.find({ manager: managerId }, 'name');
+    const managedDeptDocs = await Department.find({ manager: managerId }, 'name').lean();
     managedDeptDocs.forEach(d => {
       if (d.name && d.name.trim() && !departments.includes(d.name.trim())) {
         departments.push(d.name.trim());
@@ -84,7 +91,7 @@ async function getManagedUserIds(manager) {
     ]
   };
 
-  const users = await User.find(query, '_id');
+  const users = await User.find(query, '_id').lean();
   return users.map(u => u._id);
 }
 
@@ -105,8 +112,47 @@ async function isUserManagedBy(manager, targetUserId) {
   // Manager cannot approve themselves as an employee report
   if (targetIdStr === managerIdStr) return false;
 
-  const managedIds = await getManagedUserIds(manager);
-  return managedIds.some(id => id.toString() === targetIdStr);
+  // Direct check in manager's assignedMembers if populated or array of IDs
+  if (Array.isArray(manager.assignedMembers)) {
+    const isDirectMember = manager.assignedMembers.some(m => (m._id ? m._id.toString() : m.toString()) === targetIdStr);
+    if (isDirectMember) return true;
+  }
+
+  // Direct check on target user
+  const targetUser = await User.findById(targetUserId, 'department manager').lean();
+  if (!targetUser) return false;
+
+  if (targetUser.manager && targetUser.manager.toString() === managerIdStr) {
+    return true;
+  }
+
+  const departments = [];
+  if (manager.assignedDepartment && manager.assignedDepartment.trim()) {
+    departments.push(manager.assignedDepartment.trim().toLowerCase());
+  }
+  if (Array.isArray(manager.assignedDepartments)) {
+    manager.assignedDepartments.forEach(d => {
+      if (d && d.trim()) departments.push(d.trim().toLowerCase());
+    });
+  }
+  if (departments.length === 0 && manager.department && manager.department.trim()) {
+    departments.push(manager.department.trim().toLowerCase());
+  }
+
+  if (targetUser.department && departments.includes(targetUser.department.trim().toLowerCase())) {
+    return true;
+  }
+
+  // Check if manager manages targetUser's department via Department doc
+  if (targetUser.department) {
+    const deptDoc = await Department.findOne({
+      name: new RegExp(`^${targetUser.department.trim().replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}$`, 'i'),
+      manager: managerIdStr
+    }, '_id').lean();
+    if (deptDoc) return true;
+  }
+
+  return false;
 }
 
 /**
@@ -118,9 +164,10 @@ async function isUserManagedBy(manager, targetUserId) {
  */
 async function getSupervisorsForUser(userIdOrDoc) {
   let user = userIdOrDoc;
-  if (!user || typeof user === 'string' || user._id) {
+  if (!user) return [];
+  if (typeof user === 'string' || (!user.department && !user.manager && user._id)) {
     const id = user?._id || user;
-    user = await User.findById(id);
+    user = await User.findById(id).lean();
   }
   if (!user) return [];
 
@@ -128,7 +175,7 @@ async function getSupervisorsForUser(userIdOrDoc) {
 
   // 1. Direct assigned manager
   if (user.manager) {
-    const directMgr = await User.findOne({ _id: user.manager, active: true }, '_id name email role profilePhoto designationRole department');
+    const directMgr = await User.findOne({ _id: user.manager, active: true }, '_id name email role profilePhoto designationRole department').lean();
     if (directMgr) {
       supervisorMap.set(directMgr._id.toString(), directMgr);
     }
@@ -137,7 +184,7 @@ async function getSupervisorsForUser(userIdOrDoc) {
   // 2. Department manager from Department model
   if (user.department && user.department.trim()) {
     const deptRegex = new RegExp(`^${user.department.trim().replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}$`, 'i');
-    const deptDoc = await Department.findOne({ name: deptRegex }).populate('manager', '_id name email role profilePhoto designationRole department');
+    const deptDoc = await Department.findOne({ name: deptRegex }).populate('manager', '_id name email role profilePhoto designationRole department').lean();
     if (deptDoc && deptDoc.manager && deptDoc.manager.active !== false) {
       supervisorMap.set(deptDoc.manager._id.toString(), deptDoc.manager);
     }
@@ -153,7 +200,7 @@ async function getSupervisorsForUser(userIdOrDoc) {
         ]
       },
       '_id name email role profilePhoto designationRole department'
-    );
+    ).lean();
     deptManagers.forEach(mgr => {
       supervisorMap.set(mgr._id.toString(), mgr);
     });
@@ -167,7 +214,7 @@ async function getSupervisorsForUser(userIdOrDoc) {
       assignedMembers: user._id
     },
     '_id name email role profilePhoto designationRole department'
-  );
+  ).lean();
   directSupervisors.forEach(mgr => {
     supervisorMap.set(mgr._id.toString(), mgr);
   });
@@ -181,7 +228,7 @@ async function getSupervisorsForUser(userIdOrDoc) {
   const admins = await User.find(
     { active: true, role: 'admin' },
     '_id name email role profilePhoto designationRole department'
-  ).sort({ name: 1 });
+  ).sort({ name: 1 }).lean();
 
   return admins;
 }

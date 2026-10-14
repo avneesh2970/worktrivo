@@ -3,7 +3,7 @@ const DailyReport = require('../models/DailyReport');
 const User = require('../models/User');
 const Notification = require('../models/Notification');
 const { authenticate, requireRole } = require('../middleware/auth');
-const { getManagedUserIds, isUserManagedBy } = require('../utils/managerHelper');
+const { getManagedUserIds, isUserManagedBy, getSupervisorsForUser } = require('../utils/managerHelper');
 const { sendInAppNotification, getIo } = require('../utils/socket');
 const sendEmail = require('../utils/sendEmail');
 
@@ -21,28 +21,25 @@ router.get('/stats', async (req, res) => {
     if (userRole === 'member') {
       userFilter = { user: req.user._id };
     } else if (userRole === 'manager') {
-      const fullManager = await User.findById(req.user._id);
-      const managedIds = await getManagedUserIds(fullManager);
+      const managedIds = await getManagedUserIds(req.user);
       userFilter = { user: { $in: [...managedIds, req.user._id] } };
     }
-
-    const allReports = await DailyReport.find(userFilter);
 
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const todayEnd = new Date();
     todayEnd.setHours(23, 59, 59, 999);
 
-    const pending = allReports.filter(r => r.status === 'Pending').length;
-    const approved = allReports.filter(r => r.status === 'Approved').length;
-    const rejected = allReports.filter(r => r.status === 'Rejected').length;
-    const submittedToday = allReports.filter(r => {
-      const d = new Date(r.reportDate);
-      return d >= todayStart && d <= todayEnd;
-    }).length;
+    const [total, pending, approved, rejected, submittedToday] = await Promise.all([
+      DailyReport.countDocuments(userFilter),
+      DailyReport.countDocuments({ ...userFilter, status: 'Pending' }),
+      DailyReport.countDocuments({ ...userFilter, status: 'Approved' }),
+      DailyReport.countDocuments({ ...userFilter, status: 'Rejected' }),
+      DailyReport.countDocuments({ ...userFilter, reportDate: { $gte: todayStart, $lte: todayEnd } })
+    ]);
 
     res.json({
-      total: allReports.length,
+      total,
       pending,
       approved,
       rejected,
@@ -66,8 +63,7 @@ router.get('/', async (req, res) => {
     if (req.user.role === 'member') {
       query.user = req.user._id;
     } else if (req.user.role === 'manager') {
-      const fullManager = await User.findById(req.user._id);
-      const managedIds = await getManagedUserIds(fullManager);
+      const managedIds = await getManagedUserIds(req.user);
       const allowedUserIds = [...managedIds, req.user._id];
 
       if (userId) {
@@ -178,8 +174,7 @@ router.get('/:id', async (req, res) => {
       }
     } else if (req.user.role === 'manager') {
       const isAuthor = report.user._id.toString() === req.user._id.toString();
-      const fullManager = await User.findById(req.user._id);
-      const isManaged = await isUserManagedBy(fullManager, report.user._id);
+      const isManaged = await isUserManagedBy(req.user, report.user._id);
 
       if (!isAuthor && !isManaged) {
         return res.status(403).json({ error: 'Forbidden. You can only view reports of your assigned team members or department.' });
@@ -293,18 +288,24 @@ router.post('/', async (req, res) => {
 
     // Notify Managers who manage this user
     if (userObj) {
-      const managers = await User.find({ role: 'manager', active: true });
-      for (const mgr of managers) {
-        const managesUser = await isUserManagedBy(mgr, req.user._id);
-        if (managesUser) {
-          const notif = new Notification({
+      const supervisors = await getSupervisorsForUser(userObj);
+      const notifsToInsert = [];
+      const mgrIdsToEmit = [];
+      for (const mgr of supervisors) {
+        if (mgr.role === 'manager') {
+          notifsToInsert.push({
             userId: mgr._id,
             message: `Daily report ${existing ? 'resubmitted' : 'submitted'} by ${userObj.name} (${userObj.department || 'No Department'}).`,
             type: 'report'
           });
-          await notif.save();
-          sendInAppNotification(mgr._id, notif);
-          if (io) io.to(mgr._id.toString()).emit('dailyReportUpdated');
+          mgrIdsToEmit.push(mgr._id.toString());
+        }
+      }
+      if (notifsToInsert.length > 0) {
+        const savedNotifs = await Notification.insertMany(notifsToInsert);
+        savedNotifs.forEach((n) => sendInAppNotification(n.userId, n));
+        if (io) {
+          mgrIdsToEmit.forEach((id) => io.to(id).emit('dailyReportUpdated'));
         }
       }
     }
@@ -406,8 +407,7 @@ router.patch('/:id/status', async (req, res) => {
 
     // Manager validation: manager can only approve reports from their assigned members or department
     if (req.user.role === 'manager') {
-      const fullManager = await User.findById(req.user._id);
-      const isManaged = await isUserManagedBy(fullManager, report.user);
+      const isManaged = await isUserManagedBy(req.user, report.user);
 
       if (!isManaged) {
         return res.status(403).json({

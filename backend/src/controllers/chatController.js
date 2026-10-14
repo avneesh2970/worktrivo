@@ -8,13 +8,17 @@ const getChatRooms = async (req, res) => {
     const userId = req.user._id;
 
     const rooms = await ChatRoom.find({
-      members: userId,
+      $or: [
+        { members: userId },
+        { type: "global" }
+      ],
       isActive: true,
     })
       .populate("members", "name email profilePhoto role")
       .populate("admins", "name email profilePhoto")
       .populate("lastMessage")
-      .sort({ updatedAt: -1 });
+      .sort({ updatedAt: -1 })
+      .lean();
 
     res.status(200).json({
       success: true,
@@ -74,7 +78,8 @@ const getMessages = async (req, res) => {
       .populate("sender", "name profilePhoto role")
       .populate("mentions", "name")
       .populate("replyTo")
-      .sort({ createdAt: 1 });
+      .sort({ createdAt: 1 })
+      .lean();
 
     res.status(200).json({
       success: true,
