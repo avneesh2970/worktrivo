@@ -5,6 +5,10 @@ const {
   getChatRooms,
   getMessages,
   createRoom,
+  createOrGetDirectRoom,
+  approveRoom,
+  rejectRoom,
+  markRoomRead,
   sendMessage,
   addMember,
   removeMember,
@@ -16,14 +20,50 @@ const {
   getRoomMentions,
   getUserMentions,
   searchMentionUsers,
-  sendMessageWithMentions
+  sendMessageWithMentions,
+  uploadChatAttachment,
+  updateRoom,
+  downloadAttachment,
 } = require("../controllers/chatController");
 
-const { authenticate } = require("../middleware/auth");
+const { authenticate, requireRole } = require("../middleware/auth");
+const { uploadChatAttachmentMulter } = require("../config/chatFileUpload");
+
+// Upload chat attachment (max 5 MB)
+router.post(
+  "/upload",
+  authenticate,
+  (req, res, next) => {
+    uploadChatAttachmentMulter.single("file")(req, res, (err) => {
+      if (err) {
+        if (err.code === "LIMIT_FILE_SIZE") {
+          return res.status(400).json({
+            success: false,
+            message: "File size exceeds the 5 MB limit. Please select a file smaller than 5 MB.",
+          });
+        }
+        return res.status(400).json({
+          success: false,
+          message: err.message || "Failed to upload file.",
+        });
+      }
+      next();
+    });
+  },
+  uploadChatAttachment
+);
+
+// Download chat attachment ensuring exact original format
+router.get("/download-attachment", downloadAttachment);
 
 // Chat Rooms
 router.get("/rooms", authenticate, getChatRooms);
 router.post("/rooms", authenticate, createRoom);
+router.patch("/rooms/:roomId", authenticate, uploadChatAttachmentMulter.single("image"), updateRoom);
+router.post("/direct", authenticate, createOrGetDirectRoom);
+router.patch("/rooms/:roomId/approve", authenticate, requireRole(["admin"]), approveRoom);
+router.patch("/rooms/:roomId/reject", authenticate, requireRole(["admin"]), rejectRoom);
+router.patch("/rooms/:roomId/read", authenticate, markRoomRead);
 
 // Messages
 router.get("/:roomId/messages", authenticate, getMessages);

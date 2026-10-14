@@ -1,3 +1,8 @@
+const dns = require("node:dns");
+if (dns.setDefaultResultOrder) {
+  dns.setDefaultResultOrder("ipv4first");
+}
+
 const http = require("http");
 const express = require("express");
 const mongoose = require("mongoose");
@@ -28,6 +33,8 @@ const calendarRoutes = require("./src/routes/calendarRoutes");
 const fileRoutes = require("./src/routes/fileRoute");
 const loginActivityRoutes = require("./src/routes/loginActivityRoute");
 const dailyReportRoutes = require("./src/routes/dailyReports");
+const leaveRoutes = require("./src/routes/leaveRoutes");
+const holidayRoutes = require("./src/routes/holidayRoutes");
 
 // Express App
 const app = express();
@@ -65,9 +72,9 @@ app.get("/", (req, res) => {
 });
 
 // ===============================
-// Health Check
+// Health Check (/health and /api/health)
 // ===============================
-app.get("/health", (req, res) => {
+app.get(["/health", "/api/health"], (req, res) => {
   res.status(200).json({
     status: "OK",
     database:
@@ -77,6 +84,98 @@ app.get("/health", (req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
+
+// ===============================
+// Email System Diagnostic Route
+// ===============================
+app.get("/api/email-diag", async (req, res) => {
+  const transporter = require("./src/utils/nodemailer");
+  let smtpVerifyResult = "PENDING";
+  let smtpVerifyError = null;
+  let gmailApiResult = "NOT_CONFIGURED";
+  let gmailApiError = null;
+
+  // Test Gmail REST API over HTTPS (Port 443)
+  if (process.env.GOOGLE_REFRESH_TOKEN && process.env.GOOGLE_CLIENT_ID) {
+    try {
+      const { google } = require("googleapis");
+      const oauth2Client = new google.auth.OAuth2(
+        process.env.GOOGLE_CLIENT_ID,
+        process.env.GOOGLE_CLIENT_SECRET
+      );
+      oauth2Client.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
+      await oauth2Client.getAccessToken();
+      gmailApiResult = "SUCCESS_HTTPS";
+    } catch (apiErr) {
+      gmailApiResult = "FAILED";
+      gmailApiError = apiErr.message;
+    }
+  }
+
+  // Test SMTP connection
+  try {
+    await transporter.verify();
+    smtpVerifyResult = "SUCCESS";
+  } catch (err) {
+    smtpVerifyResult = "FAILED";
+    smtpVerifyError = err.message;
+  }
+
+  const isWorking = gmailApiResult === "SUCCESS_HTTPS" || smtpVerifyResult === "SUCCESS";
+
+  res.status(200).json({
+    status: isWorking ? "OK" : "ERROR",
+    activeTransport: gmailApiResult === "SUCCESS_HTTPS" ? "Gmail REST API (HTTPS Port 443)" : "SMTP",
+    gmailApi: {
+      result: gmailApiResult,
+      error: gmailApiError,
+    },
+    smtp: {
+      result: smtpVerifyResult,
+      error: smtpVerifyError,
+    },
+    config: {
+      hasRefreshToken: !!process.env.GOOGLE_REFRESH_TOKEN,
+      refreshTokenPrefix: process.env.GOOGLE_REFRESH_TOKEN
+        ? process.env.GOOGLE_REFRESH_TOKEN.substring(0, 10) + "..."
+        : null,
+      hasClientId: !!process.env.GOOGLE_CLIENT_ID,
+      hasClientSecret: !!process.env.GOOGLE_CLIENT_SECRET,
+      senderEmail: process.env.SENDER_EMAIL || null,
+      hasSmtpPass: !!process.env.SMTP_PASS && !process.env.SMTP_PASS.includes("Your SMTP"),
+    },
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// ===============================
+// Auto Keep-Alive (Prevents Render Free Tier from sleeping)
+// ===============================
+const startKeepAlive = () => {
+  const targetUrl =
+    process.env.RENDER_EXTERNAL_URL ||
+    process.env.SERVER_URL ||
+    process.env.KEEP_ALIVE_URL;
+
+  if (!targetUrl) return;
+
+  const pingUrl = `${targetUrl.replace(/\/$/, "")}/health`;
+  const PING_INTERVAL = 14 * 60 * 1000; // 14 minutes (Render idle timeout is 15 mins)
+
+  const httpModule = pingUrl.startsWith("https") ? require("https") : require("http");
+
+  setInterval(() => {
+    httpModule
+      .get(pingUrl, (res) => {
+        console.log(`[Keep-Alive] Pinged ${pingUrl} - Status: ${res.statusCode}`);
+      })
+      .on("error", (err) => {
+        console.warn(`[Keep-Alive] Ping failed:`, err.message);
+      });
+  }, PING_INTERVAL);
+
+  console.log(`⏱️ Auto Keep-Alive active: pinging ${pingUrl} every 14 minutes`);
+};
 
 // ===============================
 // API Routes
@@ -94,6 +193,8 @@ app.use("/api/calendar", calendarRoutes);
 app.use("/api/files", fileRoutes);
 app.use("/api/login-activity", loginActivityRoutes);
 app.use("/api/daily-reports", dailyReportRoutes);
+app.use("/api/leaves", leaveRoutes);
+app.use("/api/holidays", holidayRoutes);
 
 // ===============================
 // 404 Route
@@ -120,6 +221,9 @@ const startServer = async () => {
 
     // Start Reminder Scheduler
     startScheduler();
+
+    // Start Auto Keep-Alive (for Render / cloud deployments)
+    startKeepAlive();
 
     server.on('error', (err) => {
       if (err.code === 'EADDRINUSE') {

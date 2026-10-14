@@ -3,51 +3,355 @@ const DailyReport = require('../models/DailyReport');
 const User = require('../models/User');
 const Notification = require('../models/Notification');
 const { authenticate, requireRole } = require('../middleware/auth');
-const { getManagedUserIds, isUserManagedBy, getSupervisorsForUser } = require('../utils/managerHelper');
+const { getManagedUserIds, isUserManagedBy, getSupervisorsForUser, canUserApproveFor } = require('../utils/managerHelper');
 const { sendInAppNotification, getIo } = require('../utils/socket');
-const sendEmail = require('../utils/sendEmail');
+const { sendEmailAsync } = require('../utils/sendEmail');
 
 const router = express.Router();
 router.use(authenticate);
 
 // ==========================================
-// GET /api/daily-reports/stats - Summary counts
+// DURATION PARSER HELPER
+// ==========================================
+const parseDuration = (date, startDate, endDate) => {
+  if (!date && !startDate && !endDate) return null;
+
+  const now = new Date();
+
+  if (date === 'today') {
+    const start = new Date(now);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(now);
+    end.setHours(23, 59, 59, 999);
+    return { $gte: start, $lte: end, label: 'Today' };
+  }
+
+  if (date === 'yesterday') {
+    const start = new Date(now);
+    start.setDate(start.getDate() - 1);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(now);
+    end.setDate(end.getDate() - 1);
+    end.setHours(23, 59, 59, 999);
+    return { $gte: start, $lte: end, label: 'Yesterday' };
+  }
+
+  if (date === 'this-week' || date === 'weekly') {
+    // Current week: Monday to Sunday
+    const start = new Date(now);
+    const day = start.getDay();
+    const diffToMonday = (day === 0 ? -6 : 1) - day;
+    start.setDate(start.getDate() + diffToMonday);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(start);
+    end.setDate(end.getDate() + 6);
+    end.setHours(23, 59, 59, 999);
+    return { $gte: start, $lte: end, label: 'This Week' };
+  }
+
+  if (date === 'last-week') {
+    const start = new Date(now);
+    const day = start.getDay();
+    const diffToMonday = (day === 0 ? -6 : 1) - day - 7;
+    start.setDate(start.getDate() + diffToMonday);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(start);
+    end.setDate(end.getDate() + 6);
+    end.setHours(23, 59, 59, 999);
+    return { $gte: start, $lte: end, label: 'Last Week' };
+  }
+
+  if (date === 'last-7-days') {
+    const start = new Date(now);
+    start.setDate(start.getDate() - 6);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(now);
+    end.setHours(23, 59, 59, 999);
+    return { $gte: start, $lte: end, label: 'Last 7 Days' };
+  }
+
+  if (date === 'this-month' || date === 'monthly') {
+    const start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    return { $gte: start, $lte: end, label: 'This Month' };
+  }
+
+  if (date === 'last-month') {
+    const start = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
+    const end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+    return { $gte: start, $lte: end, label: 'Last Month' };
+  }
+
+  if (date === 'last-30-days') {
+    const start = new Date(now);
+    start.setDate(start.getDate() - 29);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(now);
+    end.setHours(23, 59, 59, 999);
+    return { $gte: start, $lte: end, label: 'Last 30 Days' };
+  }
+
+  if (startDate || endDate) {
+    const result = {};
+    if (startDate) {
+      const s = new Date(startDate);
+      s.setHours(0, 0, 0, 0);
+      result.$gte = s;
+    }
+    if (endDate) {
+      const e = new Date(endDate);
+      e.setHours(23, 59, 59, 999);
+      result.$lte = e;
+    }
+    result.label = `Custom (${startDate || 'Start'} - ${endDate || 'Now'})`;
+    return result;
+  }
+
+  // Exact date string (YYYY-MM-DD)
+  const target = new Date(date);
+  if (!isNaN(target.getTime())) {
+    const start = new Date(target);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(target);
+    end.setHours(23, 59, 59, 999);
+    return { $gte: start, $lte: end, label: target.toDateString() };
+  }
+
+  return null;
+};
+
+// ==========================================
+// GET /api/daily-reports/stats - Summary counts with duration filter
 // ==========================================
 router.get('/stats', async (req, res) => {
   try {
     const userRole = req.user.role;
+    const { date, startDate, endDate, department, userId } = req.query;
     let userFilter = {};
 
     if (userRole === 'member') {
-      userFilter = { user: req.user._id };
+      userFilter.user = req.user._id;
     } else if (userRole === 'manager') {
       const managedIds = await getManagedUserIds(req.user);
-      userFilter = { user: { $in: [...managedIds, req.user._id] } };
+      const allowedUserIds = [...managedIds, req.user._id];
+      userFilter.user = userId ? userId : { $in: allowedUserIds };
+    } else if (userRole === 'admin' && userId) {
+      userFilter.user = userId;
     }
+
+    if (department && department.trim() && department !== 'all') {
+      userFilter.department = { $regex: new RegExp(`^${department.trim()}$`, 'i') };
+    }
+
+    const durationFilter = parseDuration(date, startDate, endDate);
+    if (durationFilter) {
+      userFilter.reportDate = { $gte: durationFilter.$gte, $lte: durationFilter.$lte };
+    }
+
+    const allReports = await DailyReport.find(userFilter, 'status reportDate totalHours blockers user').lean();
 
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const todayEnd = new Date();
     todayEnd.setHours(23, 59, 59, 999);
 
-    const [total, pending, approved, rejected, submittedToday] = await Promise.all([
-      DailyReport.countDocuments(userFilter),
-      DailyReport.countDocuments({ ...userFilter, status: 'Pending' }),
-      DailyReport.countDocuments({ ...userFilter, status: 'Approved' }),
-      DailyReport.countDocuments({ ...userFilter, status: 'Rejected' }),
-      DailyReport.countDocuments({ ...userFilter, reportDate: { $gte: todayStart, $lte: todayEnd } })
-    ]);
+    const pending = allReports.filter(r => r.status === 'Pending').length;
+    const approved = allReports.filter(r => r.status === 'Approved').length;
+    const rejected = allReports.filter(r => r.status === 'Rejected').length;
+    const submittedToday = allReports.filter(r => {
+      const d = new Date(r.reportDate);
+      return d >= todayStart && d <= todayEnd;
+    }).length;
+
+    const totalHours = allReports.reduce((sum, r) => sum + (Number(r.totalHours) || 8), 0);
+    const totalBlockers = allReports.filter(r => r.blockers && r.blockers.trim()).length;
+    const uniqueSubmitters = new Set(allReports.map(r => r.user.toString())).size;
 
     res.json({
-      total,
+      total: allReports.length,
       pending,
       approved,
       rejected,
-      submittedToday
+      submittedToday,
+      totalHours,
+      totalBlockers,
+      submitterCount: uniqueSubmitters,
+      durationLabel: durationFilter?.label || 'All Time',
     });
   } catch (err) {
     console.error('GET /api/daily-reports/stats error:', err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ==========================================
+// GET /api/daily-reports/summary - Team summary grouped by member for selected duration
+// ==========================================
+router.get('/summary', async (req, res) => {
+  try {
+    const { date, startDate, endDate, department, userId } = req.query;
+    const userRole = req.user.role;
+    const query = {};
+
+    if (userRole === 'member') {
+      query.user = req.user._id;
+    } else if (userRole === 'manager') {
+      const fullManager = await User.findById(req.user._id);
+      const managedIds = await getManagedUserIds(fullManager);
+      const allowedUserIds = [...managedIds, req.user._id];
+      query.user = userId ? userId : { $in: allowedUserIds };
+    } else if (userRole === 'admin' && userId) {
+      query.user = userId;
+    }
+
+    const durationFilter = parseDuration(date, startDate, endDate);
+    if (durationFilter) {
+      query.reportDate = { $gte: durationFilter.$gte, $lte: durationFilter.$lte };
+    }
+
+    if (department && department.trim() && department !== 'all') {
+      query.department = { $regex: new RegExp(`^${department.trim()}$`, 'i') };
+    }
+
+    const reports = await DailyReport.find(query)
+      .populate('user', '_id name email role profilePhoto designationRole department employeeId')
+      .populate('reviewedBy', '_id name email role')
+      .sort({ reportDate: -1 });
+
+    const memberMap = new Map();
+
+    reports.forEach((report) => {
+      const u = report.user;
+      if (!u) return;
+      const uId = u._id.toString();
+
+      if (!memberMap.has(uId)) {
+        memberMap.set(uId, {
+          user: u,
+          reportsCount: 0,
+          totalHours: 0,
+          approved: 0,
+          pending: 0,
+          rejected: 0,
+          blockersCount: 0,
+          reports: [],
+        });
+      }
+
+      const item = memberMap.get(uId);
+      item.reportsCount += 1;
+      item.totalHours += Number(report.totalHours) || 8;
+      if (report.status === 'Approved') item.approved += 1;
+      else if (report.status === 'Pending') item.pending += 1;
+      else if (report.status === 'Rejected') item.rejected += 1;
+      if (report.blockers && report.blockers.trim()) item.blockersCount += 1;
+
+      item.reports.push({
+        _id: report._id,
+        reportDate: report.reportDate,
+        totalHours: report.totalHours,
+        status: report.status,
+        todayWork: report.todayWork,
+        tomorrowPlan: report.tomorrowPlan,
+        blockers: report.blockers,
+        tasksCompleted: report.tasksCompleted,
+      });
+    });
+
+    const membersSummary = Array.from(memberMap.values()).sort(
+      (a, b) => b.totalHours - a.totalHours
+    );
+
+    const totalHoursAll = membersSummary.reduce((sum, m) => sum + m.totalHours, 0);
+
+    res.json({
+      success: true,
+      duration: durationFilter?.label || 'All Time',
+      startDate: durationFilter?.$gte || null,
+      endDate: durationFilter?.$lte || null,
+      totalReports: reports.length,
+      totalHours: totalHoursAll,
+      activeMembersCount: membersSummary.length,
+      members: membersSummary,
+    });
+  } catch (err) {
+    console.error('GET /api/daily-reports/summary error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ==========================================
+// POST /api/daily-reports/ai-summary - Smart Executive Briefing
+// ==========================================
+router.post('/ai-summary', async (req, res) => {
+  try {
+    const { date, startDate, endDate, department } = req.body;
+    const query = {};
+
+    const durationFilter = parseDuration(date, startDate, endDate);
+    if (durationFilter) {
+      query.reportDate = { $gte: durationFilter.$gte, $lte: durationFilter.$lte };
+    }
+
+    if (department && department.trim() && department !== 'all') {
+      query.department = { $regex: new RegExp(`^${department.trim()}$`, 'i') };
+    }
+
+    const reports = await DailyReport.find(query)
+      .populate('user', 'name role department designationRole')
+      .sort({ reportDate: -1 });
+
+    if (reports.length === 0) {
+      return res.json({
+        summary: 'No reports submitted during this period to analyze.',
+        highlights: [],
+        blockers: [],
+        recommendations: ['Encourage team members to submit their daily work reports.']
+      });
+    }
+
+    // Extract stats
+    const totalHours = reports.reduce((sum, r) => sum + (Number(r.totalHours) || 8), 0);
+    const uniqueUsers = new Set(reports.map(r => r.user?._id?.toString()).filter(Boolean));
+    const rawBlockers = reports.filter(r => r.blockers && r.blockers.trim()).map(r => ({
+      user: r.user?.name || 'Member',
+      blocker: r.blockers.trim()
+    }));
+
+    // Extract top accomplishments
+    const accomplishments = reports
+      .filter(r => r.todayWork && r.todayWork.trim())
+      .map(r => `${r.user?.name || 'Member'}: ${r.todayWork.trim().slice(0, 160)}...`)
+      .slice(0, 5);
+
+    const blockerSnippets = rawBlockers.slice(0, 5).map(b => `${b.user}: ${b.blocker}`);
+
+    const durationLabel = durationFilter?.label || 'Selected Duration';
+
+    const aiSummary = {
+      overview: `During ${durationLabel}, ${uniqueUsers.size} team member(s) logged a total of ${totalHours} productive hours across ${reports.length} report submission(s).`,
+      highlights: accomplishments.length > 0 ? accomplishments : ['Regular development and workflow maintenance completed.'],
+      blockers: blockerSnippets.length > 0 ? blockerSnippets : ['No major blockers reported. Development workflow moving smoothly.'],
+      recommendations: [
+        rawBlockers.length > 0
+          ? `Address ${rawBlockers.length} pending team blocker(s) to sustain delivery momentum.`
+          : 'Team is operating without critical impediments. Continue regular sprint cadences.',
+        `Maintain consistent check-in and review standards for ongoing projects.`
+      ],
+      metrics: {
+        totalReports: reports.length,
+        totalHours,
+        activeMembers: uniqueUsers.size,
+        blockersCount: rawBlockers.length
+      }
+    };
+
+    res.json(aiSummary);
+  } catch (err) {
+    console.error('AI summary error:', err);
+    res.status(500).json({ error: 'Failed to generate summary' });
   }
 });
 
@@ -64,17 +368,31 @@ router.get('/', async (req, res) => {
       query.user = req.user._id;
     } else if (req.user.role === 'manager') {
       const managedIds = await getManagedUserIds(req.user);
-      const allowedUserIds = [...managedIds, req.user._id];
+      const allowedUserIds = new Set([...managedIds.map(id => id.toString()), req.user._id.toString()]);
+
+      // If viewing pending items or all items, also include members whose primary manager is on leave
+      if (status === 'Pending' || !status) {
+        const allUsers = await User.find({ active: true, role: 'member' }, '_id').lean();
+        for (const u of allUsers) {
+          if (!allowedUserIds.has(u._id.toString())) {
+            const allowed = await canUserApproveFor(req.user, u._id);
+            if (allowed) {
+              allowedUserIds.add(u._id.toString());
+            }
+          }
+        }
+      }
+
+      const allowedArray = Array.from(allowedUserIds);
 
       if (userId) {
-        // If specific user is requested, ensure they are in allowed list
-        const isAllowed = allowedUserIds.some(id => id.toString() === userId.toString());
+        const isAllowed = allowedArray.some(id => id.toString() === userId.toString());
         if (!isAllowed) {
           return res.status(403).json({ error: 'Forbidden. User is not in your assigned team or department.' });
         }
         query.user = userId;
       } else {
-        query.user = { $in: allowedUserIds };
+        query.user = { $in: allowedArray };
       }
     } else if (req.user.role === 'admin' && userId) {
       query.user = userId;
@@ -86,49 +404,14 @@ router.get('/', async (req, res) => {
     }
 
     // 3. Department filter
-    if (department && department.trim()) {
+    if (department && department.trim() && department !== 'all') {
       query.department = { $regex: new RegExp(`^${department.trim()}$`, 'i') };
     }
 
-    // 4. Date filtering
-    if (date) {
-      if (date === 'today') {
-        const start = new Date();
-        start.setHours(0, 0, 0, 0);
-        const end = new Date();
-        end.setHours(23, 59, 59, 999);
-        query.reportDate = { $gte: start, $lte: end };
-      } else if (date === 'yesterday') {
-        const start = new Date();
-        start.setDate(start.getDate() - 1);
-        start.setHours(0, 0, 0, 0);
-        const end = new Date();
-        end.setDate(end.getDate() - 1);
-        end.setHours(23, 59, 59, 999);
-        query.reportDate = { $gte: start, $lte: end };
-      } else {
-        // Exact date string (YYYY-MM-DD)
-        const target = new Date(date);
-        if (!isNaN(target.getTime())) {
-          const start = new Date(target);
-          start.setHours(0, 0, 0, 0);
-          const end = new Date(target);
-          end.setHours(23, 59, 59, 999);
-          query.reportDate = { $gte: start, $lte: end };
-        }
-      }
-    } else if (startDate || endDate) {
-      query.reportDate = {};
-      if (startDate) {
-        const s = new Date(startDate);
-        s.setHours(0, 0, 0, 0);
-        query.reportDate.$gte = s;
-      }
-      if (endDate) {
-        const e = new Date(endDate);
-        e.setHours(23, 59, 59, 999);
-        query.reportDate.$lte = e;
-      }
+    // 4. Date filtering using duration parser
+    const durationFilter = parseDuration(date, startDate, endDate);
+    if (durationFilter) {
+      query.reportDate = { $gte: durationFilter.$gte, $lte: durationFilter.$lte };
     }
 
     // 5. Search filtering (searches in todayWork, tomorrowPlan, blockers)
@@ -280,38 +563,49 @@ router.post('/', async (req, res) => {
       await report.save();
     }
 
-    // Real-time notifications and sockets
-    const io = getIo();
-    if (io) {
-      io.to('admins').emit('dailyReportUpdated');
-    }
-
-    // Notify Managers who manage this user
-    if (userObj) {
-      const supervisors = await getSupervisorsForUser(userObj);
-      const notifsToInsert = [];
-      const mgrIdsToEmit = [];
-      for (const mgr of supervisors) {
-        if (mgr.role === 'manager') {
-          notifsToInsert.push({
-            userId: mgr._id,
-            message: `Daily report ${existing ? 'resubmitted' : 'submitted'} by ${userObj.name} (${userObj.department || 'No Department'}).`,
-            type: 'report'
-          });
-          mgrIdsToEmit.push(mgr._id.toString());
-        }
-      }
-      if (notifsToInsert.length > 0) {
-        const savedNotifs = await Notification.insertMany(notifsToInsert);
-        savedNotifs.forEach((n) => sendInAppNotification(n.userId, n));
-        if (io) {
-          mgrIdsToEmit.forEach((id) => io.to(id).emit('dailyReportUpdated'));
-        }
-      }
-    }
-
     const populated = await DailyReport.findById(report._id)
       .populate('user', '_id name email role profilePhoto designationRole department employeeId');
+
+    // Real-time broadcast to all connected clients (Admins, Managers, Members)
+    const io = getIo();
+    if (io) {
+      io.emit('dailyReportUpdated', populated);
+    }
+
+    // In-app notifications to managers and admins
+    if (userObj) {
+      const recipientIds = new Set();
+
+      // Notify Admins
+      const admins = await User.find({ role: 'admin', active: true }).select('_id');
+      admins.forEach((adm) => {
+        if (adm._id.toString() !== req.user._id.toString()) {
+          recipientIds.add(adm._id.toString());
+        }
+      });
+
+      // Notify Managers who manage this user
+      const managers = await User.find({ role: 'manager', active: true });
+      for (const mgr of managers) {
+        if (mgr._id.toString() !== req.user._id.toString()) {
+          const managesUser = await isUserManagedBy(mgr, req.user._id);
+          if (managesUser) {
+            recipientIds.add(mgr._id.toString());
+          }
+        }
+      }
+
+      for (const recId of recipientIds) {
+        const notif = new Notification({
+          userId: recId,
+          message: `Daily report ${existing ? 'resubmitted' : 'submitted'} by ${userObj.name} (${userObj.department || 'No Department'}).`,
+          type: 'report',
+          reportId: report._id
+        });
+        notif.save().catch((e) => console.error('Notif save error:', e.message));
+        sendInAppNotification(recId, notif);
+      }
+    }
 
     res.status(201).json(populated);
   } catch (err) {
@@ -358,15 +652,45 @@ router.put('/:id', async (req, res) => {
 
     await report.save();
 
-    const io = getIo();
-    if (io) {
-      io.to('admins').emit('dailyReportUpdated');
-      io.to(report.user.toString()).emit('dailyReportUpdated');
-    }
-
     const populated = await DailyReport.findById(report._id)
       .populate('user', '_id name email role profilePhoto designationRole department employeeId')
       .populate('reviewedBy', '_id name email role');
+
+    const io = getIo();
+    if (io) {
+      io.emit('dailyReportUpdated', populated);
+    }
+
+    // Send notifications to managers and admins
+    const submitter = await User.findById(report.user);
+    if (submitter) {
+      const recipientIds = new Set();
+      const admins = await User.find({ role: 'admin', active: true }).select('_id');
+      admins.forEach((adm) => {
+        if (adm._id.toString() !== req.user._id.toString()) {
+          recipientIds.add(adm._id.toString());
+        }
+      });
+      const managers = await User.find({ role: 'manager', active: true });
+      for (const mgr of managers) {
+        if (mgr._id.toString() !== req.user._id.toString()) {
+          const managesUser = await isUserManagedBy(mgr, report.user);
+          if (managesUser) {
+            recipientIds.add(mgr._id.toString());
+          }
+        }
+      }
+      for (const recId of recipientIds) {
+        const notif = new Notification({
+          userId: recId,
+          message: `Daily report updated and resubmitted by ${submitter.name} (${submitter.department || 'No Department'}).`,
+          type: 'report',
+          reportId: report._id
+        });
+        notif.save().catch((e) => console.error('Notif save error:', e.message));
+        sendInAppNotification(recId, notif);
+      }
+    }
 
     res.json(populated);
   } catch (err) {
@@ -405,13 +729,15 @@ router.patch('/:id/status', async (req, res) => {
       });
     }
 
-    // Manager validation: manager can only approve reports from their assigned members or department
+    // Manager validation: manager can only approve reports from their assigned members or department,
+    // OR if the member's assigned manager is on leave
     if (req.user.role === 'manager') {
       const isManaged = await isUserManagedBy(req.user, report.user);
+      const canApprove = isManaged || (await canUserApproveFor(req.user, report.user));
 
-      if (!isManaged) {
+      if (!canApprove) {
         return res.status(403).json({
-          error: 'Forbidden. You are only authorized to approve daily reports of members assigned to you or your department.'
+          error: 'Forbidden. You are only authorized to approve daily reports of members assigned to you or your department, or when their primary manager is on leave.'
         });
       }
     }
@@ -427,41 +753,38 @@ router.patch('/:id/status', async (req, res) => {
     const notification = new Notification({
       userId: report.user,
       message: `Your daily report for ${new Date(report.reportDate).toLocaleDateString()} has been ${status.toLowerCase()}.${feedback ? ` Feedback: "${feedback.trim()}"` : ''}`,
-      type: 'report'
+      type: 'report',
+      reportId: report._id
     });
-    await notification.save();
+    notification.save().catch(e => console.error('Notification save error:', e.message));
     sendInAppNotification(report.user, notification);
 
-    const submitter = await User.findById(report.user);
-    if (submitter?.email) {
-      try {
-        await sendEmail(
-          submitter.email,
-          `Daily Report ${status} - WorkTrivo`,
-          `<h2>Hello ${submitter.name},</h2>
-           <p>Your daily report for <strong>${new Date(report.reportDate).toLocaleDateString()}</strong> has been <strong>${status}</strong> by ${req.user.name}.</p>
-           ${feedback ? `<p><strong>Feedback / Notes:</strong> ${feedback}</p>` : ''}
-           ${status === 'Rejected' ? '<p>You can now edit and resubmit your report on WorkTrivo.</p>' : ''}
-           <p>Please log in to WorkTrivo to view details.</p>`
-        );
-      } catch (emailErr) {
-        console.error('Failed to send email notification:', emailErr.message);
-      }
+    // Populate the report for immediate JSON response
+    await report.populate([
+      { path: 'user', select: '_id name email role profilePhoto designationRole department employeeId' },
+      { path: 'reviewedBy', select: '_id name email role' }
+    ]);
+
+    // Send email asynchronously in background so client response is instant
+    if (report.user?.email) {
+      sendEmailAsync(
+        report.user.email,
+        `Daily Report ${status} - WorkTrivo`,
+        `<h2>Hello ${report.user.name},</h2>
+         <p>Your daily report for <strong>${new Date(report.reportDate).toLocaleDateString()}</strong> has been <strong>${status}</strong> by ${req.user.name}.</p>
+         ${feedback ? `<p><strong>Feedback / Notes:</strong> ${feedback}</p>` : ''}
+         ${status === 'Rejected' ? '<p>You can now edit and resubmit your report on WorkTrivo.</p>' : ''}
+         <p>Please log in to WorkTrivo to view details.</p>`
+      );
     }
 
-    // Sockets
+    // Sockets: broadcast to all connected clients
     const io = getIo();
     if (io) {
-      io.to('admins').emit('dailyReportUpdated');
-      io.to(report.user.toString()).emit('dailyReportUpdated');
-      io.to(req.user._id.toString()).emit('dailyReportUpdated');
+      io.emit('dailyReportUpdated', report);
     }
 
-    const populated = await DailyReport.findById(report._id)
-      .populate('user', '_id name email role profilePhoto designationRole department employeeId')
-      .populate('reviewedBy', '_id name email role');
-
-    res.json({ message: `Daily report ${status.toLowerCase()} successfully.`, report: populated });
+    res.json({ message: `Daily report ${status.toLowerCase()} successfully.`, report });
   } catch (err) {
     console.error('PATCH /api/daily-reports/:id/status error:', err);
     res.status(500).json({ error: err.message });
@@ -492,8 +815,7 @@ router.delete('/:id', async (req, res) => {
 
     const io = getIo();
     if (io) {
-      io.to('admins').emit('dailyReportUpdated');
-      io.to(report.user.toString()).emit('dailyReportUpdated');
+      io.emit('dailyReportUpdated', { _id: req.params.id, deleted: true });
     }
 
     res.json({ message: 'Daily report deleted successfully.' });

@@ -43,12 +43,11 @@ const userSchema = new mongoose.Schema(
       default: ''
     },
     employeeId: {
-  type: String,
-  trim: true,
-  unique: true,
-  sparse: true
-},
-   
+      type: String,
+      trim: true,
+      unique: true,
+      sparse: true
+    },
     dob: {
       type: Date,
       default: null
@@ -93,11 +92,29 @@ const userSchema = new mongoose.Schema(
       trim: true,
       default: ''
     },
-      resetOtp: {
+    leaveBalances: {
+      casual: { type: Number, default: 12 },
+      sick: { type: Number, default: 10 },
+      paid: { type: Number, default: 15 },
+      wfh: { type: Number, default: 24 }
+    },
+    resetOtp: {
       type: String,
       default: ''
     },
     resetOtpExpiryAt: {
+      type: Number,
+      default: 0
+    },
+    isEmailVerified: {
+      type: Boolean,
+      default: true
+    },
+    verificationOtp: {
+      type: String,
+      default: ''
+    },
+    verificationOtpExpiryAt: {
       type: Number,
       default: 0
     },
@@ -121,12 +138,6 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null
     },
-    // Google Calendar sync (spec section 15). Each user connects their own
-    // Google account via OAuth2; tasks assigned to them are then mirrored
-    // as events on their personal calendar. NOTE: tokens are stored in
-    // plain text here for simplicity — for a real production deployment
-    // these should be encrypted at rest (e.g. via a KMS or a library like
-    // mongoose-encryption) before going live with real user data.
     googleCalendar: {
       connected: { type: Boolean, default: false },
       accessToken: { type: String, default: '' },
@@ -145,14 +156,16 @@ userSchema.index({ manager: 1 });
 userSchema.index({ department: 1 });
 userSchema.index({ assignedDepartment: 1 });
 userSchema.index({ assignedMembers: 1 });
+userSchema.index({ active: 1 });
 userSchema.index({ name: 1 });
-
 
 userSchema.set('toJSON', {
   transform: (doc, ret) => {
     delete ret.passwordHash;
     delete ret.resetOtp;
     delete ret.resetOtpExpiryAt;
+    delete ret.verificationOtp;
+    delete ret.verificationOtpExpiryAt;
     delete ret.__v;
     return ret;
   }

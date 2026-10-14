@@ -12,9 +12,11 @@ const ProfileView = ({ onEditClick }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const { token } = useAuth();
+  const { token, user: currentUser } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const targetUserId = searchParams.get('userId') || searchParams.get('id');
+  const isOwnProfile = !targetUserId || targetUserId === currentUser?._id;
 
   // Google Calendar sync (spec section 15)
   const [calendarStatus, setCalendarStatus] = useState({ featureEnabled: false, connected: false });
@@ -24,12 +26,16 @@ const ProfileView = ({ onEditClick }) => {
 
   useEffect(() => {
     fetchProfile();
-  }, [token]);
+  }, [token, targetUserId]);
 
   useEffect(() => {
-    fetchCalendarStatus();
+    if (isOwnProfile) {
+      fetchCalendarStatus();
+    } else {
+      setCalendarLoading(false);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  }, [token, targetUserId, isOwnProfile]);
 
   // Handle the redirect back from Google's OAuth consent screen
   // (backend sends the browser to /profile?calendar=connected|error)
@@ -53,14 +59,23 @@ const ProfileView = ({ onEditClick }) => {
   }, [calendarToast]);
 
   const fetchProfile = async () => {
+    if (!token) return;
     try {
       setLoading(true);
-      const response = await axios.get(`${API_BASE}/users/profile`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setProfile(response.data);
+      setError('');
+      if (!isOwnProfile && targetUserId) {
+        const response = await axios.get(`${API_BASE}/users/${targetUserId}/overview`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setProfile(response.data?.user || response.data);
+      } else {
+        const response = await axios.get(`${API_BASE}/users/profile`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setProfile(response.data);
+      }
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to load profile.');
+      setError(err.response?.data?.error || err.message || 'Failed to load profile.');
     } finally {
       setLoading(false);
     }
@@ -181,13 +196,22 @@ const ProfileView = ({ onEditClick }) => {
           </div>
 
           {/* Action Button */}
-          <button
-            onClick={() => onEditClick ? onEditClick() : navigate('/profile/edit')}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm shadow-md shadow-emerald-500/20 transition-all duration-200 active:scale-[0.98]"
-          >
-            <Edit3 size={16} />
-            <span>Edit Profile</span>
-          </button>
+          {isOwnProfile ? (
+            <button
+              onClick={() => onEditClick ? onEditClick() : navigate('/profile/edit')}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm shadow-md shadow-emerald-500/20 transition-all duration-200 active:scale-[0.98]"
+            >
+              <Edit3 size={16} />
+              <span>Edit Profile</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => navigate('/chat')}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm shadow-md shadow-emerald-500/20 transition-all duration-200 active:scale-[0.98]"
+            >
+              <span>Message Employee</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -261,8 +285,8 @@ const ProfileView = ({ onEditClick }) => {
 
       </div>
 
-      {/* Calendar Sync */}
-      {!calendarLoading && calendarStatus.featureEnabled && (
+      {/* Calendar Sync (Self Profile Only) */}
+      {isOwnProfile && !calendarLoading && calendarStatus.featureEnabled && (
         <div className="pt-4">
           <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4">Integrations</h3>
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
@@ -303,7 +327,7 @@ const ProfileView = ({ onEditClick }) => {
         </div>
       )}
 
-      {!calendarLoading && !calendarStatus.featureEnabled && (
+      {isOwnProfile && !calendarLoading && !calendarStatus.featureEnabled && (
         <div className="pt-4">
           <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-slate-100 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 text-xs">
             <AlertCircle size={15} className="shrink-0 mt-0.5 text-slate-500 dark:text-slate-400" />

@@ -3,6 +3,8 @@ import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Sidebar from './Sidebar';
 import Navbar from './Navbar';
+import ActiveTaskTimerBar from './ActiveTaskTimerBar';
+import MobileNotificationPrompt from './MobileNotificationPrompt';
 
 const Layout = () => {
   const { user, loading } = useAuth();
@@ -58,7 +60,7 @@ const Layout = () => {
   const isFullBleedView = location.pathname.startsWith('/chat');
 
   return (
-    <div className="flex h-[100dvh] w-full overflow-hidden bg-slate-50/50 dark:bg-[#070a13] text-slate-800 dark:text-gray-100 antialiased selection:bg-[#10b981]/30 selection:text-[#10b981] transition-colors duration-200">
+    <div className="flex h-[100dvh] w-full overflow-hidden bg-slate-50/50 dark:bg-[#070a13] text-slate-800 dark:text-gray-100 antialiased selection:bg-[#10b981] selection:text-white transition-colors duration-200">
       {/* Sidebar - Floating/Sticky on Desktop, Collapsible Drawer on Mobile */}
       <aside
         className={`fixed inset-y-0 left-0 z-50 h-[100dvh] w-64 shrink-0 transform border-r border-slate-200 dark:border-white/5 bg-white dark:bg-[#0d1426] shadow-2xl transition-transform duration-300 ease-in-out lg:sticky lg:top-0 lg:z-auto lg:translate-x-0 ${
@@ -81,6 +83,7 @@ const Layout = () => {
       {/* Main Viewport Container */}
       <div className="flex h-[100dvh] min-w-0 flex-1 flex-col overflow-hidden">
         <Navbar toggleSidebar={toggleSidebar} isSidebarOpen={isSidebarOpen} />
+        <MobileNotificationPrompt />
         
         <main
           className={`flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-white/10 scrollbar-track-transparent ${
@@ -90,6 +93,7 @@ const Layout = () => {
           }`}
         >
           <Outlet />
+          <ActiveTaskTimerBar />
         </main>
       </div>
     </div>

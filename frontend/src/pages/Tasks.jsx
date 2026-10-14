@@ -4,19 +4,22 @@ import { useAuth, API_BASE } from '../context/AuthContext';
 import {
   Plus, Search, Filter, RefreshCw, Edit2, Trash2, Calendar, AlertCircle,
   LayoutGrid, List, X, Paperclip, CheckCircle2, Loader2,
-  KanbanSquare, CalendarDays, GanttChartSquare, Mic, UserPlus, CheckSquare, Square
+  KanbanSquare, CalendarDays, GanttChartSquare, Mic, UserPlus, CheckSquare, Square, Clock
 } from 'lucide-react';
 import KanbanBoard from '../components/KanbanBoard';
 import CalendarView from '../components/CalendarView';
 import GanttChart from '../components/GanttChart';
 import VoiceTaskModal from '../components/VoiceTaskModal';
 import { useSocket } from "../context/SocketContext";
+import { useTaskTimer } from '../context/TaskTimerContext';
+import { formatDateTime, formatDate, toDateTimeLocalValue } from '../utils/dateUtils';
 
 const Tasks = () => {
   const { user, token } = useAuth();
   const { socket } = useSocket();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { activeTimer, startTimer } = useTaskTimer();
 
   // Tasks & View State
   const [tasks, setTasks] = useState([]);
@@ -215,7 +218,7 @@ const Tasks = () => {
     setFormTitle(parsed.title || '');
     setFormPriority(parsed.priority || 'Medium');
     if (parsed.dueDate) {
-      setFormDueDate(new Date(parsed.dueDate).toISOString().slice(0, 16));
+      setFormDueDate(toDateTimeLocalValue(parsed.dueDate));
     }
     if (parsed.assignedTo?.length) {
       setFormAssignedTo(parsed.assignedTo);
@@ -237,7 +240,7 @@ const Tasks = () => {
     setFormStatus(task.status);
 
     if (task.startDate) {
-      setFormStartDate(new Date(task.startDate).toISOString().slice(0, 16));
+      setFormStartDate(toDateTimeLocalValue(task.startDate));
     } else {
       setFormStartDate('');
     }
@@ -247,8 +250,7 @@ const Tasks = () => {
     setFormChecklist(task.checklist || []);
     setFormDependencies(task.dependencies || []);
 
-    const formattedDate = new Date(task.dueDate).toISOString().slice(0, 16);
-    setFormDueDate(formattedDate);
+    setFormDueDate(toDateTimeLocalValue(task.dueDate));
     setFormAssignedTo(task.assignedTo.map(u => (u._id || u)));
     const isSelf = task.isSelfCreated || (task.assignedTo?.length === 1 && (task.assignedTo[0]._id || task.assignedTo[0]) === user?._id && task.verballyAssignedBy);
     setFormIsSelfTask(Boolean(isSelf));
@@ -513,7 +515,7 @@ const Tasks = () => {
     }
   };
 
-  const getStatusBadge = (status) => {
+  const getStatusBadge = (status, task = null) => {
     const statusMap = {
       'To Do': 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700',
       'In Progress': 'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/50 dark:text-sky-400 dark:border-sky-800',
@@ -526,11 +528,26 @@ const Tasks = () => {
     };
 
     const colorClass = statusMap[status] || 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300';
+    const isApprovedOverdue = status === 'Approved' && task && (
+      task.wasOverdue ||
+      (task.dueDate && task.approvedAt && new Date(task.dueDate) < new Date(task.approvedAt)) ||
+      (task.dueDate && !task.approvedAt && new Date(task.dueDate) < new Date(task.updatedAt || task.createdAt))
+    );
 
     return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${colorClass}`}>
-        {status}
-      </span>
+      <div className="inline-flex items-center gap-1.5 flex-wrap">
+        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${colorClass}`}>
+          {status}
+        </span>
+        {isApprovedOverdue && (
+          <span
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose-100 text-rose-700 border border-rose-300 dark:bg-rose-950/70 dark:text-rose-300 dark:border-rose-800"
+            title="Task was completed or approved past its deadline"
+          >
+            Overdue
+          </span>
+        )}
+      </div>
     );
   };
 
@@ -899,7 +916,7 @@ const Tasks = () => {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2 mb-3">
-                    {getStatusBadge(task.status)}
+                    {getStatusBadge(task.status, task)}
                     {getPriorityBadge(task.priority)}
                     {task.verballyAssignedBy && (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-[11px] font-semibold">
@@ -927,14 +944,32 @@ const Tasks = () => {
                 </div>
 
                 <div className="pt-3.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between mt-auto">
-                  <div
-                    className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg ${isOverdue
-                      ? 'bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/50 dark:text-rose-400 dark:border-rose-800/50 font-semibold animate-pulse'
-                      : 'bg-slate-50 text-slate-700 border border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 font-medium'
+                  <div className="flex items-center gap-1.5">
+                    <div
+                      className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg ${isOverdue
+                        ? 'bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/50 dark:text-rose-400 dark:border-rose-800/50 font-semibold animate-pulse'
+                        : 'bg-slate-50 text-slate-700 border border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 font-medium'
+                        }`}
+                    >
+                      <Calendar size={13} />
+                      <span>{formatDateTime(task.dueDate)}</span>
+                    </div>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        startTimer(task);
+                      }}
+                      className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        activeTimer?.taskId === task._id
+                          ? 'bg-emerald-500 text-slate-950 font-bold shadow-xs animate-pulse'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-[#10b981] hover:bg-[#10b981]/15'
                       }`}
-                  >
-                    <Calendar size={13} />
-                    <span>{new Date(task.dueDate).toLocaleDateString()}</span>
+                      title={activeTimer?.taskId === task._id ? 'Timer is running' : 'Start work timer on this task'}
+                    >
+                      <Clock size={12} />
+                      <span>{activeTimer?.taskId === task._id ? 'Tracking' : 'Timer'}</span>
+                    </button>
                   </div>
 
                   <div className="flex items-center">
@@ -1011,10 +1046,10 @@ const Tasks = () => {
                         ? task.assignedTo.map((u) => u.name).join(', ')
                         : 'Unassigned'}
                     </td>
-                    <td className="py-3.5 px-4 whitespace-nowrap">{getStatusBadge(task.status)}</td>
+                    <td className="py-3.5 px-4 whitespace-nowrap">{getStatusBadge(task.status, task)}</td>
                     <td className="py-3.5 px-4 whitespace-nowrap">{getPriorityBadge(task.priority)}</td>
                     <td className="py-3.5 px-4 whitespace-nowrap text-xs text-slate-600 dark:text-slate-400 font-medium">
-                      {new Date(task.dueDate).toLocaleDateString()}
+                      {formatDateTime(task.dueDate)}
                     </td>
                     <td className="py-3.5 px-4 whitespace-nowrap">
                       <div className="flex -space-x-1.5 overflow-hidden">

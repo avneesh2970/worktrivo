@@ -53,9 +53,14 @@ router.post('/google', async (req, res) => {
         loginProvider: 'google',
         profilePhoto: picture,
         role: 'member',
-        active: true
+        active: true,
+        isEmailVerified: true
       });
     } else {
+      if (!user.isEmailVerified) {
+        user.isEmailVerified = true;
+      }
+
       if (!user.loginProvider) {
         user.loginProvider = 'google';
       }
@@ -78,16 +83,16 @@ router.post('/google', async (req, res) => {
 
     // Create new session (old device becomes invalid)
     const sessionId = uuidv4();
+    const now = new Date();
 
     user.activeSessionId = sessionId;
-    user.lastSeen = new Date();
+    user.lastSeen = now;
+    user.lastLoginAt = now;
 
     await user.save();
 
-    // --------------------------------------------------
-    // Create Login Activity Entry
-    // --------------------------------------------------
-    await LoginActivity.create({
+    // Background Login Activity Entry
+    LoginActivity.create({
       user: user._id,
       name: user.name,
       email: user.email,
@@ -95,8 +100,8 @@ router.post('/google', async (req, res) => {
       loginProvider: 'google',
       ipAddress: req.ip || req.headers['x-forwarded-for'] || '',
       userAgent: req.headers['user-agent'] || '',
-      loginTime: new Date()
-    });
+      loginTime: now
+    }).catch(e => console.error('LoginActivity create error:', e.message));
 
     const appToken = jwt.sign(
       {
@@ -135,7 +140,7 @@ router.post('/google', async (req, res) => {
 
     return res.status(400).json({
       success: false,
-      message: 'Invalid or expired Google Token.'
+      message: err.message || 'Invalid or expired Google Token.'
     });
   }
 });
@@ -193,18 +198,29 @@ router.post('/login', async (req, res) => {
       });
     }
 
+    // Check if account email is verified
+    if (user.isEmailVerified === false) {
+      return res.status(403).json({
+        success: false,
+        isUnverified: true,
+        email: user.email,
+        message: 'Your email address is not verified. Please enter the verification code sent to your email.'
+      });
+    }
+
     // Create new session (old device becomes invalid)
     const sessionId = uuidv4();
+    const now = new Date();
 
     user.activeSessionId = sessionId;
-    user.lastSeen = new Date();
+    user.lastSeen = now;
+    user.lastLoginAt = now;
 
-    await user.save();
+    // Fast atomic session update
+    User.updateOne({ _id: user._id }, { $set: { activeSessionId: sessionId, lastSeen: now, lastLoginAt: now } }).catch(e => console.error('Session update error:', e.message));
 
-    // --------------------------------------------------
-    // Create Login Activity Entry
-    // --------------------------------------------------
-    await LoginActivity.create({
+    // Background Login Activity Entry so login response is instant
+    LoginActivity.create({
       user: user._id,
       name: user.name,
       email: user.email,
@@ -212,8 +228,8 @@ router.post('/login', async (req, res) => {
       loginProvider: 'local',
       ipAddress: req.ip || req.headers['x-forwarded-for'] || '',
       userAgent: req.headers['user-agent'] || '',
-      loginTime: new Date()
-    });
+      loginTime: now
+    }).catch(e => console.error('LoginActivity create error:', e.message));
 
     const token = jwt.sign(
       {
@@ -244,7 +260,8 @@ router.post('/login', async (req, res) => {
         gender: user.gender,
         department: user.department,
         workLocation: user.workLocation,
-        designationRole: user.designationRole
+        designationRole: user.designationRole,
+        isEmailVerified: user.isEmailVerified !== false
       }
     });
   } catch (err) {
@@ -320,7 +337,8 @@ router.get('/me', authenticate, async (req, res) => {
       assignedMembers: req.user.assignedMembers,
       manager: req.user.manager,
       workLocation: req.user.workLocation,
-      designationRole: req.user.designationRole
+      designationRole: req.user.designationRole,
+      isEmailVerified: req.user.isEmailVerified !== false
     }
   });
 });

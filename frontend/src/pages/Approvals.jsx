@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 
 import FileList from '../components/FileList';
+import { formatDateTime, formatDate } from '../utils/dateUtils';
 
 // --- FIXED HELPER: Replaces Windows backslashes ---
 const getFileUrl = (path) => {
@@ -143,7 +144,7 @@ const Approvals = () => {
         setLoadingDetails(false);
     };
 
-    // --- APPROVE / REJECT LOGIC ---
+    // --- APPROVE / REJECT LOGIC (Instant Optimistic UI) ---
     const handleProcessApproval = async (actionType) => {
         const isApprove = actionType === 'approve';
         
@@ -151,53 +152,64 @@ const Approvals = () => {
             toast.error("Please provide a decision note/feedback for rejection.");
             return;
         }
+
+        const item = viewingItem;
+        const feedbackValue = feedback.trim();
+        const itemId = item._id;
+        const itemType = item._itemType;
+
+        // Instant UI dismissal & optimistic removal
+        setViewingItem(null);
+        setItemDetails(null);
+        toast.success(`${itemType === 'dailyReport' ? 'Daily report' : itemType === 'project' ? 'Project' : 'Task'} successfully ${isApprove ? 'approved' : 'rejected'}`);
+
+        if (itemType === 'task') {
+            setStandaloneTasks(prev => prev.filter(t => t._id !== itemId));
+        } else if (itemType === 'projectTask') {
+            setProjectTasks(prev => prev.filter(t => t._id !== itemId));
+        } else if (itemType === 'project') {
+            setProjects(prev => prev.filter(p => p._id !== itemId));
+        } else if (itemType === 'dailyReport') {
+            setDailyReports(prev => prev.filter(r => r._id !== itemId));
+        }
         
-        setActionLoading(true);
         try {
-            if (viewingItem._itemType === 'task' || viewingItem._itemType === 'projectTask') {
-                const res = await fetch(`${API_BASE}/tasks/${viewingItem._id}/status`, {
+            if (itemType === 'task' || itemType === 'projectTask') {
+                const res = await fetch(`${API_BASE}/tasks/${itemId}/status`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                     body: JSON.stringify({ 
                         status: isApprove ? 'Approved' : 'Rejected',
-                        feedback: feedback.trim()
+                        feedback: feedbackValue
                     })
                 });
                 if (!res.ok) throw new Error("Failed to process task");
-                toast.success(`Task successfully ${isApprove ? 'approved' : 'rejected'}`);
             } 
-            else if (viewingItem._itemType === 'project') {
+            else if (itemType === 'project') {
                 const endpoint = isApprove ? 'approve' : 'reject';
-                const res = await fetch(`${API_BASE}/groups/${viewingItem._id}/${endpoint}`, {
+                const res = await fetch(`${API_BASE}/groups/${itemId}/${endpoint}`, {
                     method: 'PATCH',
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 if (!res.ok) throw new Error("Failed to process project");
-                toast.success(`Project successfully ${isApprove ? 'approved' : 'rejected'}`);
             }
-            else if (viewingItem._itemType === 'dailyReport') {
-                const res = await fetch(`${API_BASE}/daily-reports/${viewingItem._id}/status`, {
+            else if (itemType === 'dailyReport') {
+                const res = await fetch(`${API_BASE}/daily-reports/${itemId}/status`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                     body: JSON.stringify({
                         status: isApprove ? 'Approved' : 'Rejected',
-                        feedback: feedback.trim()
+                        feedback: feedbackValue
                     })
                 });
                 if (!res.ok) {
                     const errData = await res.json();
                     throw new Error(errData.error || "Failed to process daily report");
                 }
-                toast.success(`Daily report successfully ${isApprove ? 'approved' : 'rejected'}`);
             }
-            
-            setViewingItem(null);
-            setItemDetails(null);
-            fetchData(); 
         } catch (error) {
             toast.error(error.message);
-        } finally {
-            setActionLoading(false);
+            fetchData(); // revert on failure
         }
     };
 
@@ -273,17 +285,32 @@ const Approvals = () => {
         );
     };
 
-    const getStatusBadge = (status) => {
+    const getStatusBadge = (status, item = null) => {
         const styles = {
             'Approved': 'border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10',
             'Completed': 'border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10',
             'Pending': 'border-amber-500 text-amber-600 dark:text-amber-400 bg-amber-500/10',
             'Completed (Pending Approval)': 'border-amber-500 text-amber-600 dark:text-amber-400 bg-amber-500/10',
         };
+
+        const target = item || itemDetails;
+        const isApprovedOverdue = (status === 'Approved' || status === 'Completed') && target && (
+            target.wasOverdue ||
+            (target.dueDate && target.approvedAt && new Date(target.dueDate) < new Date(target.approvedAt)) ||
+            (target.dueDate && !target.approvedAt && new Date(target.dueDate) < new Date(target.updatedAt || target.createdAt))
+        );
+
         return (
-            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${styles[status] || 'border-sky-500 text-sky-600 dark:text-sky-400 bg-sky-500/10'}`}>
-                {status || "Pending"}
-            </span>
+            <div className="inline-flex items-center gap-1.5 flex-wrap">
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${styles[status] || 'border-sky-500 text-sky-600 dark:text-sky-400 bg-sky-500/10'}`}>
+                    {status || "Pending"}
+                </span>
+                {isApprovedOverdue && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose-100 text-rose-700 border border-rose-300 dark:bg-rose-950/70 dark:text-rose-300 dark:border-rose-800">
+                        Overdue
+                    </span>
+                )}
+            </div>
         );
     };
 
@@ -406,7 +433,7 @@ const Approvals = () => {
                                         <div className="flex flex-col">
                                             <span className="text-[10px] uppercase font-bold tracking-widest text-slate-500 dark:text-slate-400 mb-1">Department / Date</span>
                                             <span className="text-[#10b981] font-semibold truncate">
-                                                {item.department || 'General'} • {new Date(item.reportDate).toLocaleDateString()}
+                                                {item.department || 'General'} • {formatDate(item.reportDate)}
                                             </span>
                                         </div>
                                     ) : item._itemType !== 'project' && activeTab === 'projects' ? (
@@ -578,7 +605,7 @@ const Approvals = () => {
                                                     <div>
                                                         <p className="text-[10px] uppercase font-bold text-slate-500">Due Date</p>
                                                         <p className="text-sm font-bold text-slate-900 dark:text-white">
-                                                            {itemDetails.dueDate ? new Date(itemDetails.dueDate).toLocaleString() : "Not Set"}
+                                                            {formatDateTime(itemDetails.dueDate)}
                                                         </p>
                                                     </div>
                                                 </div>
@@ -646,7 +673,7 @@ const Approvals = () => {
                                                                         <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-400 rounded">
                                                                             {c.userId?.role === 'admin' ? 'Manager' : 'Member'}
                                                                         </span>
-                                                                        <span className="text-slate-500 ml-auto">{new Date(c.createdAt).toLocaleString()}</span>
+                                                                        <span className="text-slate-500 ml-auto">{formatDateTime(c.createdAt)}</span>
                                                                     </div>
                                                                     <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">{c.message}</p>
                                                                 </div>
@@ -727,7 +754,7 @@ const Approvals = () => {
                                                             <div className="mb-1 flex flex-wrap items-center gap-2 text-[10px] font-bold text-slate-500">
                                                                 <span className="text-slate-900 dark:text-white">{log.userId?.name || 'System'}</span>
                                                                 <span>•</span>
-                                                                <span>{new Date(log.createdAt).toLocaleString()}</span>
+                                                                <span>{formatDateTime(log.createdAt)}</span>
                                                             </div>
                                                             
                                                             <p className="text-xs font-bold text-slate-900 dark:text-white mb-2">{log.action}</p>

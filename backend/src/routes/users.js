@@ -13,6 +13,8 @@ const uploadMemory = multer({ storage: multer.memoryStorage() });
 router.post('/send-reset-otp', userController.sendResetOtp);
 router.post('/reset-password', userController.resetPassword);
 router.post('/register', userController.registerUser);
+router.post('/verify-email', userController.verifyEmail);
+router.post('/resend-verification-otp', userController.resendVerificationOtp);
 
 // PROTECTED ROUTES
 router.use(authenticate);
@@ -33,6 +35,9 @@ router.get('/my-supervisors', userController.getMySupervisors);
 
 // User List
 router.get('/', userController.getUsers);
+
+// Candidate / Employee 360 Overview (Profile, Assigned Tasks, Daily Reports)
+router.get('/:id/overview', userController.getUserOverview);
 
 // ADMIN ROUTES
 router.use(requireRole('admin'));

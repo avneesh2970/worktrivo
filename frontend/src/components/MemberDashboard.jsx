@@ -6,6 +6,7 @@ import {
   MessageSquare, Megaphone, Pin, CheckCircle2, ChevronRight, Download,
   Sparkles, ShieldAlert, ArrowUpRight, Calendar, Filter
 } from 'lucide-react';
+import { formatDateTime, formatDate } from '../utils/dateUtils';
 
 const categoryStyle = {
   'Policy Update': 'bg-blue-500/10 text-blue-400 border-blue-500/30',
@@ -373,13 +374,20 @@ const MemberDashboard = ({ user, tasks = [], handleDownloadReport }) => {
                       <div className="flex items-center gap-3">
                         <div className={`w-2 h-2 rounded-full ${isOverdue ? 'bg-rose-500' : 'bg-[#10b981]'}`} />
                         <div>
-                          <p className="text-sm font-semibold text-slate-900 dark:text-slate-200 group-hover:text-[#10b981] transition-colors">
-                            {task.title}
-                          </p>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-sm font-semibold text-slate-900 dark:text-slate-200 group-hover:text-[#10b981] transition-colors">
+                              {task.title}
+                            </p>
+                            {task.status === 'Approved' && (task.wasOverdue || (task.dueDate && task.approvedAt && new Date(task.dueDate) < new Date(task.approvedAt)) || (task.dueDate && !task.approvedAt && new Date(task.dueDate) < new Date(task.updatedAt || task.createdAt))) && (
+                              <span className="text-[10px] font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 px-1.5 py-0.2 rounded">
+                                Overdue
+                              </span>
+                            )}
+                          </div>
                           <span className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1 mt-0.5 font-medium">
                             <Clock size={11} className={isOverdue ? 'text-rose-500' : 'text-slate-400'} />
                             <span className={isOverdue ? 'text-rose-600 dark:text-rose-400 font-semibold' : ''}>
-                              Due: {new Date(task.dueDate).toLocaleDateString()}
+                              Due: {formatDateTime(task.dueDate)}
                             </span>
                           </span>
                         </div>

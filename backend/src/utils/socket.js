@@ -13,7 +13,9 @@ const onlineUsers = new Map();
 const init = (server) => {
   io = socketIo(server, {
     cors: {
-      origin: process.env.CLIENT_URL || "*",
+      origin: (origin, callback) => {
+        callback(null, true);
+      },
       methods: ["GET", "POST"],
       credentials: true,
     },
@@ -71,14 +73,18 @@ const init = (server) => {
         const room = await ChatRoom.findById(roomId);
         if (!room) return;
 
-        const allowed = room.members.some(
-          (member) => member.toString() === userId.toString()
-        );
+        // Admin can join any room; otherwise user must be a member or creator
+        const allowed =
+          role === "admin" ||
+          room.members.some(
+            (member) => (member._id || member).toString() === userId.toString()
+          ) ||
+          (room.createdBy && (room.createdBy._id || room.createdBy).toString() === userId.toString());
 
         if (!allowed) return;
 
-        socket.join(roomId);
-        socket.emit("joined_room", roomId);
+        socket.join(roomId.toString());
+        socket.emit("joined_room", roomId.toString());
       } catch (err) {
         console.error("Error joining room:", err);
       }
@@ -101,6 +107,17 @@ const init = (server) => {
     // Send Message
     socket.on("send_message", async (data) => {
       try {
+        const room = await ChatRoom.findById(data.chatRoom);
+        if (!room) return;
+
+        // Block messages if community is pending approval
+        if (room.type === "group" && room.approvalStatus === "Pending") {
+          socket.emit("error_message", {
+            message: "Cannot send message. This community is awaiting Admin approval.",
+          });
+          return;
+        }
+
         // Sanitize and unique mention IDs
         const rawMentions = Array.isArray(data.mentions) ? data.mentions : [];
         const uniqueMentions = Array.from(new Set(rawMentions.map((id) => id.toString())));
@@ -115,7 +132,7 @@ const init = (server) => {
         });
 
         // Populate fields for real-time frontend consumption
-        await message.populate("sender", "name profilePhoto role");
+        await message.populate("sender", "name profilePhoto role designationRole department");
         await message.populate("mentions", "name email");
         if (message.replyTo) {
           await message.populate("replyTo");
@@ -126,7 +143,42 @@ const init = (server) => {
         });
 
         // Broadcast to chat room
-        io.to(data.chatRoom).emit("receive_message", message);
+        io.to(data.chatRoom.toString()).emit("receive_message", message);
+
+        // Also broadcast directly to room members
+        if (Array.isArray(room.members)) {
+          room.members.forEach((memberId) => {
+            io.to(memberId.toString()).emit("receive_message", message);
+          });
+        }
+
+        // Send chat notification to room members (excluding sender)
+        const senderName = message.sender?.name || "Someone";
+        const previewText = message.text
+          ? message.text.length > 50
+            ? message.text.substring(0, 50) + "..."
+            : message.text
+          : message.attachments?.length
+          ? "Sent an attachment"
+          : "Sent a message";
+        const roomTitle = room.type === "direct" ? "Direct Message" : room.name || "Community";
+
+        const Notification = require("../models/Notification");
+        if (Array.isArray(room.members)) {
+          for (const memberId of room.members) {
+            const mIdStr = (memberId._id || memberId).toString();
+            if (mIdStr !== userId.toString()) {
+              Notification.create({
+                userId: memberId,
+                message: `${senderName}${room.type !== "direct" ? ` in ${roomTitle}` : ""}: "${previewText}"`,
+                type: "chat",
+                chatRoomId: room._id,
+              })
+                .then((notif) => sendInAppNotification(memberId, notif))
+                .catch((err) => console.error("Socket chat notif error:", err.message));
+            }
+          }
+        }
 
         // Send direct mention notifications (Exclude the sender if self-mentioned)
         uniqueMentions.forEach((mentionedUserId) => {
@@ -139,6 +191,51 @@ const init = (server) => {
         });
       } catch (err) {
         console.error("Error sending message:", err);
+      }
+    });
+
+    // Daily Reports real-time relay
+    socket.on("dailyReportUpdated", (data) => {
+      io.emit("dailyReportUpdated", data);
+    });
+
+    // Mark entire room as read
+    socket.on("mark_room_read", async ({ roomId }) => {
+      try {
+        if (!roomId) return;
+        await Message.updateMany(
+          {
+            chatRoom: roomId,
+            deleted: false,
+            sender: { $ne: userId },
+            "readBy.user": { $ne: userId },
+          },
+          {
+            $push: {
+              readBy: {
+                user: userId,
+                readAt: new Date(),
+              },
+            },
+          }
+        );
+
+        const Notification = require("../models/Notification");
+        await Notification.updateMany(
+          {
+            userId,
+            type: "chat",
+            chatRoomId: roomId,
+            read: false,
+          },
+          {
+            $set: { read: true },
+          }
+        );
+
+        io.to(roomId.toString()).emit("room_read", { roomId, userId });
+      } catch (err) {
+        console.error("Error marking room read via socket:", err);
       }
     });
 
@@ -190,27 +287,31 @@ const init = (server) => {
       }
     });
 
-    // Delete message
-    socket.on("delete_message", async ({ messageId }) => {
+    // Unpin message
+    socket.on("unpin_message", async ({ messageId }) => {
       try {
         const message = await Message.findByIdAndUpdate(
           messageId,
-          {
-            deleted: true,
-            deletedAt: new Date(),
-          },
+          { pinned: false },
           { new: true }
-        );
+        )
+          .populate("sender", "name profilePhoto role")
+          .populate("mentions", "name email");
 
         if (!message) return;
 
-        io.to(message.chatRoom.toString()).emit("message_deleted", { messageId });
+        io.to(message.chatRoom.toString()).emit("message_unpinned", message);
       } catch (err) {
-        console.error("Error deleting message:", err);
+        console.error("Error unpinning message:", err);
       }
     });
 
-    // Edit message (Updates text & mentions)
+    // Delete message (Disabled as per policy)
+    socket.on("delete_message", async () => {
+      socket.emit("error", { message: "Deleting messages is not permitted." });
+    });
+
+    // Edit message (Updates text & mentions - allowed within 5 minutes only)
     socket.on("edit_message", async ({ messageId, text, mentions = [] }) => {
       try {
         const message = await Message.findById(messageId);
@@ -219,6 +320,14 @@ const init = (server) => {
 
         // Author check
         if (message.sender.toString() !== userId.toString()) {
+          return;
+        }
+
+        // 5-minute edit window check
+        const EDIT_WINDOW_MS = 5 * 60 * 1000;
+        const messageAge = Date.now() - new Date(message.createdAt).getTime();
+        if (messageAge > EDIT_WINDOW_MS) {
+          socket.emit("error", { message: "Messages can only be edited within 5 minutes of sending." });
           return;
         }
 

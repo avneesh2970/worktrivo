@@ -37,6 +37,8 @@ const NotificationCenter = ({ onClose }) => {
       navigate(`/groups/${groupId}`);
     } else if (notif.type === 'report') {
       navigate('/daily-reports');
+    } else if (notif.type === 'chat') {
+      navigate('/chat', { state: { chatRoomId: notif.chatRoomId } });
     } else if (notif.type === 'approval') {
       navigate('/approvals');
     } else if (notif.type === 'project') {
@@ -47,6 +49,8 @@ const NotificationCenter = ({ onClose }) => {
       const msgLower = (notif.message || '').toLowerCase();
       if (msgLower.includes('daily report') || msgLower.includes('report')) {
         navigate('/daily-reports');
+      } else if (msgLower.includes('chat') || msgLower.includes('message')) {
+        navigate('/chat');
       } else if (msgLower.includes('approval') || msgLower.includes('review')) {
         navigate('/approvals');
       } else if (msgLower.includes('announcement')) {
@@ -140,6 +144,8 @@ const NotificationCenter = ({ onClose }) => {
         return 'bg-amber-500/15 text-amber-300 border-amber-500/30';
       case 'report':
         return 'bg-teal-500/15 text-teal-300 border-teal-500/30';
+      case 'chat':
+        return 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30';
       default:
         return 'bg-slate-500/15 text-slate-300 border-slate-500/30';
     }

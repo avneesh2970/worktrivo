@@ -71,6 +71,20 @@ export const useChatApi = () => {
     createRoom: async (data) =>
       (await apiClient.post("/chat/rooms", data)).data,
 
+    updateRoom: async (roomId, data) => {
+      const headers = data instanceof FormData ? { "Content-Type": "multipart/form-data" } : {};
+      return (await apiClient.patch(`/chat/rooms/${roomId}`, data, { headers })).data;
+    },
+
+    getOrCreateDirectRoom: async (targetUserId) =>
+      (await apiClient.post("/chat/direct", { targetUserId })).data,
+
+    approveRoom: async (roomId) =>
+      (await apiClient.patch(`/chat/rooms/${roomId}/approve`)).data,
+
+    rejectRoom: async (roomId) =>
+      (await apiClient.patch(`/chat/rooms/${roomId}/reject`)).data,
+
     // ---------------- Messages ----------------
     getMessages: async (roomId) =>
       (await apiClient.get(`/chat/${roomId}/messages`)).data,
@@ -80,6 +94,15 @@ export const useChatApi = () => {
 
     sendMessageWithMentions: async (data) =>
       (await apiClient.post("/chat/messages", data)).data,
+
+    uploadAttachment: async (formData) =>
+      (
+        await apiClient.post("/chat/upload", formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        })
+      ).data,
 
     // ---------------- Mention Search ----------------
     searchMentionUsers: async (roomId, query = "") =>
@@ -106,6 +129,11 @@ export const useChatApi = () => {
       ).data,
 
     // ---------------- Message Actions ----------------
+    markRoomRead: async (roomId) =>
+      (
+        await apiClient.patch(`/chat/rooms/${roomId}/read`)
+      ).data,
+
     markMessageRead: async (messageId) =>
       (
         await apiClient.patch(`/chat/message/${messageId}/read`)

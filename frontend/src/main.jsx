@@ -6,6 +6,7 @@ import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { TaskTimerProvider } from './context/TaskTimerContext';
 
 import App from './App';
 import './index.css';
@@ -19,7 +20,9 @@ createRoot(document.getElementById('root')).render(
         <ThemeProvider>
           <AuthProvider>
             <SocketProvider>
-              <App />
+              <TaskTimerProvider>
+                <App />
+              </TaskTimerProvider>
             </SocketProvider>
           </AuthProvider>
         </ThemeProvider>

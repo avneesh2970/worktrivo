@@ -17,6 +17,9 @@ import Announcements from './pages/Announcements';
 import AdminSettings from './pages/AdminSettings';
 import Approvals from './pages/Approvals';
 import DailyReports from './pages/DailyReports';
+import MyTeam from './pages/MyTeam';
+import LeaveRequests from './pages/LeaveRequests';
+import OrgChart from './pages/OrgChart';
 
 const AdminRoute = ({ children }) => {
   const { user } = useAuth();
@@ -78,6 +81,8 @@ function App() {
           <Route path="chat" element={<ChatApp />} />
           <Route path="announcements" element={<Announcements />} />
           <Route path="daily-reports" element={<DailyReports />} />
+          <Route path="leaves" element={<LeaveRequests />} />
+          <Route path="org-chart" element={<OrgChart />} />
           
           <Route
             path="users"
@@ -103,6 +108,15 @@ function App() {
               </ManagerOrAdminRoute>
             }
           />
+          <Route
+            path="team"
+            element={
+              <ManagerOrAdminRoute>
+                <MyTeam />
+              </ManagerOrAdminRoute>
+            }
+          />
+          <Route path="my-team" element={<Navigate to="/team" replace />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

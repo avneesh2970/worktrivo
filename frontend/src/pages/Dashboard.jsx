@@ -12,6 +12,7 @@ import {
   XCircle, PlayCircle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { formatDateTime, formatDate } from '../utils/dateUtils';
 
 const Dashboard = () => {
   const { user, token } = useAuth();
@@ -26,52 +27,57 @@ const Dashboard = () => {
   // Helper check for admin or manager role
   const isAdminOrManager = user?.role === 'admin' || user?.role === 'manager';
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = async (showLoading = true) => {
+    if (showLoading && tasks.length === 0) setLoading(true);
     try {
-      const tasksRes = await fetch(`${API_BASE}/tasks`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const tasksData = await tasksRes.json();
-      setTasks(Array.isArray(tasksData) ? tasksData : []);
-
       if (isAdminOrManager) {
-        const usersRes = await fetch(`${API_BASE}/users`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const usersData = await usersRes.json();
-        setUsers(Array.isArray(usersData) ? usersData : []);
+        const [tasksRes, usersRes, logsRes] = await Promise.all([
+          fetch(`${API_BASE}/tasks`, { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch(`${API_BASE}/users`, { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch(`${API_BASE}/tasks/audit/logs`, { headers: { 'Authorization': `Bearer ${token}` } })
+        ]);
 
-        const logsRes = await fetch(`${API_BASE}/tasks/audit/logs`, {
+        const [tasksData, usersData, logsData] = await Promise.all([
+          tasksRes.ok ? tasksRes.json() : [],
+          usersRes.ok ? usersRes.json() : [],
+          logsRes.ok ? logsRes.json() : []
+        ]);
+
+        setTasks(Array.isArray(tasksData) ? tasksData : []);
+        setUsers(Array.isArray(usersData) ? usersData : []);
+        setAuditLogs(Array.isArray(logsData) ? logsData : []);
+      } else {
+        const tasksRes = await fetch(`${API_BASE}/tasks`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
-        const logsData = await logsRes.json();
-        setAuditLogs(Array.isArray(logsData) ? logsData : []);
+        const tasksData = tasksRes.ok ? await tasksRes.json() : [];
+        setTasks(Array.isArray(tasksData) ? tasksData : []);
       }
     } catch (err) {
-      toast.error('Failed to fetch dashboard data');
+      console.error('Failed to fetch dashboard data', err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (user) {
-      fetchData();
+    if (user && token) {
+      fetchData(true);
     }
+    const handleBackgroundRefresh = () => fetchData(false);
     if (socket) {
-      socket.on('taskUpdated', fetchData);
-      socket.on('projectUpdated', fetchData);
-      socket.on('notification', fetchData);
+      socket.on('taskUpdated', handleBackgroundRefresh);
+      socket.on('projectUpdated', handleBackgroundRefresh);
+      socket.on('notification', handleBackgroundRefresh);
     }
     return () => {
       if (socket) {
-        socket.off('taskUpdated', fetchData);
-        socket.off('projectUpdated', fetchData);
-        socket.off('notification', fetchData);
+        socket.off('taskUpdated', handleBackgroundRefresh);
+        socket.off('projectUpdated', handleBackgroundRefresh);
+        socket.off('notification', handleBackgroundRefresh);
       }
     };
-  }, [user, socket]);
+  }, [user, token, socket]);
 
   const handleActivityClick = (log) => {
     const taskId = log.taskId?._id || log.taskId;
@@ -513,7 +519,7 @@ const Dashboard = () => {
                         <span className="text-slate-600 dark:text-gray-400">{formatLogAction(log)}</span>
                       </p>
                       <p className="text-slate-400 dark:text-gray-500 text-[10px] font-medium">
-                        {new Date(log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {new Date(log.createdAt).toLocaleDateString()}
+                        {formatDateTime(log.createdAt)}
                       </p>
                     </div>
 
@@ -553,7 +559,7 @@ const Dashboard = () => {
                         {task.title}
                       </p>
                       <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold">
-                        Due: {new Date(task.dueDate).toLocaleDateString()}
+                        Due: {formatDateTime(task.dueDate)}
                       </p>
                     </div>
                     <ArrowRight size={14} className="text-rose-500 dark:text-rose-400 group-hover:translate-x-1 transition-transform" />

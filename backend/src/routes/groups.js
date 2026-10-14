@@ -16,52 +16,85 @@ const {
   requireRole
 } = require("../middleware/auth");
 
+const ChatRoom = require("../models/ChatRoom");
+
 /* ==========================================================
    CREATE GROUP
 ========================================================== */
 router.post(
     "/",
     authenticate,
-    requireRole(["admin"]),
+    requireRole(["admin", "manager"]),
     async (req, res) => {
         try {
             const { name, description, members = [] } = req.body;
+            const isAdmin = req.user.role === "admin";
 
             const group = await Group.create({
                 name,
                 description,
                 members,
                 createdBy: req.user._id,
-                approvalStatus: 'Pending' // Initial state
+                approvalStatus: isAdmin ? 'Approved' : 'Pending',
+                approvedBy: isAdmin ? req.user._id : null,
+                approvedAt: isAdmin ? new Date() : null,
             });
 
-            const users = await User.find({ _id: { $in: members } });
+            // Create matching ChatRoom for this community/group
+            const memberSet = new Set(members.map(m => m.toString()));
+            memberSet.add(req.user._id.toString());
+            await ChatRoom.create({
+                name: group.name,
+                description: group.description,
+                type: "group",
+                group: group._id,
+                members: Array.from(memberSet),
+                admins: [req.user._id],
+                createdBy: req.user._id,
+                approvalStatus: group.approvalStatus,
+                approvedBy: group.approvedBy || null,
+                approvedAt: group.approvedAt || null,
+            });
 
-            for (const user of users) {
-                const notification = await Notification.create({
-                    userId: user._id,
-                    message: `You have been assigned to project "${group.name}"`,
-                    type: "project"
-                });
-
-                await sendInAppNotification(user._id, notification);
-
-                await sendEmail(
-                    user.email,
-                    "New Project Assigned",
-                    `<h2>Hello ${user.name}</h2>
-                    <p>You have been assigned to a new project.</p>
-                    <h3>${group.name}</h3>
-                    <p>${description}</p><br>
-                    <p>Please login to WorkTrivo.</p>`
-                );
+            if (isAdmin) {
+                const users = await User.find({ _id: { $in: members } });
+                for (const user of users) {
+                    const notification = await Notification.create({
+                        userId: user._id,
+                        message: `You have been assigned to project "${group.name}"`,
+                        type: "project"
+                    });
+                    await sendInAppNotification(user._id, notification);
+                    await sendEmail(
+                        user.email,
+                        "New Project Assigned",
+                        `<h2>Hello ${user.name}</h2>
+                        <p>You have been assigned to a new project.</p>
+                        <h3>${group.name}</h3>
+                        <p>${description}</p><br>
+                        <p>Please login to WorkTrivo.</p>`
+                    );
+                }
+            } else {
+                // Notify admins of manager's pending group
+                const admins = await User.find({ role: "admin", active: true });
+                for (const admin of admins) {
+                    const notification = await Notification.create({
+                        userId: admin._id,
+                        message: `Manager ${req.user.name} created project "${group.name}" awaiting your approval.`,
+                        type: "project"
+                    });
+                    await sendInAppNotification(admin._id, notification);
+                }
             }
             
             const io = getIo();
-            for (const member of members) {
-                io.to(member.toString()).emit("projectUpdated");
+            if (io) {
+                for (const member of members) {
+                    io.to(member.toString()).emit("projectUpdated");
+                }
+                io.to("admins").emit("projectUpdated");
             }
-            io.to("admins").emit("projectUpdated");
 
             res.status(201).json(group);
         } catch(err){
@@ -79,9 +112,17 @@ router.get(
   authenticate,
   async (req, res) => {
    try {
-     const filter = req.user.role === "member"
-       ? { members: req.user._id }
-       : {};
+     let filter = {};
+     if (req.user.role === "member") {
+       filter = { members: req.user._id, approvalStatus: "Approved" };
+     } else if (req.user.role === "manager") {
+       filter = {
+         $or: [
+           { members: req.user._id, approvalStatus: "Approved" },
+           { createdBy: req.user._id }
+         ]
+       };
+     }
 
      // Add optional filter for approval status
      if (req.query.approvalStatus) {
@@ -295,10 +336,27 @@ router.patch(
         );
   
         if (!group) return res.status(404).json({ error: "Group not found" });
+
+        // Update corresponding chat room
+        const room = await ChatRoom.findOneAndUpdate(
+            { group: group._id },
+            {
+                approvalStatus: 'Approved',
+                approvedBy: req.user._id,
+                approvedAt: new Date()
+            },
+            { new: true }
+        ).populate("members", "name email profilePhoto role");
   
         const io = getIo();
-        group.members.forEach(member => io.to(member.toString()).emit("projectUpdated"));
-        io.to("admins").emit("projectUpdated");
+        if (io) {
+            group.members.forEach(member => io.to(member.toString()).emit("projectUpdated"));
+            io.to("admins").emit("projectUpdated");
+            if (room) {
+                room.members.forEach(member => io.to(member._id.toString()).emit("room_approved", room));
+                io.to("admins").emit("room_approved", room);
+            }
+        }
   
         res.json({ message: "Project approved successfully", group });
       } catch (err) {
@@ -327,10 +385,21 @@ router.patch(
         );
   
         if (!group) return res.status(404).json({ error: "Group not found" });
+
+        await ChatRoom.findOneAndUpdate(
+            { group: group._id },
+            {
+                approvalStatus: 'Rejected',
+                approvedBy: req.user._id,
+                approvedAt: new Date()
+            }
+        );
   
         const io = getIo();
-        group.members.forEach(member => io.to(member.toString()).emit("projectUpdated"));
-        io.to("admins").emit("projectUpdated");
+        if (io) {
+            group.members.forEach(member => io.to(member.toString()).emit("projectUpdated"));
+            io.to("admins").emit("projectUpdated");
+        }
   
         res.json({ message: "Project rejected successfully", group });
       } catch (err) {
