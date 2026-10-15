@@ -1,18 +1,18 @@
 const express = require('express');
 const Department = require('../models/Department');
 const { authenticate, requireRole } = require('../middleware/auth');
+const { clearManagerCache } = require('../utils/managerHelper');
 
 const router = express.Router();
 router.use(authenticate);
 
-// GET /api/departments - list all departments (any authenticated user —
-// needed for dropdowns like the announcement/department picker, profile
-// department field, etc.)
+// GET /api/departments - list all departments
 router.get('/', async (req, res) => {
   try {
     const departments = await Department.find()
       .populate('manager', '_id name email role profilePhoto designationRole')
-      .sort({ name: 1 });
+      .sort({ name: 1 })
+      .lean();
     res.json(departments);
   } catch (err) {
     res.status(500).json({ error: 'Internal Server Error' });
@@ -40,6 +40,7 @@ router.post('/', requireRole(['admin']), async (req, res) => {
       createdBy: req.user._id,
     });
     await department.save();
+    clearManagerCache();
 
     const populated = await Department.findById(department._id).populate('manager', '_id name email role profilePhoto designationRole');
     res.status(201).json(populated);
@@ -61,6 +62,7 @@ router.put('/:id', requireRole(['admin']), async (req, res) => {
     if (manager !== undefined) department.manager = manager || null;
 
     await department.save();
+    clearManagerCache();
     const populated = await Department.findById(department._id).populate('manager', '_id name email role profilePhoto designationRole');
     res.json(populated);
   } catch (err) {
@@ -78,6 +80,7 @@ router.delete('/:id', requireRole(['admin']), async (req, res) => {
     const department = await Department.findByIdAndDelete(req.params.id);
     if (!department) return res.status(404).json({ error: 'Department not found.' });
 
+    clearManagerCache();
     res.json({ message: 'Department deleted successfully.' });
   } catch (err) {
     res.status(500).json({ error: 'Internal Server Error' });

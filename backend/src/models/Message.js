@@ -124,6 +124,9 @@ messageSchema.path("text").validate(function (value) {
 
 // Optimized Indexes
 messageSchema.index({ chatRoom: 1, createdAt: -1 });
+messageSchema.index({ chatRoom: 1, deleted: 1, createdAt: 1 });
+messageSchema.index({ chatRoom: 1, deleted: 1, sender: 1 });
+messageSchema.index({ chatRoom: 1, "readBy.user": 1 });
 messageSchema.index({ mentions: 1, chatRoom: 1 }); // Fast lookup for user @mentions per room
 messageSchema.index({ chatRoom: 1, pinned: 1 });   // Fast lookup for pinned messages per room
 

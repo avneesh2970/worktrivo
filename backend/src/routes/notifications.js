@@ -11,7 +11,8 @@ router.get('/', async (req, res) => {
   try {
     const notifications = await Notification.find({ userId: req.user._id })
       .sort({ createdAt: -1 })
-      .limit(100);
+      .limit(50)
+      .lean();
     res.json(notifications);
   } catch (err) {
     res.status(500).json({ error: 'Internal Server Error' });

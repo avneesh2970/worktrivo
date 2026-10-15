@@ -9,7 +9,7 @@ const sendEmail = require('../utils/sendEmail');
 const csv = require('csv-parser');
 const { Readable } = require('stream'); // Core Node.js module
 const { v4: uuidv4 } = require("uuid");
-const { getSupervisorsForUser, getManagedUserIds } = require('../utils/managerHelper');
+const { getSupervisorsForUser, getManagedUserIds, clearManagerCache } = require('../utils/managerHelper');
 
 // --- SELF PROFILE CONTROLLERS ---
 
@@ -517,6 +517,7 @@ exports.createUser = async (req, res) => {
     });
 
     await newUser.save();
+    clearManagerCache();
     const populatedUser = await User.findById(newUser._id)
       .populate('assignedMembers', '_id name email role department employeeId profilePhoto designationRole')
       .populate('manager', '_id name email role profilePhoto designationRole department');
@@ -598,6 +599,7 @@ exports.updateUser = async (req, res) => {
     }
 
     await user.save();
+    clearManagerCache();
     const populatedUser = await User.findById(user._id)
       .populate('assignedMembers', '_id name email role department employeeId profilePhoto designationRole')
       .populate('manager', '_id name email role profilePhoto designationRole department');
@@ -627,6 +629,7 @@ exports.toggleUserActive = async (req, res) => {
 
     user.active = !user.active;
     await user.save();
+    clearManagerCache();
     res.json(user);
   } catch (err) {
     res.status(500).json({ error: 'Internal Server Error' });
@@ -732,8 +735,7 @@ exports.getUserOverview = async (req, res) => {
 
     // Managers can strictly ONLY view members of their assigned team (or themselves)
     if (req.user.role === 'manager' && req.user._id.toString() !== id.toString()) {
-      const fullManager = await User.findById(req.user._id);
-      const managedIds = await getManagedUserIds(fullManager);
+      const managedIds = await getManagedUserIds(req.user);
       const allowedIds = managedIds.map(m => m.toString());
       if (!allowedIds.includes(id.toString())) {
         return res.status(403).json({ error: 'Access denied. You can only view members of your assigned team.' });
@@ -743,7 +745,8 @@ exports.getUserOverview = async (req, res) => {
     const targetUser = await User.findById(id)
       .select('-passwordHash -resetOtp -resetOtpExpiryAt')
       .populate('manager', '_id name email role profilePhoto designationRole department')
-      .populate('assignedMembers', '_id name email role profilePhoto designationRole department');
+      .populate('assignedMembers', '_id name email role profilePhoto designationRole department')
+      .lean();
 
     if (!targetUser) {
       return res.status(404).json({ error: 'User not found.' });
@@ -754,7 +757,8 @@ exports.getUserOverview = async (req, res) => {
       .populate('createdBy', '_id name email role')
       .populate('verballyAssignedBy', '_id name email role')
       .populate('group', '_id name')
-      .sort({ updatedAt: -1 });
+      .sort({ updatedAt: -1 })
+      .lean();
 
     const totalTasks = tasks.length;
     const completedTasks = tasks.filter(t => t.status === 'Completed' || t.status === 'Approved').length;
@@ -809,7 +813,8 @@ exports.getUserOverview = async (req, res) => {
 
     const reports = await DailyReport.find(reportQuery)
       .populate('reviewedBy', '_id name email role')
-      .sort({ reportDate: -1 });
+      .sort({ reportDate: -1 })
+      .lean();
 
     const totalHours = reports.reduce((sum, r) => sum + (Number(r.totalHours) || 8), 0);
     const approvedReports = reports.filter(r => r.status === 'Approved').length;
@@ -826,7 +831,8 @@ exports.getUserOverview = async (req, res) => {
     })
       .populate('createdBy', '_id name email role')
       .populate('members', '_id name email role profilePhoto designationRole department')
-      .sort({ updatedAt: -1 });
+      .sort({ updatedAt: -1 })
+      .lean();
 
     res.json({
       success: true,

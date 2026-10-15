@@ -131,25 +131,39 @@ router.get(
 
      const groups = await Group.find(filter)
         .populate("members", "name email role profilePhoto")
-        .populate("createdBy", "name email");
+        .populate("createdBy", "name email")
+        .lean();
 
-    const groupsWithStats = await Promise.all(
-      groups.map(async (group) => {
-        const tasks = await Task.find({ group: group._id }, 'status dueDate').lean();
-        const completed = tasks.filter((t) => t.status === "Completed").length;
-        const pending = tasks.filter((t) => t.status === "Pending").length;
-        const overdue = tasks.filter(
-          (t) => t.dueDate && new Date(t.dueDate) < new Date() && t.status !== "Completed"
-        ).length;
+    const groupIds = groups.map(g => g._id);
+    const allTasks = groupIds.length > 0 
+      ? await Task.find({ group: { $in: groupIds } }, 'group status dueDate').lean()
+      : [];
 
-        const progress = tasks.length === 0 ? 0 : Math.round((completed / tasks.length) * 100);
+    const taskMap = new Map();
+    allTasks.forEach(t => {
+      const gId = t.group ? t.group.toString() : null;
+      if (gId) {
+        if (!taskMap.has(gId)) taskMap.set(gId, []);
+        taskMap.get(gId).push(t);
+      }
+    });
 
-        return {
-          ...group.toObject(),
-          stats: { totalTasks: tasks.length, completed, pending, overdue, progress },
-        };
-      })
-    );
+    const now = new Date();
+    const groupsWithStats = groups.map((group) => {
+      const tasks = taskMap.get(group._id.toString()) || [];
+      const completed = tasks.filter((t) => t.status === "Completed" || t.status === "Approved").length;
+      const pending = tasks.filter((t) => t.status === "Pending" || t.status === "To Do" || t.status === "In Progress").length;
+      const overdue = tasks.filter(
+        (t) => t.dueDate && new Date(t.dueDate) < now && t.status !== "Completed" && t.status !== "Approved"
+      ).length;
+
+      const progress = tasks.length === 0 ? 0 : Math.round((completed / tasks.length) * 100);
+
+      return {
+        ...group,
+        stats: { totalTasks: tasks.length, completed, pending, overdue, progress },
+      };
+    });
 
     res.json(groupsWithStats);
     } catch (err) {

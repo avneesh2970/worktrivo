@@ -6,6 +6,7 @@ const Notification = require('../models/Notification');
 const sendEmail = require('../utils/sendEmail');
 const { sendInAppNotification, getIo } = require('../utils/socket');
 const { authenticate, requireRole } = require('../middleware/auth');
+const { getManagedUserIds, clearManagerCache } = require('../utils/managerHelper');
 
 router.use(authenticate);
 
@@ -288,7 +289,8 @@ router.get('/on-date', async (req, res) => {
     })
       .populate('user', '_id name email role employeeId department designationRole profilePhoto')
       .populate('reviewedBy', '_id name email')
-      .sort({ startDate: 1 });
+      .sort({ startDate: 1 })
+      .lean();
 
     res.json({ leaves });
   } catch (err) {
@@ -320,18 +322,10 @@ router.get('/', async (req, res) => {
     if (req.user.role === 'admin') {
       // Admin sees all
     } else if (req.user.role === 'manager') {
-      // Manager sees themselves + any member whose manager is req.user._id or in assignedMembers
-      const currentUser = await User.findById(req.user._id).select('assignedMembers');
-      const directReports = await User.find({
-        $or: [
-          { manager: req.user._id },
-          { _id: { $in: currentUser?.assignedMembers || [] } }
-        ]
-      }).select('_id');
-
+      const managedIds = await getManagedUserIds(req.user);
       const allowedUserIds = [
         req.user._id,
-        ...directReports.map((u) => u._id)
+        ...managedIds
       ];
       query.user = { $in: allowedUserIds };
     } else {
@@ -344,7 +338,7 @@ router.get('/', async (req, res) => {
       const searchRegex = new RegExp(search.trim(), 'i');
       const matchingUsers = await User.find({
         $or: [{ name: searchRegex }, { email: searchRegex }, { employeeId: searchRegex }]
-      }).select('_id');
+      }).select('_id').lean();
 
       const matchingIds = matchingUsers.map((u) => u._id);
 
@@ -363,7 +357,8 @@ router.get('/', async (req, res) => {
     const leaves = await LeaveRequest.find(query)
       .populate('user', '_id name email role employeeId department designationRole profilePhoto')
       .populate('reviewedBy', '_id name email')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
     res.json(leaves);
   } catch (err) {
@@ -394,6 +389,7 @@ router.patch('/:id/status', requireRole('admin'), async (req, res) => {
     leave.rejectionReason = status === 'Rejected' ? (rejectionReason || '').trim() : '';
 
     await leave.save();
+    clearManagerCache();
 
     const updatedLeave = await LeaveRequest.findById(leave._id)
       .populate('user', '_id name email role employeeId department designationRole profilePhoto')

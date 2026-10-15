@@ -1,6 +1,15 @@
 const User = require('../models/User');
 const Department = require('../models/Department');
 
+// High performance in-memory TTL caches to eliminate redundant DB roundtrips over Atlas WAN
+const managedUserCache = new Map();   // key: managerId -> { value: ObjectId[], expiresAt: number }
+const delegatedUserCache = new Map(); // key: actorId -> { value: string[], expiresAt: number }
+
+function clearManagerCache() {
+  managedUserCache.clear();
+  delegatedUserCache.clear();
+}
+
 /**
  * Returns a list of all User IDs managed by the given manager user.
  * A user is managed if:
@@ -21,13 +30,22 @@ async function getManagedUserIds(managerOrId) {
     if (!manager) return [];
   }
 
+  const managerId = manager._id ? manager._id.toString() : manager.id;
+
+  // Check TTL cache (30s cache)
+  const now = Date.now();
+  const cached = managedUserCache.get(managerId);
+  if (cached && cached.expiresAt > now) {
+    return cached.value;
+  }
+
   if (manager.role === 'admin') {
     // Admin manages all users
     const allUsers = await User.find({ _id: { $ne: manager._id } }, '_id').lean();
-    return allUsers.map(u => u._id);
+    const result = allUsers.map(u => u._id);
+    managedUserCache.set(managerId, { value: result, expiresAt: now + 30000 });
+    return result;
   }
-
-  const managerId = manager._id ? manager._id.toString() : manager.id;
 
   // Collect departments assigned to this manager
   const departments = [];
@@ -98,7 +116,9 @@ async function getManagedUserIds(managerOrId) {
   };
 
   const users = await User.find(query, '_id').lean();
-  return users.map(u => u._id);
+  const ids = users.map(u => u._id);
+  managedUserCache.set(managerId, { value: ids, expiresAt: now + 30000 });
+  return ids;
 }
 
 /**
@@ -265,32 +285,101 @@ async function isUserOnLeave(userId, onDate = new Date()) {
 }
 
 /**
+ * Efficiently finds user IDs that this manager can proxy-approve for
+ * because their primary managers are currently on approved leave today.
+ * Instead of checking every user in the company in an O(N) loop with multiple DB queries,
+ * this checks active manager leaves in ONE single indexed query.
+ */
+async function getDelegatedUserIdsForManager(actor) {
+  if (!actor || actor.role !== 'manager') return [];
+
+  const actorIdStr = (actor._id || actor.id).toString();
+  const now = Date.now();
+  const cached = delegatedUserCache.get(actorIdStr);
+  if (cached && cached.expiresAt > now) {
+    return cached.value;
+  }
+
+  const LeaveRequest = require('../models/LeaveRequest');
+  const d = new Date();
+  const startOfDay = new Date(d);
+  startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay = new Date(d);
+  endOfDay.setHours(23, 59, 59, 999);
+
+  // 1. Find all managers on approved leave today in ONE single indexed query
+  const activeManagerLeaves = await LeaveRequest.find({
+    status: 'Approved',
+    startDate: { $lte: endOfDay },
+    endDate: { $gte: startOfDay }
+  }).populate({
+    path: 'user',
+    select: '_id role department assignedDepartment assignedDepartments assignedMembers'
+  }).lean();
+
+  const onLeaveManagers = activeManagerLeaves
+    .filter(l => l.user && l.user.role === 'manager' && l.user._id.toString() !== actorIdStr)
+    .map(l => l.user);
+
+  if (onLeaveManagers.length === 0) {
+    delegatedUserCache.set(actorIdStr, { value: [], expiresAt: now + 30000 });
+    return [];
+  }
+
+  // 2. For each manager on leave, get their team's user IDs
+  const delegatedUserIds = new Set();
+  for (const leaveMgr of onLeaveManagers) {
+    const teamOfLeaveMgr = await getManagedUserIds(leaveMgr);
+    teamOfLeaveMgr.forEach(id => delegatedUserIds.add(id.toString()));
+  }
+
+  const result = Array.from(delegatedUserIds);
+  delegatedUserCache.set(actorIdStr, { value: result, expiresAt: now + 30000 });
+  return result;
+}
+
+/**
  * Resolves the active approvers for a given target member.
  * If their primary manager(s) are on approved leave, delegating fallback managers (or admins) become eligible.
  * Returns { primaryManagers, availableManagers, admins, fallbackUsed }
  */
 async function getEffectiveApproversForUser(userIdOrDoc) {
   let user = userIdOrDoc;
-  if (!user || typeof user === 'string' || user._id) {
+  if (!user || typeof user === 'string' || (!user.department && !user.manager && user._id)) {
     const id = user?._id || user;
-    user = await User.findById(id);
+    user = await User.findById(id).lean();
   }
   if (!user) return { primaryManagers: [], availableManagers: [], admins: [], fallbackUsed: false };
 
   const allSupervisors = await getSupervisorsForUser(user);
-  const admins = await User.find({ active: true, role: 'admin' }, '_id name email role department');
+  const admins = await User.find({ active: true, role: 'admin' }, '_id name email role department').lean();
 
   const managersOnly = allSupervisors.filter(s => s.role === 'manager');
   const availableManagers = [];
 
-  for (const mgr of managersOnly) {
-    const onLeave = await isUserOnLeave(mgr._id);
-    if (!onLeave) {
-      availableManagers.push(mgr);
+  if (managersOnly.length > 0) {
+    const d = new Date();
+    const startOfDay = new Date(d);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(d);
+    endOfDay.setHours(23, 59, 59, 999);
+    const LeaveRequest = require('../models/LeaveRequest');
+
+    const onLeaveLeaves = await LeaveRequest.find({
+      user: { $in: managersOnly.map(m => m._id) },
+      status: 'Approved',
+      startDate: { $lte: endOfDay },
+      endDate: { $gte: startOfDay }
+    }, 'user').lean();
+
+    const onLeaveSet = new Set(onLeaveLeaves.map(l => l.user.toString()));
+    for (const mgr of managersOnly) {
+      if (!onLeaveSet.has(mgr._id.toString())) {
+        availableManagers.push(mgr);
+      }
     }
   }
 
-  // If all assigned managers are on leave (or none exist), fallback to other managers or admins
   let fallbackUsed = false;
   if (managersOnly.length > 0 && availableManagers.length === 0) {
     fallbackUsed = true;
@@ -328,40 +417,33 @@ async function canUserApproveFor(actor, targetUserId) {
   if (directlyManages) return true;
 
   // 2. Check if all primary managers for targetUserId are on leave
-  const targetUser = await User.findById(targetUserId);
+  const targetUser = await User.findById(targetUserId, 'department manager').lean();
   if (!targetUser) return false;
 
   const supervisors = await getSupervisorsForUser(targetUser);
   const primaryManagers = supervisors.filter(s => s.role === 'manager');
 
   if (primaryManagers.length > 0) {
-    let allOnLeave = true;
-    for (const pm of primaryManagers) {
-      const onLeave = await isUserOnLeave(pm._id);
-      if (!onLeave) {
-        allOnLeave = false;
-        break;
-      }
-    }
+    const pmIds = primaryManagers.map(pm => pm._id);
+    const LeaveRequest = require('../models/LeaveRequest');
+    const d = new Date();
+    const startOfDay = new Date(d);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(d);
+    endOfDay.setHours(23, 59, 59, 999);
 
-    // If all primary managers are on leave, another manager can approve if:
-    // a) They share the same department with targetUser or primary manager, OR
-    // b) If no department manager is available, any active manager is allowed as proxy
-    if (allOnLeave) {
-      const actorDept = (actor.department || actor.assignedDepartment || '').trim().toLowerCase();
-      const targetDept = (targetUser.department || '').trim().toLowerCase();
-      if (actorDept && targetDept && actorDept === targetDept) {
-        return true;
-      }
-      // Or if actor is an assigned manager in the organisation
-      return true;
-    }
+    const onLeaveCount = await LeaveRequest.countDocuments({
+      user: { $in: pmIds },
+      status: 'Approved',
+      startDate: { $lte: endOfDay },
+      endDate: { $gte: startOfDay }
+    });
+
+    return onLeaveCount >= primaryManagers.length;
   } else {
     // If user has no manager assigned at all, any manager or admin can approve
     return true;
   }
-
-  return false;
 }
 
 module.exports = {
@@ -370,6 +452,8 @@ module.exports = {
   getSupervisorsForUser,
   isUserOnLeave,
   getEffectiveApproversForUser,
-  canUserApproveFor
+  canUserApproveFor,
+  getDelegatedUserIdsForManager,
+  clearManagerCache
 };
 

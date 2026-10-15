@@ -16,7 +16,7 @@ const {
   sendTaskUpdate,
   getIo,
 } = require("../utils/socket");
-const { getManagedUserIds, canUserApproveFor } = require('../utils/managerHelper');
+const { getManagedUserIds, canUserApproveFor, getDelegatedUserIdsForManager } = require('../utils/managerHelper');
 
 const router = express.Router();
 
@@ -85,15 +85,7 @@ router.get('/', async (req, res) => {
     } else if (status === 'Completed (Pending Approval)' || req.query.forApproval === 'true') {
       // In Approvals center, manager sees tasks of assigned team, tasks they created,
       // AND tasks of members whose primary manager is currently on leave
-      const allMembers = await User.find({ active: true, role: 'member' }, '_id');
-      const delegatedMemberIds = [];
-      for (const m of allMembers) {
-        if (!teamUserIds.some(id => id.toString() === m._id.toString())) {
-          const canDelegate = await canUserApproveFor(fullManager, m._id);
-          if (canDelegate) delegatedMemberIds.push(m._id);
-        }
-      }
-
+      const delegatedMemberIds = await getDelegatedUserIdsForManager(req.user);
       const approvalUserIds = [...teamUserIds, ...delegatedMemberIds];
       query.$or = [
         { assignedTo: { $in: approvalUserIds } },
@@ -193,8 +185,7 @@ router.get("/sidebar-stats", async (req, res) => {
     if (req.user.role === "member") {
       query.assignedTo = req.user._id;
     } else if (req.user.role === "manager") {
-      const fullManager = await User.findById(req.user._id).select('assignedMembers assignedDepartment assignedDepartments');
-      const managedIds = await getManagedUserIds(fullManager);
+      const managedIds = await getManagedUserIds(req.user);
       const teamUserIds = [...managedIds, req.user._id];
       query.$or = [
         { assignedTo: { $in: teamUserIds } },
@@ -688,7 +679,7 @@ router.patch('/:id/status', async (req, res) => {
         if (!isCreator && !hasManagedAssignee) {
           for (const a of task.assignedTo) {
             const aId = a._id || a;
-            const allowed = await canUserApproveFor(fullManager, aId);
+            const allowed = await canUserApproveFor(req.user, aId);
             if (allowed) {
               canDelegateApprove = true;
               break;

@@ -11,24 +11,6 @@ const getChatRooms = async (req, res) => {
     const userId = req.user._id;
     const userRole = req.user.role;
 
-    // Ensure default general workspace exists if no rooms exist
-    const totalRooms = await ChatRoom.countDocuments({ isActive: true });
-    if (totalRooms === 0) {
-      const allUsers = await User.find({ active: true }).select("_id");
-      const userIds = allUsers.map((u) => u._id);
-      await ChatRoom.create({
-        name: "General Workspace",
-        description: "Official company-wide discussion and announcements.",
-        type: "global",
-        members: userIds,
-        admins: [userId],
-        createdBy: userId,
-        approvalStatus: "Approved",
-        approvedBy: userId,
-        approvedAt: new Date(),
-      });
-    }
-
     let filter = { isActive: true };
 
     if (userRole === "admin") {
@@ -506,7 +488,7 @@ const getMessages = async (req, res) => {
     const userId = req.user._id;
     const userRole = req.user.role;
 
-    const room = await ChatRoom.findById(roomId);
+    const room = await ChatRoom.findById(roomId).lean();
     if (!room) {
       return res.status(404).json({
         success: false,
@@ -514,7 +496,7 @@ const getMessages = async (req, res) => {
       });
     }
 
-    const isMember = room.members.some((m) => m.toString() === userId.toString());
+    const isMember = (room.members || []).some((m) => m.toString() === userId.toString());
     const isCreator = room.createdBy && room.createdBy.toString() === userId.toString();
 
     // Admin can see messages of ANY chat. Other users must be in members or creator
@@ -533,8 +515,8 @@ const getMessages = async (req, res) => {
       });
     }
 
-    // Mark unread messages in this room as read for current user
-    await Message.updateMany(
+    // Mark unread messages and notifications in parallel with fetching messages
+    const updateReceiptsPromise = Message.updateMany(
       {
         chatRoom: roomId,
         deleted: false,
@@ -549,25 +531,26 @@ const getMessages = async (req, res) => {
           },
         },
       }
-    );
+    ).catch(err => console.error("Error updating readBy:", err.message));
 
-    // Mark unread chat notifications for this room as read
-    try {
-      const Notification = require("../models/Notification");
-      await Notification.updateMany(
-        {
-          userId,
-          type: "chat",
-          chatRoomId: roomId,
-          read: false,
-        },
-        {
-          $set: { read: true },
-        }
-      );
-    } catch (notifErr) {}
+    const updateNotifsPromise = (async () => {
+      try {
+        const Notification = require("../models/Notification");
+        await Notification.updateMany(
+          {
+            userId,
+            type: "chat",
+            chatRoomId: roomId,
+            read: false,
+          },
+          {
+            $set: { read: true },
+          }
+        );
+      } catch (notifErr) {}
+    })();
 
-    const messages = await Message.find({
+    const fetchMessagesPromise = Message.find({
       chatRoom: roomId,
       deleted: false,
     })
@@ -576,6 +559,12 @@ const getMessages = async (req, res) => {
       .populate("replyTo")
       .sort({ createdAt: 1 })
       .lean();
+
+    const [messages] = await Promise.all([
+      fetchMessagesPromise,
+      updateReceiptsPromise,
+      updateNotifsPromise
+    ]);
 
     res.status(200).json({
       success: true,
