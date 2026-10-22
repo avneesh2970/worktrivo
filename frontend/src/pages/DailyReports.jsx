@@ -878,7 +878,13 @@ const DailyReports = () => {
           </p>
         </div>
 
-        <div className="bg-white dark:bg-[#121826] border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 shadow-sm">
+        <div 
+          onClick={() => { setStatusFilter(statusFilter === 'Pending' ? 'all' : 'Pending'); setCurrentPage(1); }}
+          className={`bg-white dark:bg-[#121826] border rounded-2xl p-4 shadow-sm cursor-pointer transition-all hover:scale-[1.02] ${
+            statusFilter === 'Pending' ? 'border-amber-500 ring-2 ring-amber-500/20 shadow-amber-500/10' : 'border-slate-200 dark:border-slate-800/80 hover:border-amber-500/50'
+          }`}
+          title="Click to filter reports awaiting review"
+        >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider">Pending</span>
             <div className="p-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
@@ -886,7 +892,9 @@ const DailyReports = () => {
             </div>
           </div>
           <p className="text-2xl sm:text-3xl font-extrabold text-amber-600 dark:text-amber-400 mt-2 font-mono">{stats.pending}</p>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-medium truncate">Awaiting review</p>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-medium truncate">
+            {statusFilter === 'Pending' ? 'Showing Pending (click to reset)' : 'Click to view pending'}
+          </p>
         </div>
 
         <div className="bg-white dark:bg-[#121826] border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 shadow-sm">
@@ -1299,7 +1307,7 @@ const DailyReports = () => {
                       </p>
                     </div>
                   </div>
-                  {getStatusBadge(report.status)}
+                  {getStatusBadge((report.status === 'Rejected' && report.autoRejectedAt && !report.reviewedBy) ? 'Pending' : report.status)}
                 </div>
 
                 {/* Report Date & Hours */}
@@ -1631,7 +1639,7 @@ const DailyReports = () => {
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                {getStatusBadge(viewingReport.status)}
+                {getStatusBadge((viewingReport.status === 'Rejected' && viewingReport.autoRejectedAt && !viewingReport.reviewedBy) ? 'Pending' : viewingReport.status)}
                 <button
                   onClick={() => setViewingReport(null)}
                   className="text-slate-400 hover:text-slate-700 dark:hover:text-white p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"

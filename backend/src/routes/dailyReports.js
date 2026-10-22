@@ -157,7 +157,18 @@ router.get('/stats', async (req, res) => {
     const todayEnd = new Date();
     todayEnd.setHours(23, 59, 59, 999);
 
-    const pending = allReports.filter(r => r.status === 'Pending').length;
+    let pending = allReports.filter(r => r.status === 'Pending' || (r.status === 'Rejected' && r.autoRejectedAt && !r.reviewedBy)).length;
+    if (pending === 0 && durationFilter && !startDate && !endDate && date !== 'custom') {
+      const pendingQuery = { ...userFilter, reportDate: { $lte: durationFilter.$lte } };
+      const pendingList = await DailyReport.find({
+        ...pendingQuery,
+        $or: [
+          { status: 'Pending' },
+          { status: 'Rejected', autoRejectedAt: { $ne: null }, reviewedBy: null }
+        ]
+      }, '_id').lean();
+      pending = pendingList.length;
+    }
     const approved = allReports.filter(r => r.status === 'Approved').length;
     const rejected = allReports.filter(r => r.status === 'Rejected').length;
     const submittedToday = allReports.filter(r => {
@@ -361,11 +372,11 @@ router.post('/ai-summary', async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const { status, date, startDate, endDate, department, userId, search } = req.query;
-    const query = {};
+    const andConditions = [];
 
     // 1. Role-based scoping
     if (req.user.role === 'member') {
-      query.user = req.user._id;
+      andConditions.push({ user: req.user._id });
     } else if (req.user.role === 'manager') {
       const managedIds = await getManagedUserIds(req.user);
       const allowedUserIds = new Set([...managedIds.map(id => id.toString()), req.user._id.toString()]);
@@ -383,40 +394,61 @@ router.get('/', async (req, res) => {
         if (!isAllowed) {
           return res.status(403).json({ error: 'Forbidden. User is not in your assigned team or department.' });
         }
-        query.user = userId;
+        andConditions.push({ user: userId });
       } else {
-        query.user = { $in: allowedArray };
+        andConditions.push({ user: { $in: allowedArray } });
       }
     } else if (req.user.role === 'admin' && userId) {
-      query.user = userId;
+      andConditions.push({ user: userId });
     }
 
     // 2. Status filter
     if (status && ['Pending', 'Approved', 'Rejected'].includes(status)) {
-      query.status = status;
+      if (status === 'Pending') {
+        // Pending approvals include true 'Pending' and reports that were auto-rejected by the system
+        // without human review, ensuring managers can still review and approve them
+        andConditions.push({
+          $or: [
+            { status: 'Pending' },
+            { status: 'Rejected', autoRejectedAt: { $ne: null }, reviewedBy: null }
+          ]
+        });
+      } else {
+        andConditions.push({ status });
+      }
     }
 
     // 3. Department filter
     if (department && department.trim() && department !== 'all') {
-      query.department = { $regex: new RegExp(`^${department.trim()}$`, 'i') };
+      andConditions.push({ department: { $regex: new RegExp(`^${department.trim()}$`, 'i') } });
     }
 
     // 4. Date filtering using duration parser
     const durationFilter = parseDuration(date, startDate, endDate);
     if (durationFilter) {
-      query.reportDate = { $gte: durationFilter.$gte, $lte: durationFilter.$lte };
+      if (status === 'Pending' && !startDate && !endDate && date !== 'custom') {
+        // When filtering for pending reviews under preset durations (e.g. 'this-week', 'today'),
+        // include all pending reports up to the end of the duration window so past/overdue pending reports
+        // needing review are not hidden from managers
+        andConditions.push({ reportDate: { $lte: durationFilter.$lte } });
+      } else {
+        andConditions.push({ reportDate: { $gte: durationFilter.$gte, $lte: durationFilter.$lte } });
+      }
     }
 
     // 5. Search filtering (searches in todayWork, tomorrowPlan, blockers)
     if (search && search.trim()) {
       const searchRegex = { $regex: search.trim(), $options: 'i' };
-      query.$or = [
-        { todayWork: searchRegex },
-        { tomorrowPlan: searchRegex },
-        { blockers: searchRegex }
-      ];
+      andConditions.push({
+        $or: [
+          { todayWork: searchRegex },
+          { tomorrowPlan: searchRegex },
+          { blockers: searchRegex }
+        ]
+      });
     }
 
+    const query = andConditions.length > 0 ? { $and: andConditions } : {};
     const reports = await DailyReport.find(query)
       .populate('user', '_id name email role profilePhoto designationRole department employeeId')
       .populate('reviewedBy', '_id name email role')
@@ -452,8 +484,9 @@ router.get('/:id', async (req, res) => {
     } else if (req.user.role === 'manager') {
       const isAuthor = report.user._id.toString() === req.user._id.toString();
       const isManaged = await isUserManagedBy(req.user, report.user._id);
+      const canApprove = isManaged || (await canUserApproveFor(req.user, report.user._id));
 
-      if (!isAuthor && !isManaged) {
+      if (!isAuthor && !canApprove) {
         return res.status(403).json({ error: 'Forbidden. You can only view reports of your assigned team members or department.' });
       }
     }
@@ -732,6 +765,11 @@ router.patch('/:id/status', async (req, res) => {
     // Manager validation: manager can only approve reports from their assigned members or department,
     // OR if the member's assigned manager is on leave
     if (req.user.role === 'manager') {
+      const isAuthor = (report.user._id || report.user).toString() === req.user._id.toString();
+      if (isAuthor) {
+        return res.status(403).json({ error: 'Forbidden. You cannot approve or reject your own daily report.' });
+      }
+
       const isManaged = await isUserManagedBy(req.user, report.user);
       const canApprove = isManaged || (await canUserApproveFor(req.user, report.user));
 
@@ -746,6 +784,7 @@ router.patch('/:id/status', async (req, res) => {
     report.feedback = feedback ? feedback.trim() : '';
     report.reviewedBy = req.user._id;
     report.reviewedAt = new Date();
+    report.autoRejectedAt = null;
 
     await report.save();
 

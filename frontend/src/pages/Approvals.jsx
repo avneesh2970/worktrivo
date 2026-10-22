@@ -33,6 +33,7 @@ const Approvals = () => {
     const [projectTasks, setProjectTasks] = useState([]);       
     const [projects, setProjects] = useState([]);               
     const [dailyReports, setDailyReports] = useState([]);
+    const [pendingLeaves, setPendingLeaves] = useState([]);
     const [loading, setLoading] = useState(true);
     
     // Pagination & Filters
@@ -60,19 +61,25 @@ const Approvals = () => {
             socket.on('taskUpdated', fetchTasks);
             socket.on('projectUpdated', fetchProjects);
             socket.on('dailyReportUpdated', fetchDailyReports);
+            socket.on('leaveRequestCreated', fetchLeaves);
+            socket.on('leaveRequestUpdated', fetchLeaves);
+            socket.on('leaveRequestDeleted', fetchLeaves);
         }
         return () => {
             if (socket) {
                 socket.off('taskUpdated', fetchTasks);
                 socket.off('projectUpdated', fetchProjects);
                 socket.off('dailyReportUpdated', fetchDailyReports);
+                socket.off('leaveRequestCreated', fetchLeaves);
+                socket.off('leaveRequestUpdated', fetchLeaves);
+                socket.off('leaveRequestDeleted', fetchLeaves);
             }
         };
     }, [socket, token]);
 
     const fetchData = async () => {
         setLoading(true);
-        await Promise.all([fetchTasks(), fetchProjects(), fetchDailyReports()]);
+        await Promise.all([fetchTasks(), fetchProjects(), fetchDailyReports(), fetchLeaves()]);
         setLoading(false);
     };
 
@@ -100,6 +107,21 @@ const Approvals = () => {
             setProjects((Array.isArray(data) ? data : []).map(p => ({...p, _itemType: 'project'})));
         } catch (error) {
             toast.error("Failed to load pending projects");
+        }
+    };
+
+    const fetchLeaves = async () => {
+        try {
+            const res = await fetch(`${API_BASE}/leaves?status=Pending`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const data = await res.json();
+            const list = (Array.isArray(data) ? data : [])
+                .filter(l => (l.user?._id || l.user)?.toString() !== user?._id?.toString())
+                .map(l => ({ ...l, _itemType: 'leaveRequest' }));
+            setPendingLeaves(list);
+        } catch (error) {
+            console.error("Failed to load pending leave requests", error);
         }
     };
 
@@ -161,7 +183,7 @@ const Approvals = () => {
         // Instant UI dismissal & optimistic removal
         setViewingItem(null);
         setItemDetails(null);
-        toast.success(`${itemType === 'dailyReport' ? 'Daily report' : itemType === 'project' ? 'Project' : 'Task'} successfully ${isApprove ? 'approved' : 'rejected'}`);
+        toast.success(`${itemType === 'dailyReport' ? 'Daily report' : itemType === 'project' ? 'Project' : itemType === 'leaveRequest' ? 'Leave request' : 'Task'} successfully ${isApprove ? 'approved' : 'rejected'}`);
 
         if (itemType === 'task') {
             setStandaloneTasks(prev => prev.filter(t => t._id !== itemId));
@@ -171,6 +193,8 @@ const Approvals = () => {
             setProjects(prev => prev.filter(p => p._id !== itemId));
         } else if (itemType === 'dailyReport') {
             setDailyReports(prev => prev.filter(r => r._id !== itemId));
+        } else if (itemType === 'leaveRequest') {
+            setPendingLeaves(prev => prev.filter(l => l._id !== itemId));
         }
         
         try {
@@ -205,6 +229,20 @@ const Approvals = () => {
                 if (!res.ok) {
                     const errData = await res.json();
                     throw new Error(errData.error || "Failed to process daily report");
+                }
+            }
+            else if (itemType === 'leaveRequest') {
+                const res = await fetch(`${API_BASE}/leaves/${itemId}/status`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                    body: JSON.stringify({
+                        status: isApprove ? 'Approved' : 'Rejected',
+                        rejectionReason: feedbackValue
+                    })
+                });
+                if (!res.ok) {
+                    const errData = await res.json();
+                    throw new Error(errData.error || "Failed to process leave request");
                 }
             }
         } catch (error) {
@@ -262,6 +300,13 @@ const Approvals = () => {
                 const workMatch = (item.todayWork || '').toLowerCase().includes(searchQuery.toLowerCase());
                 const deptMatch = (item.department || '').toLowerCase().includes(searchQuery.toLowerCase());
                 return authorMatch || workMatch || deptMatch;
+            });
+        } else if (activeTab === 'leaves') {
+            return pendingLeaves.filter(item => {
+                const nameMatch = (item.user?.name || '').toLowerCase().includes(searchQuery.toLowerCase());
+                const typeMatch = (item.leaveType || '').toLowerCase().includes(searchQuery.toLowerCase());
+                const reasonMatch = (item.reason || '').toLowerCase().includes(searchQuery.toLowerCase());
+                return nameMatch || typeMatch || reasonMatch;
             });
         }
         return [];
@@ -375,6 +420,14 @@ const Approvals = () => {
                 >
                     Daily Reports ({dailyReports.length})
                 </button>
+                <button
+                    onClick={() => { setActiveTab('leaves'); setCurrentPage(1); }}
+                    className={`pb-3 px-5 text-sm font-semibold transition-colors cursor-pointer ${
+                        activeTab === 'leaves' ? 'text-[#10b981] border-b-2 border-[#10b981]' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                >
+                    Leave Requests ({pendingLeaves.length})
+                </button>
             </div>
 
             {/* Content List */}
@@ -405,20 +458,24 @@ const Approvals = () => {
                                             <LayoutList size={18} className="text-sky-500 shrink-0" />
                                         ) : activeTab === 'dailyReports' ? (
                                             <FileText size={18} className="text-[#10b981] shrink-0" />
+                                        ) : activeTab === 'leaves' ? (
+                                            <Calendar size={18} className="text-[#10b981] shrink-0" />
                                         ) : null}
                                         <h3 className="text-base font-bold text-slate-900 dark:text-white truncate group-hover:text-[#10b981] transition-colors">
                                             {item._itemType === 'dailyReport'
                                                 ? `Daily Report: ${item.user?.name || 'Member'}`
+                                                : item._itemType === 'leaveRequest'
+                                                ? `${item.leaveType}: ${item.user?.name || 'Member'}`
                                                 : (item.title || item.name)}
                                         </h3>
                                     </div>
                                     <span className="px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-[10px] font-bold whitespace-nowrap uppercase tracking-wider">
-                                        {item._itemType === 'project' ? 'Project' : item._itemType === 'dailyReport' ? 'Daily Report' : 'Task'}
+                                        {item._itemType === 'project' ? 'Project' : item._itemType === 'dailyReport' ? 'Daily Report' : item._itemType === 'leaveRequest' ? 'Leave Request' : 'Task'}
                                     </span>
                                 </div>
                                 
                                 <p className="text-sm text-slate-600 dark:text-slate-300 line-clamp-2 mb-5 leading-relaxed font-normal">
-                                    {item._itemType === 'dailyReport' ? item.todayWork : (item.description || "No description provided.")}
+                                    {item._itemType === 'dailyReport' ? item.todayWork : item._itemType === 'leaveRequest' ? item.reason : (item.description || "No description provided.")}
                                 </p>
                                 
                                 <div className="grid grid-cols-2 gap-y-4 text-sm mb-2">
@@ -434,6 +491,13 @@ const Approvals = () => {
                                             <span className="text-[10px] uppercase font-bold tracking-widest text-slate-500 dark:text-slate-400 mb-1">Department / Date</span>
                                             <span className="text-[#10b981] font-semibold truncate">
                                                 {item.department || 'General'} • {formatDate(item.reportDate)}
+                                            </span>
+                                        </div>
+                                    ) : item._itemType === 'leaveRequest' ? (
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] uppercase font-bold tracking-widest text-slate-500 dark:text-slate-400 mb-1">Duration & Period</span>
+                                            <span className="text-[#10b981] font-semibold truncate">
+                                                {item.daysCount} day{item.daysCount > 1 ? 's' : ''} • {formatDate(item.startDate)}
                                             </span>
                                         </div>
                                     ) : item._itemType !== 'project' && activeTab === 'projects' ? (
@@ -532,15 +596,36 @@ const Approvals = () => {
                                             <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight mb-4">
                                                 {viewingItem._itemType === 'dailyReport'
                                                     ? `Daily Report: ${itemDetails.user?.name || 'Team Member'}`
+                                                    : viewingItem._itemType === 'leaveRequest'
+                                                    ? `Leave Request: ${itemDetails.user?.name || 'Team Member'} (${itemDetails.leaveType})`
                                                     : (itemDetails.title || itemDetails.name)}
                                             </h1>
                                             
                                             <div className="flex items-center gap-3 mb-8">
                                                 {getStatusBadge(itemDetails.status || itemDetails.approvalStatus)}
-                                                {viewingItem._itemType !== 'project' && viewingItem._itemType !== 'dailyReport' && getPriorityBadge(itemDetails.priority)}
+                                                {viewingItem._itemType !== 'project' && viewingItem._itemType !== 'dailyReport' && viewingItem._itemType !== 'leaveRequest' && getPriorityBadge(itemDetails.priority)}
                                             </div>
 
-                                            {viewingItem._itemType === 'dailyReport' ? (
+                                            {viewingItem._itemType === 'leaveRequest' ? (
+                                                <div className="space-y-6 mb-8">
+                                                    <div>
+                                                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-3 flex items-center gap-2">
+                                                            <Calendar className="h-3.5 w-3.5 text-[#10b981]" /> Period & Duration
+                                                        </p>
+                                                        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-4 text-sm font-semibold text-slate-800 dark:text-slate-200">
+                                                            {formatDate(itemDetails.startDate)} to {formatDate(itemDetails.endDate)} ({itemDetails.daysCount} day{itemDetails.daysCount > 1 ? 's' : ''})
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-3 flex items-center gap-2">
+                                                            <AlignLeft className="h-3.5 w-3.5 text-[#10b981]" /> Reason for Leave
+                                                        </p>
+                                                        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-4 text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">
+                                                            {itemDetails.reason || "No reason specified."}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ) : viewingItem._itemType === 'dailyReport' ? (
                                                 <div className="space-y-6 mb-8">
                                                     <div>
                                                         <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-3 flex items-center gap-2">

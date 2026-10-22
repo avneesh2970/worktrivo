@@ -517,6 +517,21 @@ exports.createUser = async (req, res) => {
     });
 
     await newUser.save();
+
+    // Bidirectional sync for newly created user
+    if (newUser.role === 'manager' && Array.isArray(newUser.assignedMembers) && newUser.assignedMembers.length > 0) {
+      await User.updateMany(
+        { _id: { $in: newUser.assignedMembers } },
+        { $set: { manager: newUser._id } }
+      );
+    }
+    if (newUser.manager) {
+      await User.updateOne(
+        { _id: newUser.manager },
+        { $addToSet: { assignedMembers: newUser._id } }
+      );
+    }
+
     clearManagerCache();
     const populatedUser = await User.findById(newUser._id)
       .populate('assignedMembers', '_id name email role department employeeId profilePhoto designationRole')
@@ -559,6 +574,11 @@ exports.updateUser = async (req, res) => {
       return res.status(404).json({ error: 'User not found.' });
     }
 
+    const oldAssignedMembers = Array.isArray(user.assignedMembers)
+      ? user.assignedMembers.map(m => (m._id ? m._id.toString() : m.toString()))
+      : [];
+    const oldManager = user.manager ? user.manager.toString() : null;
+
     if (email && email.toLowerCase() !== user.email.toLowerCase()) {
       const emailExists = await User.findOne({ email: email.toLowerCase() });
       if (emailExists) {
@@ -599,6 +619,43 @@ exports.updateUser = async (req, res) => {
     }
 
     await user.save();
+
+    // Bidirectional sync:
+    // A) If assignedMembers was updated:
+    if (assignedMembers !== undefined) {
+      const newMemberIds = (Array.isArray(assignedMembers) ? assignedMembers : []).map(m => (m?._id || m).toString());
+      if (newMemberIds.length > 0) {
+        await User.updateMany(
+          { _id: { $in: newMemberIds } },
+          { $set: { manager: user._id } }
+        );
+      }
+      const removedMemberIds = oldAssignedMembers.filter(id => !newMemberIds.includes(id));
+      if (removedMemberIds.length > 0) {
+        await User.updateMany(
+          { _id: { $in: removedMemberIds }, manager: user._id },
+          { $set: { manager: null } }
+        );
+      }
+    }
+
+    // B) If manager was updated:
+    if (manager !== undefined) {
+      const newMgrId = manager ? manager.toString() : null;
+      if (oldManager && oldManager !== newMgrId) {
+        await User.updateOne(
+          { _id: oldManager },
+          { $pull: { assignedMembers: user._id } }
+        );
+      }
+      if (newMgrId && oldManager !== newMgrId) {
+        await User.updateOne(
+          { _id: newMgrId },
+          { $addToSet: { assignedMembers: user._id } }
+        );
+      }
+    }
+
     clearManagerCache();
     const populatedUser = await User.findById(user._id)
       .populate('assignedMembers', '_id name email role department employeeId profilePhoto designationRole')

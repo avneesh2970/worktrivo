@@ -10,6 +10,18 @@ function clearManagerCache() {
   delegatedUserCache.clear();
 }
 
+function areDepartmentsMatching(deptA, deptB) {
+  if (!deptA || !deptB) return false;
+  const a = deptA.trim().toLowerCase();
+  const b = deptB.trim().toLowerCase();
+  if (a === b) return true;
+  const isHrA = /(hr|human\s*resources?|talent\s*acquisition|recruiter)/i.test(a);
+  const isHrB = /(hr|human\s*resources?|talent\s*acquisition|recruiter)/i.test(b);
+  if (isHrA && isHrB) return true;
+  return false;
+}
+
+
 /**
  * Returns a list of all User IDs managed by the given manager user.
  * A user is managed if:
@@ -88,8 +100,8 @@ async function getManagedUserIds(managerOrId) {
     // Case-insensitive regex match for department names with common aliases
     const deptRegexes = departments.map(d => {
       const clean = d.trim().toLowerCase();
-      if (clean === 'hr' || clean === 'human resource' || clean === 'human resources') {
-        return /^(hr|human\s*resources?)$/i;
+      if (clean === 'hr' || clean === 'human resource' || clean === 'human resources' || clean.includes('talent acquisition') || clean.includes('recruiter')) {
+        return /(hr|human\s*resources?|talent\s*acquisition|recruiter)/i;
       }
       return new RegExp(`^${d.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}$`, 'i');
     });
@@ -132,11 +144,17 @@ async function isUserManagedBy(manager, targetUserId) {
   if (!manager || !targetUserId) return false;
   if (manager.role === 'admin') return true;
 
-  const targetIdStr = targetUserId.toString();
-  const managerIdStr = manager._id ? manager._id.toString() : manager.id;
+  const targetIdStr = (targetUserId?._id || targetUserId).toString();
+  const managerIdStr = (manager._id || manager.id || manager).toString();
 
   // Manager cannot approve themselves as an employee report
   if (targetIdStr === managerIdStr) return false;
+
+  // 1. Direct check in manager's managedUserIds (guarantees consistency between list view & action)
+  const managedIds = await getManagedUserIds(manager);
+  if (managedIds.some(id => id.toString() === targetIdStr)) {
+    return true;
+  }
 
   // Direct check in manager's assignedMembers if populated or array of IDs
   if (Array.isArray(manager.assignedMembers)) {
@@ -145,7 +163,7 @@ async function isUserManagedBy(manager, targetUserId) {
   }
 
   // Direct check on target user
-  const targetUser = await User.findById(targetUserId, 'department manager').lean();
+  const targetUser = await User.findById(targetIdStr, 'department manager').lean();
   if (!targetUser) return false;
 
   if (targetUser.manager && targetUser.manager.toString() === managerIdStr) {
@@ -154,18 +172,18 @@ async function isUserManagedBy(manager, targetUserId) {
 
   const departments = [];
   if (manager.assignedDepartment && manager.assignedDepartment.trim()) {
-    departments.push(manager.assignedDepartment.trim().toLowerCase());
+    departments.push(manager.assignedDepartment.trim());
   }
   if (Array.isArray(manager.assignedDepartments)) {
     manager.assignedDepartments.forEach(d => {
-      if (d && d.trim()) departments.push(d.trim().toLowerCase());
+      if (d && d.trim()) departments.push(d.trim());
     });
   }
   if (departments.length === 0 && manager.department && manager.department.trim()) {
-    departments.push(manager.department.trim().toLowerCase());
+    departments.push(manager.department.trim());
   }
 
-  if (targetUser.department && departments.includes(targetUser.department.trim().toLowerCase())) {
+  if (targetUser.department && departments.some(d => areDepartmentsMatching(d, targetUser.department))) {
     return true;
   }
 
@@ -209,7 +227,10 @@ async function getSupervisorsForUser(userIdOrDoc) {
 
   // 2. Department manager from Department model
   if (user.department && user.department.trim()) {
-    const deptRegex = new RegExp(`^${user.department.trim().replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}$`, 'i');
+    const isHr = /(hr|human\s*resources?|talent\s*acquisition|recruiter)/i.test(user.department);
+    const deptRegex = isHr
+      ? /(hr|human\s*resources?|talent\s*acquisition|recruiter)/i
+      : new RegExp(`^${user.department.trim().replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}$`, 'i');
     const deptDoc = await Department.findOne({ name: deptRegex }).populate('manager', '_id name email role profilePhoto designationRole department').lean();
     if (deptDoc && deptDoc.manager && deptDoc.manager.active !== false) {
       supervisorMap.set(deptDoc.manager._id.toString(), deptDoc.manager);
@@ -406,7 +427,7 @@ async function canUserApproveFor(actor, targetUserId) {
   if (actor.role === 'admin') return true;
   if (actor.role !== 'manager') return false;
 
-  const targetIdStr = targetUserId.toString();
+  const targetIdStr = (targetUserId?._id || targetUserId).toString();
   const actorIdStr = (actor._id || actor.id).toString();
 
   // Manager cannot approve themselves
@@ -447,6 +468,7 @@ async function canUserApproveFor(actor, targetUserId) {
 }
 
 module.exports = {
+  areDepartmentsMatching,
   getManagedUserIds,
   isUserManagedBy,
   getSupervisorsForUser,

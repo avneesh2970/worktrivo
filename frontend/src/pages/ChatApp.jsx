@@ -687,11 +687,16 @@ const ChatApp = () => {
 
   // Start 1-on-1 Direct Chat
   const handleStartDirectChat = async (targetUser) => {
+    if (!targetUser) return;
+    const targetId = (targetUser._id || targetUser.id || targetUser).toString();
+    if (targetId === user?._id?.toString()) return; // Don't start direct chat with yourself
+
     try {
-      const res = await getOrCreateDirectRoom(targetUser._id);
+      const res = await getOrCreateDirectRoom(targetId);
       const directRoom = res.data;
       setIsDirectChatModalOpen(false);
       setUserPickerSearch("");
+      setShowSidebarMobile(false);
 
       // Add to rooms if not present
       setRooms((prev) => {
@@ -701,7 +706,7 @@ const ChatApp = () => {
       });
 
       setSelectedRoom(directRoom);
-      showToast(`Started direct chat with ${targetUser.name}`, "success");
+      showToast(`Started direct chat with ${targetUser.name || 'user'}`, "success");
     } catch (err) {
       console.error(err);
       showToast(err.response?.data?.message || "Failed to start direct chat", "error");
@@ -1777,15 +1782,27 @@ const ChatApp = () => {
                         className={`group relative flex items-start gap-3 ${isMine ? "flex-row-reverse" : "flex-row"}`}
                       >
                         {/* Sender Avatar */}
-                        <div className="shrink-0 mt-0.5">
+                        <div 
+                          className={`shrink-0 mt-0.5 ${!isMine && msg.sender ? "cursor-pointer" : ""}`}
+                          onClick={() => {
+                            if (!isMine && msg.sender) handleStartDirectChat(msg.sender);
+                          }}
+                          title={!isMine && msg.sender ? `Message ${msg.sender.name || 'user'} personally` : undefined}
+                        >
                           {msg.sender?.profilePhoto ? (
                             <img
                               src={msg.sender.profilePhoto}
                               alt={msg.sender?.name}
-                              className="w-8 h-8 rounded-full object-cover border border-slate-200 dark:border-slate-700"
+                              className={`w-8 h-8 rounded-full object-cover border border-slate-200 dark:border-slate-700 ${
+                                !isMine && msg.sender ? "hover:ring-2 hover:ring-emerald-500 hover:scale-105 transition-all" : ""
+                              }`}
                             />
                           ) : (
-                            <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold flex items-center justify-center text-xs border border-emerald-500/30">
+                            <div 
+                              className={`w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold flex items-center justify-center text-xs border border-emerald-500/30 ${
+                                !isMine && msg.sender ? "hover:ring-2 hover:ring-emerald-500 hover:scale-105 transition-all" : ""
+                              }`}
+                            >
                               {(msg.sender?.name || "U").charAt(0).toUpperCase()}
                             </div>
                           )}
@@ -1794,7 +1811,15 @@ const ChatApp = () => {
                         {/* Message Bubble */}
                         <div className={`max-w-[80%] sm:max-w-[70%] ${isMine ? "items-end" : "items-start"}`}>
                           <div className={`flex items-center gap-2 mb-1 text-[11px] ${isMine ? "justify-end" : "justify-start"}`}>
-                            <span className="font-bold text-slate-900 dark:text-slate-200">
+                            <span 
+                              className={`font-bold text-slate-900 dark:text-slate-200 ${
+                                !isMine && msg.sender ? "cursor-pointer hover:text-emerald-500 hover:underline transition-colors" : ""
+                              }`}
+                              onClick={() => {
+                                if (!isMine && msg.sender) handleStartDirectChat(msg.sender);
+                              }}
+                              title={!isMine && msg.sender ? `Message ${msg.sender.name || 'user'} personally` : undefined}
+                            >
                               {isMine ? "You" : msg.sender?.name}
                             </span>
                             {msg.sender?.role && msg.sender.role !== "member" && (
@@ -2224,16 +2249,28 @@ const ChatApp = () => {
                   key={m._id}
                   className="flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group"
                 >
-                  <div className="flex items-center gap-2.5 min-w-0">
+                  <div 
+                    className={`flex items-center gap-2.5 min-w-0 ${m._id !== user?._id ? "cursor-pointer group/member" : ""}`}
+                    onClick={() => {
+                      if (m._id !== user?._id) handleStartDirectChat(m);
+                    }}
+                    title={m._id !== user?._id ? `Message ${m.name} personally` : undefined}
+                  >
                     <div className="relative shrink-0">
                       {m.profilePhoto ? (
                         <img
                           src={m.profilePhoto}
                           alt={m.name}
-                          className="w-8 h-8 rounded-full object-cover border border-slate-200 dark:border-slate-700"
+                          className={`w-8 h-8 rounded-full object-cover border border-slate-200 dark:border-slate-700 ${
+                            m._id !== user?._id ? "group-hover/member:ring-2 group-hover/member:ring-emerald-500 transition-all" : ""
+                          }`}
                         />
                       ) : (
-                        <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold flex items-center justify-center text-xs border border-emerald-500/30">
+                        <div 
+                          className={`w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold flex items-center justify-center text-xs border border-emerald-500/30 ${
+                            m._id !== user?._id ? "group-hover/member:ring-2 group-hover/member:ring-emerald-500 transition-all" : ""
+                          }`}
+                        >
                           {(m.name || "U").charAt(0).toUpperCase()}
                         </div>
                       )}
@@ -2244,7 +2281,9 @@ const ChatApp = () => {
                       />
                     </div>
                     <div className="min-w-0">
-                      <div className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                      <div className={`text-xs font-bold text-slate-800 dark:text-slate-200 truncate ${
+                        m._id !== user?._id ? "group-hover/member:text-emerald-500 transition-colors" : ""
+                      }`}>
                         {m.name}
                       </div>
                       <div className="text-[10px] text-slate-400 truncate">

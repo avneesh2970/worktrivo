@@ -351,8 +351,8 @@ const LeaveRequests = () => {
 
   // Handle Admin Decision
   const handleReviewAction = async (leaveId, status, note = '') => {
-    if (!isAdmin) {
-      toast.error('Only administrators can approve or reject leaves.');
+    if (!isAdmin && !isManager) {
+      toast.error('Only administrators and managers can approve or reject leaves.');
       return;
     }
 
@@ -830,7 +830,7 @@ const LeaveRequests = () => {
           {activeList.map((item) => {
             const isOwner = item.user?._id === user?._id || item.user === user?._id;
             const canCancel = isOwner && item.status === 'Pending';
-            const canAdminReview = isAdmin && item.status === 'Pending';
+            const canReview = (isAdmin || (isManager && !isOwner)) && item.status === 'Pending';
 
             return (
               <div
@@ -931,8 +931,8 @@ const LeaveRequests = () => {
                   </span>
 
                   <div className="flex items-center gap-2">
-                    {/* Admin Approve & Reject Buttons */}
-                    {canAdminReview && (
+                    {/* Approve & Reject Buttons */}
+                    {canReview && (
                       <>
                         <button
                           onClick={() => handleReviewAction(item._id, 'Approved')}

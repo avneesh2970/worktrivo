@@ -6,7 +6,7 @@ const Notification = require('../models/Notification');
 const sendEmail = require('../utils/sendEmail');
 const { sendInAppNotification, getIo } = require('../utils/socket');
 const { authenticate, requireRole } = require('../middleware/auth');
-const { getManagedUserIds, clearManagerCache } = require('../utils/managerHelper');
+const { getManagedUserIds, isUserManagedBy, canUserApproveFor, clearManagerCache } = require('../utils/managerHelper');
 
 router.use(authenticate);
 
@@ -368,10 +368,14 @@ router.get('/', async (req, res) => {
 });
 
 /* ==========================================================
-   APPROVE OR REJECT LEAVE (Admin only)
+   APPROVE OR REJECT LEAVE (Admin & Manager)
 ========================================================== */
-router.patch('/:id/status', requireRole('admin'), async (req, res) => {
+router.patch('/:id/status', async (req, res) => {
   try {
+    if (!['admin', 'manager'].includes(req.user.role)) {
+      return res.status(403).json({ error: 'Forbidden. Only administrators and managers can review leave requests.' });
+    }
+
     const { status, rejectionReason } = req.body;
 
     if (!['Approved', 'Rejected'].includes(status)) {
@@ -381,6 +385,24 @@ router.patch('/:id/status', requireRole('admin'), async (req, res) => {
     const leave = await LeaveRequest.findById(req.params.id).populate('user');
     if (!leave) {
       return res.status(404).json({ error: 'Leave request not found.' });
+    }
+
+    const applicantId = (leave.user?._id || leave.user).toString();
+
+    // Managers cannot approve their own leaves, and can only approve team members
+    if (req.user.role === 'manager') {
+      if (applicantId === req.user._id.toString()) {
+        return res.status(403).json({ error: 'Forbidden. You cannot approve or reject your own leave request.' });
+      }
+
+      const isManaged = await isUserManagedBy(req.user, applicantId);
+      const canApprove = isManaged || (await canUserApproveFor(req.user, applicantId));
+
+      if (!canApprove) {
+        return res.status(403).json({
+          error: 'Forbidden. You are only authorized to review leave requests of members assigned to your team or department.'
+        });
+      }
     }
 
     leave.status = status;
