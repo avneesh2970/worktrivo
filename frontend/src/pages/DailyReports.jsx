@@ -61,8 +61,8 @@ const DailyReports = () => {
   const isMember = user?.role === 'member';
 
   // Tabs:
-  // For Admin: always 'team' (all reports)
-  // For Manager: 'team' | 'my'
+  // For Admin: 'team' | 'pending'
+  // For Manager: 'team' | 'pending' | 'my'
   // For Member: 'my' | 'submit'
   const [activeTab, setActiveTab] = useState(isAdmin || isManager ? 'team' : 'my');
 
@@ -270,8 +270,13 @@ const DailyReports = () => {
   const fetchReports = async () => {
     setLoading(true);
     try {
-      let url = appendDurationParams(`${API_BASE}/daily-reports`);
-      if (statusFilter !== 'all') url += `status=${encodeURIComponent(statusFilter)}&`;
+      let url = `${API_BASE}/daily-reports?`;
+      if (activeTab === 'pending') {
+        url += `status=Pending&date=all&`;
+      } else {
+        url = appendDurationParams(`${API_BASE}/daily-reports`);
+        if (statusFilter !== 'all') url += `status=${encodeURIComponent(statusFilter)}&`;
+      }
       if (deptFilter !== 'all') url += `department=${encodeURIComponent(deptFilter)}&`;
       if (selectedMemberId !== 'all') url += `userId=${encodeURIComponent(selectedMemberId)}&`;
       if (searchQuery.trim()) url += `search=${encodeURIComponent(searchQuery.trim())}&`;
@@ -636,13 +641,26 @@ const DailyReports = () => {
   };
 
   // Filtered reports for current view
-  const displayReports = reports.filter(r => {
-    if (activeTab === 'my') {
-      return r.user?._id === user?._id;
-    }
-    // Team tab: show reports from team members (or all if admin)
-    return true;
-  });
+  const displayReports = reports
+    .filter(r => {
+      if (activeTab === 'my') {
+        return r.user?._id === user?._id;
+      }
+      if (activeTab === 'pending') {
+        return r.status === 'Pending' || (r.status === 'Rejected' && r.autoRejectedAt && !r.reviewedBy);
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      if (activeTab === 'team') {
+        // Prioritize pending reviews at top of the feed so managers immediately see submissions needing sign-off
+        const isPendingA = a.status === 'Pending' || (a.status === 'Rejected' && a.autoRejectedAt && !a.reviewedBy);
+        const isPendingB = b.status === 'Pending' || (b.status === 'Rejected' && b.autoRejectedAt && !b.reviewedBy);
+        if (isPendingA && !isPendingB) return -1;
+        if (!isPendingA && isPendingB) return 1;
+      }
+      return new Date(b.reportDate) - new Date(a.reportDate);
+    });
 
   const totalPages = Math.ceil(displayReports.length / itemsPerPage);
   const paginatedReports = displayReports.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -738,6 +756,40 @@ const DailyReports = () => {
           )}
         </div>
       </div>
+
+      {/* Pending Approvals Notice Banner for Managers & Admins */}
+      {(isAdmin || isManager) && stats.pending > 0 && activeTab !== 'pending' && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm animate-in fade-in">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 font-bold shrink-0">
+              <Clock size={20} className="animate-pulse" />
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <span>{stats.pending} Daily Report{stats.pending > 1 ? 's' : ''} Awaiting Review</span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 uppercase tracking-wide">
+                  Action Required
+                </span>
+              </h4>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Team members have submitted daily work reports that require your review and approval.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              setActiveTab('pending');
+              setStatusFilter('Pending');
+              setDateFilter('all');
+              setCurrentPage(1);
+            }}
+            className="px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-slate-950 transition-all shadow-md shadow-amber-500/20 cursor-pointer shrink-0 flex items-center gap-1.5"
+          >
+            <span>Review Pending Reports ({stats.pending})</span>
+            <ArrowRight size={14} />
+          </button>
+        </div>
+      )}
 
       {/* =========================================================
           DURATION SELECTOR & FILTER CHIPS
@@ -879,11 +931,23 @@ const DailyReports = () => {
         </div>
 
         <div 
-          onClick={() => { setStatusFilter(statusFilter === 'Pending' ? 'all' : 'Pending'); setCurrentPage(1); }}
+          onClick={() => {
+            if (activeTab === 'pending') {
+              setActiveTab('team');
+              setStatusFilter('all');
+            } else {
+              setActiveTab('pending');
+              setStatusFilter('Pending');
+              setDateFilter('all');
+            }
+            setCurrentPage(1);
+          }}
           className={`bg-white dark:bg-[#121826] border rounded-2xl p-4 shadow-sm cursor-pointer transition-all hover:scale-[1.02] ${
-            statusFilter === 'Pending' ? 'border-amber-500 ring-2 ring-amber-500/20 shadow-amber-500/10' : 'border-slate-200 dark:border-slate-800/80 hover:border-amber-500/50'
+            activeTab === 'pending' || statusFilter === 'Pending'
+              ? 'border-amber-500 ring-2 ring-amber-500/20 shadow-amber-500/10'
+              : 'border-slate-200 dark:border-slate-800/80 hover:border-amber-500/50'
           }`}
-          title="Click to filter reports awaiting review"
+          title="Click to review all pending daily reports"
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider">Pending</span>
@@ -893,7 +957,7 @@ const DailyReports = () => {
           </div>
           <p className="text-2xl sm:text-3xl font-extrabold text-amber-600 dark:text-amber-400 mt-2 font-mono">{stats.pending}</p>
           <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-medium truncate">
-            {statusFilter === 'Pending' ? 'Showing Pending (click to reset)' : 'Click to view pending'}
+            {activeTab === 'pending' || statusFilter === 'Pending' ? 'Showing Pending (click to view all)' : 'Click to review pending'}
           </p>
         </div>
 
@@ -920,31 +984,56 @@ const DailyReports = () => {
         </div>
       </div>
 
-      {/* Navigation Tabs (for Managers who have both team reports and my report) */}
-      {isManager && (
-        <div className="flex border-b border-slate-200 dark:border-slate-800 mb-6 gap-2">
+      {/* Navigation Tabs (for Managers & Admins) */}
+      {(isAdmin || isManager) && (
+        <div className="flex border-b border-slate-200 dark:border-slate-800 mb-6 gap-2 overflow-x-auto">
           <button
-            onClick={() => { setActiveTab('team'); setCurrentPage(1); }}
-            className={`pb-3 px-5 text-sm font-semibold transition-colors flex items-center gap-2 cursor-pointer ${
+            onClick={() => { setActiveTab('team'); setStatusFilter('all'); setCurrentPage(1); }}
+            className={`pb-3 px-5 text-sm font-semibold transition-colors flex items-center gap-2 cursor-pointer whitespace-nowrap ${
               activeTab === 'team'
                 ? 'text-[#10b981] border-b-2 border-[#10b981]'
                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <Building2 size={16} />
-            <span>Assigned Team Reports ({stats.total})</span>
+            <span>{isAdmin ? 'All Team Reports' : 'Assigned Team Reports'} ({stats.total})</span>
           </button>
+
           <button
-            onClick={() => { setActiveTab('my'); setCurrentPage(1); }}
-            className={`pb-3 px-5 text-sm font-semibold transition-colors flex items-center gap-2 cursor-pointer ${
-              activeTab === 'my'
-                ? 'text-[#10b981] border-b-2 border-[#10b981]'
+            onClick={() => {
+              setActiveTab('pending');
+              setStatusFilter('Pending');
+              setDateFilter('all');
+              setCurrentPage(1);
+            }}
+            className={`pb-3 px-5 text-sm font-semibold transition-colors flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+              activeTab === 'pending'
+                ? 'text-amber-500 border-b-2 border-amber-500'
                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            <User size={16} />
-            <span>My Daily Submissions</span>
+            <Clock size={16} className={stats.pending > 0 ? "text-amber-500" : ""} />
+            <span>Pending Approvals</span>
+            {stats.pending > 0 && (
+              <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-500 text-slate-950 font-mono">
+                {stats.pending}
+              </span>
+            )}
           </button>
+
+          {isManager && (
+            <button
+              onClick={() => { setActiveTab('my'); setStatusFilter('all'); setCurrentPage(1); }}
+              className={`pb-3 px-5 text-sm font-semibold transition-colors flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+                activeTab === 'my'
+                  ? 'text-[#10b981] border-b-2 border-[#10b981]'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <User size={16} />
+              <span>My Daily Submissions</span>
+            </button>
+          )}
         </div>
       )}
 
@@ -1254,6 +1343,8 @@ const DailyReports = () => {
               <p className="text-sm text-slate-600 dark:text-slate-400 max-w-sm mx-auto mb-6">
                 {activeTab === 'my'
                   ? `You haven't submitted any daily report for ${stats.durationLabel || 'this duration'}.`
+                  : activeTab === 'pending'
+                  ? 'All caught up! There are no pending daily reports awaiting review.'
                   : `No daily reports submitted under "${stats.durationLabel || 'this duration'}" matching the active filters.`}
               </p>
               {!isAdmin && (
@@ -1275,7 +1366,11 @@ const DailyReports = () => {
                 setViewingReport(report);
                 setDecisionFeedback(report.feedback || '');
               }}
-              className="group bg-white dark:bg-[#121826] border border-slate-200 dark:border-slate-800/80 hover:border-[#10b981]/50 rounded-2xl p-5 transition-all hover:shadow-md flex flex-col justify-between cursor-pointer"
+              className={`group bg-white dark:bg-[#121826] border rounded-2xl p-5 transition-all hover:shadow-md flex flex-col justify-between cursor-pointer ${
+                (report.status === 'Pending' || (report.status === 'Rejected' && report.autoRejectedAt && !report.reviewedBy))
+                  ? 'border-amber-500/50 hover:border-amber-500 ring-1 ring-amber-500/20 bg-amber-500/[0.02]'
+                  : 'border-slate-200 dark:border-slate-800/80 hover:border-[#10b981]/50'
+              }`}
             >
               <div>
                 {/* Header */}

@@ -157,18 +157,18 @@ router.get('/stats', async (req, res) => {
     const todayEnd = new Date();
     todayEnd.setHours(23, 59, 59, 999);
 
-    let pending = allReports.filter(r => r.status === 'Pending' || (r.status === 'Rejected' && r.autoRejectedAt && !r.reviewedBy)).length;
-    if (pending === 0 && durationFilter && !startDate && !endDate && date !== 'custom') {
-      const pendingQuery = { ...userFilter, reportDate: { $lte: durationFilter.$lte } };
-      const pendingList = await DailyReport.find({
-        ...pendingQuery,
-        $or: [
-          { status: 'Pending' },
-          { status: 'Rejected', autoRejectedAt: { $ne: null }, reviewedBy: null }
-        ]
-      }, '_id').lean();
-      pending = pendingList.length;
+    // Calculate pending reports needing attention (pending across all time for the manager/user scope)
+    const pendingScope = { user: userFilter.user };
+    if (department && department.trim() && department !== 'all') {
+      pendingScope.department = { $regex: new RegExp(`^${department.trim()}$`, 'i') };
     }
+    const pending = await DailyReport.countDocuments({
+      ...pendingScope,
+      $or: [
+        { status: 'Pending' },
+        { status: 'Rejected', autoRejectedAt: { $ne: null }, reviewedBy: null }
+      ]
+    });
     const approved = allReports.filter(r => r.status === 'Approved').length;
     const rejected = allReports.filter(r => r.status === 'Rejected').length;
     const submittedToday = allReports.filter(r => {
